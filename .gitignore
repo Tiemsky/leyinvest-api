@@ -1,0 +1,82 @@
+# Laravel
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.vscode
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Backups
+/backups
+*.dump
+*.sql
+*.gz
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.phpunit.cache/
+
+# Logs
+*.log
+/storage/logs/*.log
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.csr
+/docker/nginx/ssl/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Composer
+composer.phar
+/vendor/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build files
+/public/build/
+/public/mix-manifest.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Environment specific
+.env.*.local
+.env.local
+.env.staging
+.env.testing
