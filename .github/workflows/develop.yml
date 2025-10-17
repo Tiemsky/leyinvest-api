@@ -1,4 +1,4 @@
-name: Deploy to Beta Environment (Hostinger)
+name: Deploy to LeyInvest Environment (Hostinger)
 
 on:
   push:
@@ -62,7 +62,7 @@ jobs:
       run: |
         cd deployment-package
         # Create tar archive to preserve case sensitivity and permissions
-        tar -czf ../deploy-beta.tar.gz \
+        tar -czf ../deploy-leyinvest.tar.gz \
           --exclude='node_modules' \
           --exclude='.git' \
           --exclude='tests' \
@@ -70,7 +70,7 @@ jobs:
           --exclude='.env.*' \
           .
         cd ..
-        echo "✅ Archive created: $(ls -lh deploy-beta.tar.gz)"
+        echo "✅ Archive created: $(ls -lh deploy-leyinvest.tar.gz)"
 
     - name: Create backup on server
       uses: appleboy/ssh-action@v1.0.3
@@ -81,20 +81,20 @@ jobs:
         port: 65002
         script: |
           set -e
-          BACKUP_DIR="/home/u258421289/backups"
-          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
-          BACKUP_NAME="backup_beta_$(date +%Y%m%d_%H%M%S)"
+          BACKUP_DIR="/home/u258421289/leyinvest/backups"
+          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
+          BACKUP_NAME="backup_leyinvest_$(date +%Y%m%d_%H%M%S)"
 
           mkdir -p "$BACKUP_DIR"
 
-          if [ -d "$BETA_DIR" ] && [ "$(ls -A $BETA_DIR)" ]; then
+          if [ -d "$LEYINVEST_DIR" ] && [ "$(ls -A $LEYINVEST_DIR)" ]; then
             echo "📦 Creating backup: $BACKUP_NAME"
-            tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$BETA_DIR" . 2>/dev/null || true
+            tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$LEYINVEST_DIR" . 2>/dev/null || true
             echo "$BACKUP_NAME" > /tmp/latest_backup.txt
 
             # Keep only last 5 backups
             cd "$BACKUP_DIR"
-            ls -t backup_beta_*.tar.gz | tail -n +6 | xargs -r rm -f
+            ls -t backup_leyinvest_*.tar.gz | tail -n +6 | xargs -r rm -f
             echo "✅ Backup created successfully"
           else
             echo "ℹ️ No existing installation to backup"
@@ -108,7 +108,7 @@ jobs:
         username: ${{ secrets.REMOTE_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 65002
-        source: "deploy-beta.tar.gz"
+        source: "deploy-leyinvest.tar.gz"
         target: "/tmp/"
 
     - name: Deploy to Beta Server
@@ -121,62 +121,62 @@ jobs:
         port: 65002
         script: |
           set -e
-          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
+          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
 
           echo "🚀 Starting deployment..."
 
           # Create temp directory for extraction
-          TEMP_DIR="/tmp/deploy-beta-$(date +%Y%m%d_%H%M%S)"
+          TEMP_DIR="/tmp/deploy-leyinvest-$(date +%Y%m%d_%H%M%S)"
           mkdir -p "$TEMP_DIR"
 
           # Extract archive
           echo "📦 Extracting archive..."
-          tar -xzf /tmp/deploy-beta.tar.gz -C "$TEMP_DIR"
+          tar -xzf /tmp/deploy-leyinvest.tar.gz -C "$TEMP_DIR"
 
           # Backup .env and .htaccess if they exist
-          if [ -f "$BETA_DIR/.env" ]; then
-            cp "$BETA_DIR/.env" /tmp/backup_env
+          if [ -f "$LEYINVEST_DIR/.env" ]; then
+            cp "$LEYINVEST_DIR/.env" /tmp/backup_env
           fi
-          if [ -f "$BETA_DIR/public/.htaccess" ]; then
-            cp "$BETA_DIR/public/.htaccess" /tmp/backup_htaccess_public
+          if [ -f "$LEYINVEST_DIR/public/.htaccess" ]; then
+            cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
           fi
-          if [ -f "$BETA_DIR/.htaccess" ]; then
-            cp "$BETA_DIR/.htaccess" /tmp/backup_htaccess_root
+          if [ -f "$LEYINVEST_DIR/.htaccess" ]; then
+            cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
           fi
 
           # Remove old files except storage
-          cd "$BETA_DIR"
+          cd "$LEYINVEST_DIR"
           find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
 
           # Copy new files (preserves case sensitivity)
           echo "📋 Copying new files..."
-          cp -rf "$TEMP_DIR"/* "$BETA_DIR"/
-          cp -rf "$TEMP_DIR"/.[!.]* "$BETA_DIR"/ 2>/dev/null || true
+          cp -rf "$TEMP_DIR"/* "$LEYINVEST_DIR"/
+          cp -rf "$TEMP_DIR"/.[!.]* "$LEYINVEST_DIR"/ 2>/dev/null || true
 
           # Restore .env
           if [ -f /tmp/backup_env ]; then
-            cp /tmp/backup_env "$BETA_DIR/.env"
+            cp /tmp/backup_env "$LEYINVEST_DIR/.env"
             rm /tmp/backup_env
-          elif [ -f "$BETA_DIR/.env.beta" ]; then
-            cp "$BETA_DIR/.env.beta" "$BETA_DIR/.env"
-          elif [ -f "$BETA_DIR/.env.example" ]; then
-            cp "$BETA_DIR/.env.example" "$BETA_DIR/.env"
+          elif [ -f "$LEYINVEST_DIR/.env.beta" ]; then
+            cp "$LEYINVEST_DIR/.env.beta" "$LEYINVEST_DIR/.env"
+          elif [ -f "$LEYINVEST_DIR/.env.example" ]; then
+            cp "$LEYINVEST_DIR/.env.example" "$LEYINVEST_DIR/.env"
             echo "⚠️ Warning: Using .env.example - please configure .env file"
           fi
 
           # Restore or create .htaccess files
           if [ -f /tmp/backup_htaccess_public ]; then
-            cp /tmp/backup_htaccess_public "$BETA_DIR/public/.htaccess"
+            cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess"
             rm /tmp/backup_htaccess_public
           fi
 
           if [ -f /tmp/backup_htaccess_root ]; then
-            cp /tmp/backup_htaccess_root "$BETA_DIR/.htaccess"
+            cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess"
             rm /tmp/backup_htaccess_root
           fi
 
           # Cleanup
-          rm -rf "$TEMP_DIR" /tmp/deploy-beta.tar.gz
+          rm -rf "$TEMP_DIR" /tmp/deploy-leyinvest.tar.gz
 
           echo "✅ Files deployed successfully"
 
@@ -190,10 +190,10 @@ jobs:
         port: 65002
         script: |
           set -e
-          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
-          BACKUP_DIR="/home/u258421289/backups"
+          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
+          BACKUP_DIR="/home/u258421289/leyinvest/backups"
 
-          cd "$BETA_DIR"
+          cd "$LEYINVEST_DIR"
 
           # Create necessary directories
           mkdir -p storage/framework/{cache/data,sessions,views,testing}
@@ -249,11 +249,11 @@ jobs:
               echo "🔙 Rolling back to: $LATEST_BACKUP"
 
               # Clear directory
-              cd "$BETA_DIR"
+              cd "$LEYINVEST_DIR"
               find . -maxdepth 1 ! -name '.' ! -name '..' -exec rm -rf {} +
 
               # Restore backup
-              tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$BETA_DIR"
+              tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$LEYINVEST_DIR"
 
               echo "ROLLBACK=true" > /tmp/deployment_status.txt
               echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
@@ -333,7 +333,7 @@ jobs:
         secure: true
         username: eservice@efournisseurskygroups.ci
         password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "✅ Déploiement Beta réussi"
+        subject: "✅ Déploiement LeyInvest réussi"
         to: tiafranck31@yahoo.fr
         from: eservice@efournisseurskygroups.ci
         body: |
@@ -348,7 +348,7 @@ jobs:
           🕐 Date : ${{ github.event.head_commit.timestamp }}
           📄 Message : ${{ github.event.head_commit.message }}
 
-          🔗 URL Beta : https://beta.efournisseurskygroups.ci
+          🔗 URL Beta : https://leyinvest.skygroups.ci
 
           Cordialement,
           Système de déploiement automatique
@@ -368,7 +368,7 @@ jobs:
         body: |
           Bonjour Franck,
 
-          ⚠️ Le déploiement Beta sur Hostinger a échoué.
+          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué.
           Un rollback automatique a été effectué pour restaurer la dernière version stable.
 
           📦 Projet : ${{ github.repository }}
@@ -392,7 +392,7 @@ jobs:
         secure: true
         username: eservice@efournisseurskygroups.ci
         password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "❌ Déploiement Beta échoué"
+        subject: "❌ Déploiement Leyinvest échoué"
         to: tiafranck31@yahoo.fr
         from: eservice@efournisseurskygroups.ci
         body: |
