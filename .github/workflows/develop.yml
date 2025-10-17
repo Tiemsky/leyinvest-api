@@ -24,49 +24,6 @@ jobs:
     - name: Install Composer dependencies
       run: composer install --no-dev --optimize-autoloader --no-interaction
 
-
-    - name: Prepare deployment package
-      run: |
-        mkdir -p deployment-package
-
-        # Copy application files with case sensitivity preserved
-        rsync -av --exclude-from='.github/deploy-exclude.txt' ./ deployment-package/
-
-        # Ensure required Laravel directories exist
-        mkdir -p deployment-package/storage/framework/cache/data
-        mkdir -p deployment-package/storage/framework/sessions
-        mkdir -p deployment-package/storage/framework/views
-        mkdir -p deployment-package/storage/framework/testing
-        mkdir -p deployment-package/storage/logs
-        mkdir -p deployment-package/storage/app/public
-        mkdir -p deployment-package/bootstrap/cache
-
-        # Create .gitkeep files to preserve directory structure
-        find deployment-package/storage -type d -exec touch {}/.gitkeep \;
-        touch deployment-package/bootstrap/cache/.gitkeep
-
-        # Set proper permissions before creating archive
-        chmod -R 755 deployment-package/storage
-        chmod -R 755 deployment-package/bootstrap/cache
-
-        # Verify structure
-        echo "📦 Deployment package structure:"
-        ls -la deployment-package/
-
-    - name: Create deployment archive
-      run: |
-        cd deployment-package
-        # Create tar archive to preserve case sensitivity and permissions
-        tar -czf ../deploy-leyinvest.tar.gz \
-          --exclude='node_modules' \
-          --exclude='.git' \
-          --exclude='tests' \
-          --exclude='.env' \
-          --exclude='.env.*' \
-          .
-        cd ..
-        echo "✅ Archive created: $(ls -lh deploy-leyinvest.tar.gz)"
-
     - name: Create backup on server
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -106,7 +63,7 @@ jobs:
         source: "deploy-leyinvest.tar.gz"
         target: "/tmp/"
 
-    - name: Deploy to Beta Server
+    - name: Deploy to LeyInvest Server
       id: deploy
       uses: appleboy/ssh-action@v1.0.3
       with:
