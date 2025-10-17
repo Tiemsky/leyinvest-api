@@ -23,24 +23,18 @@ jobs:
     - name: Install Composer dependencies
       run: composer install --no-dev --optimize-autoloader --no-interaction
 
-    - name: Create clean deployment archive
+    - name: Create deployment archive
       run: |
-        echo "📦 Preparing deployment archive..."
-        TEMP_DEPLOY_DIR=$(mktemp -d)
-        echo "Temporary directory: $TEMP_DEPLOY_DIR"
+        set -e
+        TEMP_DIR=$(mktemp -d)
+        echo "📦 Copying project files to temporary directory..."
+        rsync -av --exclude='.github' --exclude='tests' --exclude='node_modules' ./ "$TEMP_DIR"
+        cp -r vendor "$TEMP_DIR"/vendor || true
 
-        # Copy project files excluding CI, tests, docs, node_modules
-        rsync -av --exclude='.github' \
-                  --exclude='tests' \
-                  --exclude='docs' \
-                  --exclude='node_modules' \
-                  --exclude='deploy-leyinvest.tar.gz' \
-                  ./ "$TEMP_DEPLOY_DIR"
-
-        cd "$TEMP_DEPLOY_DIR"
-        tar -czf deploy-leyinvest.tar.gz .
-        ls -lh deploy-leyinvest.tar.gz
+        cd "$TEMP_DIR"
+        tar -czf deploy-leyinvest.tar.gz . --warning=no-file-changed
         mv deploy-leyinvest.tar.gz $GITHUB_WORKSPACE/
+        echo "✅ Deployment archive created"
 
     - name: Create backup on server
       uses: appleboy/ssh-action@v1.0.3
@@ -62,6 +56,7 @@ jobs:
             tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$LEYINVEST_DIR" . 2>/dev/null || true
             echo "$BACKUP_NAME" > /tmp/latest_backup.txt
 
+            # Keep only last 5 backups
             cd "$BACKUP_DIR"
             ls -t backup_leyinvest_*.tar.gz | tail -n +6 | xargs -r rm -f
             echo "✅ Backup created successfully"
@@ -91,40 +86,30 @@ jobs:
         script: |
           set -e
           LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
+
           echo "🚀 Starting deployment..."
           TEMP_DIR="/tmp/deploy-leyinvest-$(date +%Y%m%d_%H%M%S)"
           mkdir -p "$TEMP_DIR"
+
+          echo "📦 Extracting archive..."
           tar -xzf /tmp/deploy-leyinvest.tar.gz -C "$TEMP_DIR"
 
-          # Backup .env and .htaccess if they exist
+          # Backup .env and .htaccess
           [ -f "$LEYINVEST_DIR/.env" ] && cp "$LEYINVEST_DIR/.env" /tmp/backup_env
           [ -f "$LEYINVEST_DIR/public/.htaccess" ] && cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
           [ -f "$LEYINVEST_DIR/.htaccess" ] && cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
 
-          # Remove old files except storage
           cd "$LEYINVEST_DIR"
           find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
 
-          # Copy new files
+          echo "📋 Copying new files..."
           cp -rf "$TEMP_DIR"/* "$LEYINVEST_DIR"/
           cp -rf "$TEMP_DIR"/.[!.]* "$LEYINVEST_DIR"/ 2>/dev/null || true
 
-          # Restore .env
-          if [ -f /tmp/backup_env ]; then
-            cp /tmp/backup_env "$LEYINVEST_DIR/.env"
-            rm /tmp/backup_env
-          elif [ -f "$LEYINVEST_DIR/.env.beta" ]; then
-            cp "$LEYINVEST_DIR/.env.beta" "$LEYINVEST_DIR/.env"
-          elif [ -f "$LEYINVEST_DIR/.env.example" ]; then
-            cp "$LEYINVEST_DIR/.env.example" "$LEYINVEST_DIR/.env"
-            echo "⚠️ Using .env.example"
-          fi
-
-          # Restore .htaccess files
+          [ -f /tmp/backup_env ] && cp /tmp/backup_env "$LEYINVEST_DIR/.env" && rm /tmp/backup_env
           [ -f /tmp/backup_htaccess_public ] && cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess" && rm /tmp/backup_htaccess_public
           [ -f /tmp/backup_htaccess_root ] && cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess" && rm /tmp/backup_htaccess_root
 
-          # Cleanup
           rm -rf "$TEMP_DIR" /tmp/deploy-leyinvest.tar.gz
 
           echo "✅ Files deployed successfully"
@@ -141,12 +126,9 @@ jobs:
           set -e
           LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
           BACKUP_DIR="/home/u258421289/leyinvest/backups"
-          cd "$LEYINVEST_DIR"
 
-          mkdir -p storage/framework/{cache/data,sessions,views,testing}
-          mkdir -p storage/logs
-          mkdir -p storage/app/public
-          mkdir -p bootstrap/cache
+          cd "$LEYINVEST_DIR"
+          mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public bootstrap/cache
 
           php artisan down --render="errors::503" --retry=60 2>/dev/null || true
 
@@ -160,25 +142,15 @@ jobs:
           if command -v composer >/dev/null 2>&1; then
             echo "📦 Installing Composer dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
-          else
-            echo "⚠️ Composer not found, skipping..."
           fi
 
+          MIGRATION_SUCCESS=true
           if command -v php >/dev/null 2>&1; then
             echo "🔄 Running migrations..."
-            if php artisan migrate --force --no-interaction 2>&1; then
-              echo "✅ Migrations successful"
-              php artisan config:cache
-              php artisan route:cache || echo "⚠️ Route cache skipped"
-              php artisan view:cache
-              php artisan optimize:clear
-              MIGRATION_SUCCESS=true
-            else
-              echo "❌ Migration failed - rollback"
+            if ! php artisan migrate --force --no-interaction; then
+              echo "❌ Migration failed"
               MIGRATION_SUCCESS=false
             fi
-          else
-            MIGRATION_SUCCESS=true
           fi
 
           if [ "$MIGRATION_SUCCESS" = false ]; then
@@ -191,7 +163,7 @@ jobs:
               echo "ROLLBACK=true" > /tmp/deployment_status.txt
               echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
             else
-              echo "⚠️ No backup found - rollback not possible"
+              echo "⚠️ No backup found"
               echo "ROLLBACK=failed" > /tmp/deployment_status.txt
             fi
             exit 1
@@ -236,11 +208,7 @@ jobs:
           🔖 Branche : ${{ github.ref_name }}
           📝 Commit : ${{ github.sha }}
           👤 Auteur : ${{ github.actor }}
-          🕐 Date : ${{ github.event.head_commit.timestamp }}
-          📄 Message : ${{ github.event.head_commit.message }}
           🔗 URL Beta : https://leyinvest.skygroups.ci
-          Cordialement,
-          Système de déploiement automatique
 
     - name: Send rollback notification
       if: failure() && contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
@@ -256,14 +224,9 @@ jobs:
         from: eservice@efournisseurskygroups.ci
         body: |
           Bonjour Franck,
-          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué. Un rollback automatique a été effectué.
-          📦 Projet : ${{ github.repository }}
-          🔖 Branche : ${{ github.ref_name }}
-          📝 Commit : ${{ github.sha }}
-          👤 Auteur : ${{ github.actor }}
-          🔍 Vérifiez les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          Cordialement,
-          Système de déploiement automatique
+          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué.
+          Un rollback automatique a été effectué pour restaurer la dernière version stable.
+          🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     - name: Send failure notification
       if: failure() && !contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
@@ -280,10 +243,4 @@ jobs:
         body: |
           Bonjour Franck,
           ❌ Le déploiement Beta sur Hostinger a échoué.
-          📦 Projet : ${{ github.repository }}
-          🔖 Branche : ${{ github.ref_name }}
-          📝 Commit : ${{ github.sha }}
-          👤 Auteur : ${{ github.actor }}
-          🔍 Vérifiez les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          Cordialement,
-          Système de déploiement automatique
+          🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
