@@ -26,15 +26,37 @@ jobs:
     - name: Create deployment archive
       run: |
         set -e
-        TEMP_DIR=$(mktemp -d)
-        echo "📦 Copying project files to temporary directory..."
-        rsync -av --exclude='.github' --exclude='tests' --exclude='node_modules' ./ "$TEMP_DIR"
-        cp -r vendor "$TEMP_DIR"/vendor || true
+        echo "📦 Creating deployment archive..."
 
-        cd "$TEMP_DIR"
-        tar -czf deploy-leyinvest.tar.gz . --warning=no-file-changed
-        mv deploy-leyinvest.tar.gz $GITHUB_WORKSPACE/
-        echo "✅ Deployment archive created"
+        # Create a clean directory structure
+        mkdir -p deploy-temp
+
+        # Copy files excluding unnecessary directories
+        shopt -s dotglob
+        for item in *; do
+          if [[ "$item" != "deploy-temp" ]] && \
+             [[ "$item" != ".github" ]] && \
+             [[ "$item" != "tests" ]] && \
+             [[ "$item" != "node_modules" ]] && \
+             [[ "$item" != ".git" ]]; then
+            cp -r "$item" deploy-temp/ 2>/dev/null || true
+          fi
+        done
+
+        # Ensure vendor directory is included
+        if [ -d "vendor" ]; then
+          cp -r vendor deploy-temp/vendor
+        fi
+
+        # Create the archive
+        cd deploy-temp
+        tar -czf ../deploy-leyinvest.tar.gz . 2>/dev/null || tar -czf ../deploy-leyinvest.tar.gz .
+        cd ..
+
+        # Cleanup
+        rm -rf deploy-temp
+
+        echo "✅ Deployment archive created: $(ls -lh deploy-leyinvest.tar.gz | awk '{print $5}')"
 
     - name: Create backup on server
       uses: appleboy/ssh-action@v1.0.3
