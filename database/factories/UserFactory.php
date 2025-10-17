@@ -31,8 +31,8 @@ class UserFactory extends Factory
             'key' => 'usr-' . strtolower(Str::random(8)),
             'country_id' => Country::inRandomOrder()->first()->id?? Country::factory(),
             'role' => RoleEnum::USER->value,
-            'nom' => $this->faker->lastName(),
-            'prenoms' => $this->faker->firstName(),
+            'nom' => $this->faker->lastName,
+            'prenoms' => $this->faker->firstName,
             'age' => $this->faker->optional(0.8)->numberBetween(18, 65),
             'situation_professionnelle' => $this->faker->optional(0.7)->randomElement([
                 'Employé',
