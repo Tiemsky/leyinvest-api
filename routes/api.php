@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\CountryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\FlopController;
@@ -16,6 +17,7 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 Route::get('/flops', [FlopController::class, 'index']);
 Route::get('/tops', [TopController::class, 'index']);
 Route::get('/actions', [ActionController::class, 'index']);
+Route::get('/countries', [CountryController::class, 'index']);
 
 require __DIR__.'/auth.php';
 require __DIR__.'/health.php';
