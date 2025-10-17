@@ -15,13 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique();
             $table->string('symbole', 10)->unique();
-        $table->string('nom', 100);
-            $table->string('volume', 100);
-            $table->decimal('cours_veille', 15, 2)->default(0);
-            $table->decimal('cours_ouverture', 15, 2)->default(0);
-            $table->decimal('cours_cloture', 15, 2)->default(0);
-            $table->decimal('variation', 5, 2)->default(0);
-            $table->string('categorie', 50)->nullable();
+            $table->string('nom');
+            $table->string('volume');
+            $table->decimal('cours_veille')->default(0);
+            $table->decimal('cours_ouverture')->default(0);
+            $table->decimal('cours_cloture')->default(0);
+            $table->decimal('variation')->default(0);
+            $table->string('categorie')->nullable();
             $table->timestamps();
         });
     }

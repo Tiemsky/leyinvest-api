@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -11,15 +10,28 @@ class EnsureEmailIsVerified
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user() ||
-            ($request->user() instanceof MustVerifyEmail &&
-            ! $request->user()->hasVerifiedEmail())) {
-            return response()->json(['message' => 'Your email address is not verified.'], 409);
+        if (!$request->user()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non authentifié.',
+            ], 401);
+        }
+
+        if (!$request->user()->email_verified) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Votre email doit être vérifié pour accéder à cette ressource.',
+            ], 403);
+        }
+
+        if (!$request->user()->hasCompletedRegistration()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez compléter votre inscription pour accéder à cette ressource.',
+            ], 403);
         }
 
         return $next($request);

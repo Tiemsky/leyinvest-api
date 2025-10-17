@@ -2,9 +2,9 @@ name: Beta Deployment
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ beta ]
   pull_request:
-    branches: [ develop ]
+    branches: [ beta ]
 
 env:
   REGISTRY: ghcr.io

@@ -11,10 +11,4 @@ class Action extends Model
     /** @use HasFactory<\Database\Factories\ActionFactory> */
     use HasFactory, HasKey;
     protected $guarded = [];
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::bootHasKey();
-    }
 }

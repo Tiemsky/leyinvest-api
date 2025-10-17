@@ -14,13 +14,14 @@ return new class extends Migration
     {
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
+            $table->string('key')->unique();
             $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
-            $table->decimal('total_value', 15, 2)->default(0);
-            $table->decimal('total_gain_loss', 15, 2)->default(0);
-            $table->decimal('total_invested', 15, 2)->default(0);
-            $table->decimal('rendement', 5, 2)->default(0);
-            $table->decimal('rentabilite', 5, 2)->default(0);
-            $table->decimal('liquidite', 15, 2)->default(0);
+            $table->decimal('total_value')->default(0);
+            $table->decimal('total_gain_loss')->default(0);
+            $table->decimal('total_invested')->default(0);
+            $table->decimal('rendement')->default(0);
+            $table->decimal('rentabilite')->default(0);
+            $table->decimal('liquidite')->default(0);
             $table->timestamps();
         });
     }

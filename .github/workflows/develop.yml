@@ -1,0 +1,412 @@
+name: Deploy to Beta Environment (Hostinger)
+
+on:
+  push:
+    branches: [ develop, feature/* ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: beta
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Composer dependencies
+      run: composer install --no-dev --optimize-autoloader --no-interaction
+
+
+    - name: Prepare deployment package
+      run: |
+        mkdir -p deployment-package
+
+        # Copy application files with case sensitivity preserved
+        rsync -av --exclude-from='.github/deploy-exclude.txt' ./ deployment-package/
+
+        # Ensure required Laravel directories exist
+        mkdir -p deployment-package/storage/framework/cache/data
+        mkdir -p deployment-package/storage/framework/sessions
+        mkdir -p deployment-package/storage/framework/views
+        mkdir -p deployment-package/storage/framework/testing
+        mkdir -p deployment-package/storage/logs
+        mkdir -p deployment-package/storage/app/public
+        mkdir -p deployment-package/bootstrap/cache
+
+        # Create .gitkeep files to preserve directory structure
+        find deployment-package/storage -type d -exec touch {}/.gitkeep \;
+        touch deployment-package/bootstrap/cache/.gitkeep
+
+        # Set proper permissions before creating archive
+        chmod -R 755 deployment-package/storage
+        chmod -R 755 deployment-package/bootstrap/cache
+
+        # Verify structure
+        echo "📦 Deployment package structure:"
+        ls -la deployment-package/
+
+    - name: Create deployment archive
+      run: |
+        cd deployment-package
+        # Create tar archive to preserve case sensitivity and permissions
+        tar -czf ../deploy-beta.tar.gz \
+          --exclude='node_modules' \
+          --exclude='.git' \
+          --exclude='tests' \
+          --exclude='.env' \
+          --exclude='.env.*' \
+          .
+        cd ..
+        echo "✅ Archive created: $(ls -lh deploy-beta.tar.gz)"
+
+    - name: Create backup on server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 65002
+        script: |
+          set -e
+          BACKUP_DIR="/home/u258421289/backups"
+          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
+          BACKUP_NAME="backup_beta_$(date +%Y%m%d_%H%M%S)"
+
+          mkdir -p "$BACKUP_DIR"
+
+          if [ -d "$BETA_DIR" ] && [ "$(ls -A $BETA_DIR)" ]; then
+            echo "📦 Creating backup: $BACKUP_NAME"
+            tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$BETA_DIR" . 2>/dev/null || true
+            echo "$BACKUP_NAME" > /tmp/latest_backup.txt
+
+            # Keep only last 5 backups
+            cd "$BACKUP_DIR"
+            ls -t backup_beta_*.tar.gz | tail -n +6 | xargs -r rm -f
+            echo "✅ Backup created successfully"
+          else
+            echo "ℹ️ No existing installation to backup"
+            echo "none" > /tmp/latest_backup.txt
+          fi
+
+    - name: Upload deployment archive
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 65002
+        source: "deploy-beta.tar.gz"
+        target: "/tmp/"
+
+    - name: Deploy to Beta Server
+      id: deploy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 65002
+        script: |
+          set -e
+          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
+
+          echo "🚀 Starting deployment..."
+
+          # Create temp directory for extraction
+          TEMP_DIR="/tmp/deploy-beta-$(date +%Y%m%d_%H%M%S)"
+          mkdir -p "$TEMP_DIR"
+
+          # Extract archive
+          echo "📦 Extracting archive..."
+          tar -xzf /tmp/deploy-beta.tar.gz -C "$TEMP_DIR"
+
+          # Backup .env and .htaccess if they exist
+          if [ -f "$BETA_DIR/.env" ]; then
+            cp "$BETA_DIR/.env" /tmp/backup_env
+          fi
+          if [ -f "$BETA_DIR/public/.htaccess" ]; then
+            cp "$BETA_DIR/public/.htaccess" /tmp/backup_htaccess_public
+          fi
+          if [ -f "$BETA_DIR/.htaccess" ]; then
+            cp "$BETA_DIR/.htaccess" /tmp/backup_htaccess_root
+          fi
+
+          # Remove old files except storage
+          cd "$BETA_DIR"
+          find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
+
+          # Copy new files (preserves case sensitivity)
+          echo "📋 Copying new files..."
+          cp -rf "$TEMP_DIR"/* "$BETA_DIR"/
+          cp -rf "$TEMP_DIR"/.[!.]* "$BETA_DIR"/ 2>/dev/null || true
+
+          # Restore .env
+          if [ -f /tmp/backup_env ]; then
+            cp /tmp/backup_env "$BETA_DIR/.env"
+            rm /tmp/backup_env
+          elif [ -f "$BETA_DIR/.env.beta" ]; then
+            cp "$BETA_DIR/.env.beta" "$BETA_DIR/.env"
+          elif [ -f "$BETA_DIR/.env.example" ]; then
+            cp "$BETA_DIR/.env.example" "$BETA_DIR/.env"
+            echo "⚠️ Warning: Using .env.example - please configure .env file"
+          fi
+
+          # Restore or create .htaccess files
+          if [ -f /tmp/backup_htaccess_public ]; then
+            cp /tmp/backup_htaccess_public "$BETA_DIR/public/.htaccess"
+            rm /tmp/backup_htaccess_public
+          fi
+
+          if [ -f /tmp/backup_htaccess_root ]; then
+            cp /tmp/backup_htaccess_root "$BETA_DIR/.htaccess"
+            rm /tmp/backup_htaccess_root
+          fi
+
+          # Cleanup
+          rm -rf "$TEMP_DIR" /tmp/deploy-beta.tar.gz
+
+          echo "✅ Files deployed successfully"
+
+    - name: Finalize deployment
+      id: finalize
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 65002
+        script: |
+          set -e
+          BETA_DIR="${{ secrets.REMOTE_PATH_BETA }}"
+          BACKUP_DIR="/home/u258421289/backups"
+
+          cd "$BETA_DIR"
+
+          # Create necessary directories
+          mkdir -p storage/framework/{cache/data,sessions,views,testing}
+          mkdir -p storage/logs
+          mkdir -p storage/app/public
+          mkdir -p bootstrap/cache
+
+          # Set maintenance mode
+          php artisan down --render="errors::503" --retry=60 2>/dev/null || true
+
+          # Set correct permissions
+          chmod -R 755 storage bootstrap/cache 2>/dev/null || true
+          chmod -R 775 storage/logs storage/framework 2>/dev/null || true
+
+          # Clear caches safely
+          rm -rf bootstrap/cache/*.php 2>/dev/null || true
+          find storage/framework/cache -type f -name "*.php" -delete 2>/dev/null || true
+          find storage/framework/views -type f -name "*.php" -delete 2>/dev/null || true
+
+          # Install composer dependencies on server
+          if command -v composer >/dev/null 2>&1; then
+            echo "📦 Installing Composer dependencies..."
+            composer install --no-dev --optimize-autoloader --no-interaction
+          else
+            echo "⚠️ Composer not found, skipping..."
+          fi
+
+          # Run Laravel artisan commands
+          if command -v php >/dev/null 2>&1; then
+            echo "🔄 Running migrations..."
+            if php artisan migrate --force --no-interaction 2>&1; then
+              echo "✅ Migrations completed successfully"
+
+              php artisan config:cache
+              php artisan route:cache || echo "⚠️ Route cache skipped"
+              php artisan view:cache
+              php artisan optimize:clear
+
+              MIGRATION_SUCCESS=true
+            else
+              echo "❌ Migration failed - initiating rollback"
+              MIGRATION_SUCCESS=false
+            fi
+          else
+            echo "⚠️ PHP CLI not available"
+            MIGRATION_SUCCESS=true
+          fi
+
+          # Handle rollback if needed
+          if [ "$MIGRATION_SUCCESS" = false ]; then
+            LATEST_BACKUP=$(cat /tmp/latest_backup.txt 2>/dev/null || echo "none")
+            if [ "$LATEST_BACKUP" != "none" ] && [ -f "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" ]; then
+              echo "🔙 Rolling back to: $LATEST_BACKUP"
+
+              # Clear directory
+              cd "$BETA_DIR"
+              find . -maxdepth 1 ! -name '.' ! -name '..' -exec rm -rf {} +
+
+              # Restore backup
+              tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$BETA_DIR"
+
+              echo "ROLLBACK=true" > /tmp/deployment_status.txt
+              echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
+            else
+              echo "⚠️ No backup found - rollback not possible"
+              echo "ROLLBACK=failed" > /tmp/deployment_status.txt
+            fi
+            exit 1
+          fi
+
+          # Ensure .htaccess exists in root
+          if [ ! -f .htaccess ]; then
+            echo "⚠️ Creating root .htaccess"
+            cat > .htaccess <<'EOF'
+          <IfModule mod_rewrite.c>
+              RewriteEngine On
+              RewriteCond %{REQUEST_URI} !^/public
+              RewriteRule ^(.*)$ public/$1 [L]
+              <FilesMatch "^(\.env|artisan|composer\.(json|lock)|package(-lock)?\.json|webpack\.mix\.js|server\.php)$">
+                  Order allow,deny
+                  Deny from all
+              </FilesMatch>
+          </IfModule>
+          EOF
+          fi
+
+          # Ensure public/.htaccess exists
+          if [ ! -f public/.htaccess ]; then
+            echo "⚠️ Creating public/.htaccess"
+            cat > public/.htaccess <<'EOF'
+          <IfModule mod_rewrite.c>
+              <IfModule mod_negotiation.c>
+                  Options -MultiViews -Indexes
+              </IfModule>
+              RewriteEngine On
+              RewriteCond %{HTTP:Authorization} .
+              RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+              RewriteCond %{REQUEST_FILENAME} !-d
+              RewriteCond %{REQUEST_URI} (.+)/$
+              RewriteRule ^ %1 [L,R=301]
+              RewriteCond %{REQUEST_FILENAME} !-d
+              RewriteCond %{REQUEST_FILENAME} !-f
+              RewriteRule ^ index.php [L]
+          </IfModule>
+          EOF
+          fi
+
+          # Remove maintenance mode
+          php artisan up 2>/dev/null || true
+
+          echo "✅ Deployment completed successfully"
+          echo "ROLLBACK=false" > /tmp/deployment_status.txt
+
+    - name: Check deployment status
+      id: check_status
+      if: always()
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 65002
+        script: |
+          if [ -f /tmp/deployment_status.txt ]; then
+            cat /tmp/deployment_status.txt
+          else
+            echo "ROLLBACK=false"
+          fi
+      continue-on-error: true
+
+    - name: Send success notification
+      if: success()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.hostinger.com
+        server_port: 465
+        secure: true
+        username: eservice@efournisseurskygroups.ci
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "✅ Déploiement Beta réussi"
+        to: tiafranck31@yahoo.fr
+        from: eservice@efournisseurskygroups.ci
+        body: |
+          Bonjour Franck,
+
+          Le déploiement sur l'environnement Beta a été effectué avec succès.
+
+          📦 Projet : ${{ github.repository }}
+          🔖 Branche : ${{ github.ref_name }}
+          📝 Commit : ${{ github.sha }}
+          👤 Auteur : ${{ github.actor }}
+          🕐 Date : ${{ github.event.head_commit.timestamp }}
+          📄 Message : ${{ github.event.head_commit.message }}
+
+          🔗 URL Beta : https://beta.efournisseurskygroups.ci
+
+          Cordialement,
+          Système de déploiement automatique
+
+    - name: Send rollback notification
+      if: failure() && contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.hostinger.com
+        server_port: 465
+        secure: true
+        username: eservice@efournisseurskygroups.ci
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "🚨 Rollback déclenché - Déploiement Beta échoué"
+        to: tiafranck31@yahoo.fr
+        from: eservice@efournisseurskygroups.ci
+        body: |
+          Bonjour Franck,
+
+          ⚠️ Le déploiement Beta sur Hostinger a échoué.
+          Un rollback automatique a été effectué pour restaurer la dernière version stable.
+
+          📦 Projet : ${{ github.repository }}
+          🔖 Branche : ${{ github.ref_name }}
+          📝 Commit : ${{ github.sha }}
+          👤 Auteur : ${{ github.actor }}
+          📦 Backup restauré : (voir logs pour le nom du backup)
+
+          🔍 Merci de vérifier les logs GitHub Actions :
+          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Cordialement,
+          Système de déploiement automatique
+
+    - name: Send failure notification
+      if: failure() && !contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.hostinger.com
+        server_port: 465
+        secure: true
+        username: eservice@efournisseurskygroups.ci
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "❌ Déploiement Beta échoué"
+        to: tiafranck31@yahoo.fr
+        from: eservice@efournisseurskygroups.ci
+        body: |
+          Bonjour Franck,
+
+          ❌ Le déploiement Beta sur Hostinger a échoué.
+
+          📦 Projet : ${{ github.repository }}
+          🔖 Branche : ${{ github.ref_name }}
+          📝 Commit : ${{ github.sha }}
+          👤 Auteur : ${{ github.actor }}
+
+          🔍 Merci de vérifier les logs GitHub Actions :
+          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Cordialement,
+          Système de déploiement automatique

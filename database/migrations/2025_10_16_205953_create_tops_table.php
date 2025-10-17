@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('tops', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
-            $table->string('symbol', 10)->unique();
-            $table->string('cours', 100);
-            $table->decimal('variation', 5, 2)->default(0);
+            $table->string('symbole')->unique();
+            $table->string('cours');
+            $table->decimal('variation')->default(0);
             $table->timestamps();
         });
     }

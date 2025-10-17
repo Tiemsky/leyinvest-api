@@ -3,8 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Top;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class TopSeeder extends Seeder
 {
@@ -23,7 +24,9 @@ class TopSeeder extends Seeder
 
         Top::truncate();
         foreach($tops as $top){
-            Top::create($top);
+            Top::create(array_merge($top, [
+                'key' => 'count-' . strtolower(Str::random(8)),
+            ]));
         }
 
     }

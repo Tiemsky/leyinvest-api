@@ -31,6 +31,7 @@ class WalletFactory extends Factory
        $liquidite = $this->faker->randomFloat(2, 500, 20000);
 
        return [
+        'key' => 'wal-' . strtolower(\Illuminate\Support\Str::random(8)),
            'user_id' => User::factory(),
            'total_value' => $totalValue,
            'total_gain_loss' => $gainLoss,

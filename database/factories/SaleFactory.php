@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,10 +20,11 @@ class SaleFactory extends Factory
     public function definition(): array
     {
         $quantite = $this->faker->numberBetween(1, 1000);
-        $prixParAction = $this->faker->randomFloat(2, 100, 50000);
+        $prixParAction = $this->faker->randomFloat(2, 100, 5000);
         $montantVente = $quantite * $prixParAction;
 
         return [
+            'key' => 'sal-' . strtolower(Str::random(8)),
             'wallet_id' => Wallet::factory(),
             'user_id' => User::factory(),
             'quantite' => $quantite,

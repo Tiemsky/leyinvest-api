@@ -1,45 +1,37 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuthController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Auth\NewPasswordController;
-use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
-use App\Http\Controllers\Api\V1\Auth\RegisteredUserController;
-use App\Http\Controllers\Api\V1\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Api\V1\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Api\V1\Auth\EmailVerificationNotificationController;
-
 
 Route::prefix('v1')->group(function(){
+    // Routes publiques avec rate limiting
+Route::prefix('auth')->middleware('throttle:auth')->group(function () {
+    // Inscription étape 1
+    Route::post('/register/step-one', [AuthController::class, 'registerStepOne']);
 
-    Route::post('/register', [RegisteredUserController::class, 'store'])
-    ->middleware('guest')
-    ->name('register');
+    // Inscription étape 2
+    Route::post('/register/step-two', [AuthController::class, 'registerStepTwo']);
 
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-        ->middleware('guest')
-        ->name('login');
+    // Connexion
+    Route::post('/login', [AuthController::class, 'login']);
 
-    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->middleware('guest')
-        ->name('password.email');
-
-    Route::post('/reset-password', [NewPasswordController::class, 'store'])
-        ->middleware('guest')
-        ->name('password.store');
-
-    Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['auth', 'signed', 'throttle:6,1'])
-        ->name('verification.verify');
-
-    Route::post('/email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-        ->middleware(['auth', 'throttle:6,1'])
-        ->name('verification.send');
-
-    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-        ->middleware('auth')
-        ->name('logout');
-
+    // Mot de passe oublié
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
 
+// Routes OTP avec rate limiting spécifique
+Route::prefix('auth')->middleware('throttle:otp')->group(function () {
+    Route::post('/register/verify-otp', [AuthController::class, 'verifyRegistrationOtp']);
+    Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+});
 
-
+// Routes protégées (nécessitent authentification)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('auth')->group(function () {
+        Route::get('/user', [AuthController::class, 'user']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/logout-all', [AuthController::class, 'logoutAll']);
+    });
+});
+});

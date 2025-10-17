@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 use App\Models\Role;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
 
 class RoleSeeder extends Seeder
@@ -18,7 +19,9 @@ class RoleSeeder extends Seeder
 
         Role::truncate();
         foreach($roles as $role){
-            Role::create($role);
+            Role::create(array_merge($role, [
+                'key' => 'rol-' . strtolower(Str::random(8)),
+            ]));
         }
     }
 

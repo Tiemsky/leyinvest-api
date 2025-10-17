@@ -5,9 +5,10 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\User;
-use App\Models\Purchase;
 use App\Models\Wallet;
+use App\Models\Purchase;
 use Illuminate\Database\Seeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class DatabaseSeeder extends Seeder
@@ -20,7 +21,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            // RoleSeeder::class,
+            CountrySeeder::class,
+            RoleSeeder::class,
             ActionSeeder::class,
             TopSeeder::class,
             FlopSeeder::class,

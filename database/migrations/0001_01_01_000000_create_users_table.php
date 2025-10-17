@@ -2,7 +2,6 @@
 
 use App\Enums\RoleEnum;
 use App\Models\Country;
-use App\Models\Role;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -17,26 +16,25 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
-            $table->foreignIdFor(Country::class);
-            $table->string('role')->default(RoleEnum::USER->value);            $table->string('nom');
+            $table->foreignIdFor(Country::class)->nullable();
+            $table->string('role')->default(RoleEnum::USER->value);
+            $table->string('nom');
             $table->string('prenoms');
-            $table->string('genre');
+            $table->string('email')->unique();
+            $table->string('genre')->nullable();
             $table->string('age')->nullable();
             $table->string('situation_professionnelle')->nullable();
             $table->string('numero')->nullable();
             $table->string('whatsapp')->nullable();
-            $table->string('email')->unique();
-            $table->string('password');
-            $table->string('otp_code')->nullable()->comment('otp verification code');
-            $table->timestamp('otp_code_send_at')->nullable()->comment('otp send date');
-            $table->timestamp('otp_code_verified_at')->nullable()->comment('verification date');
-            $table->timestamp('otp_code_expired_at')->nullable()->comment('verification date');
-            $table->unsignedTinyInteger('attempts')->default(0);
-            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password')->default(Hash::make('password'));
+            $table->string('otp_code')->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
+            $table->boolean('email_verified')->default(false);
+            $table->boolean('registration_completed')->default(false);
             $table->string('avatar')->nullable();
             $table->rememberToken();
-            $table->softDeletes();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
