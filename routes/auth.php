@@ -7,10 +7,10 @@ Route::prefix('v1')->group(function(){
     // Routes publiques avec rate limiting
 Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     // Inscription étape 1
-    Route::post('/register/step-one', [AuthController::class, 'registerStepOne']);
+    Route::post('/register', [AuthController::class, 'registerStepOne']);
 
     // Inscription étape 2
-    Route::post('/register/step-two', [AuthController::class, 'registerStepTwo']);
+    Route::post('/complete-profile', [AuthController::class, 'registerStepTwo']);
 
     // Connexion
     Route::post('/login', [AuthController::class, 'login']);
@@ -22,7 +22,7 @@ Route::prefix('auth')->middleware('throttle:auth')->group(function () {
 
 // Routes OTP avec rate limiting spécifique
 Route::prefix('auth')->middleware('throttle:otp')->group(function () {
-    Route::post('/register/verify-otp', [AuthController::class, 'verifyRegistrationOtp']);
+    Route::post('/verify-email', [AuthController::class, 'verifyRegistrationOtp']);
     Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 });
 

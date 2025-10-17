@@ -14,6 +14,21 @@ class ActionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+            return [
+            'id' => $this->id,
+            'key' => $this->key,
+            'symbole' => $this->symbole,
+            'nom' => $this->nom,
+            'volume' => $this->volume,
+            'volume_formate' => $this->volume_formate,
+            'cours_veille' => (float) $this->cours_veille,
+            'cours_ouverture' => (float) $this->cours_ouverture,
+            'cours_cloture' => (float) $this->cours_cloture,
+            'variation' => (float) $this->variation,
+            'couleur_variation' => $this->couleur_variation,
+            'categorie' => $this->categorie,
+            'created_at' => $this->created_at->toISOString(),
+            'updated_at' => $this->updated_at->toISOString(),
+        ];
     }
 }
