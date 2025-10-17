@@ -26,17 +26,17 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        $genre = fake()->randomElement(['Homme', 'Femme']);
+        $genre = $this->faker->randomElement(['Homme', 'Femme']);
 
         return [
             'key' => 'usr-' . strtolower(Str::random(8)),
             'country_id' => Country::inRandomOrder()->first()->id?? Country::factory(),
             'role' => RoleEnum::USER->value,
-            'nom' => fake()->lastName(),
-            'prenoms' => fake()->firstName($genre === 'Homme' ? 'male' : 'female'),
+            'nom' => $this->faker->lastName(),
+            'prenoms' => $this->faker->firstName($genre === 'Homme' ? 'male' : 'female'),
             'genre' => $genre,
-            'age' => fake()->optional(0.8)->numberBetween(18, 65),
-            'situation_professionnelle' => fake()->optional(0.7)->randomElement([
+            'age' => $this->faker->optional(0.8)->numberBetween(18, 65),
+            'situation_professionnelle' => $this->faker->optional(0.7)->randomElement([
                 'Employé',
                 'Indépendant',
                 'Étudiant',
@@ -46,13 +46,13 @@ class UserFactory extends Factory
                 'Cadre',
                 'Fonctionnaire',
             ]),
-            'numero' => fake()->optional(0.9)->numerify('+225 ## ## ## ## ##'),
-            'whatsapp' => fake()->optional(0.6)->numerify('+225 ## ## ## ## ##'),
-            'email' => fake()->unique()->safeEmail(),
+            'numero' => $this->faker->optional(0.9)->numerify('+225 ## ## ## ## ##'),
+            'whatsapp' => $this->faker->optional(0.6)->numerify('+225 ## ## ## ## ##'),
+            'email' => $this->faker->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
             'otp_code'=> null,
             'otp_expires_at'=> null,
-            'avatar' => fake()->optional(0.3)->imageUrl(200, 200, 'people', true),
+            'avatar' => $this->faker->optional(0.3)->imageUrl(200, 200, 'people', true),
             'remember_token' => Str::random(10),
         ];
     }
@@ -88,7 +88,7 @@ class UserFactory extends Factory
      */
     public function withPendingOtp(): static
     {
-        $otpCode = fake()->numerify('######');
+        $otpCode = $this->faker->numerify('######');
         $sendAt = now();
 
         return $this->state(fn (array $attributes) => [
@@ -108,7 +108,7 @@ class UserFactory extends Factory
         $sendAt = now()->subMinutes(15);
 
         return $this->state(fn (array $attributes) => [
-            'otp_code' => fake()->numerify('######'),
+            'otp_code' => $this->faker->numerify('######'),
             'otp_code_send_at' => $sendAt,
             'otp_code_verified_at' => null,
             'otp_code_expired_at' => $sendAt->copy()->addMinutes(10),
@@ -137,7 +137,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'genre' => 'Homme',
-            'prenoms' => fake()->firstName('male'),
+            'prenoms' => $this->faker->firstName('male'),
         ]);
     }
 
@@ -148,7 +148,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'genre' => 'Femme',
-            'prenoms' => fake()->firstName('female'),
+            'prenoms' => $this->faker->firstName('female'),
         ]);
     }
 
