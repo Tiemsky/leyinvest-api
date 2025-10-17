@@ -20,9 +20,27 @@ jobs:
         php-version: '8.3'
         extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
 
-
     - name: Install Composer dependencies
       run: composer install --no-dev --optimize-autoloader --no-interaction
+
+    - name: Create clean deployment archive
+      run: |
+        echo "📦 Preparing deployment archive..."
+        TEMP_DEPLOY_DIR=$(mktemp -d)
+        echo "Temporary directory: $TEMP_DEPLOY_DIR"
+
+        # Copy project files excluding CI, tests, docs, node_modules
+        rsync -av --exclude='.github' \
+                  --exclude='tests' \
+                  --exclude='docs' \
+                  --exclude='node_modules' \
+                  --exclude='deploy-leyinvest.tar.gz' \
+                  ./ "$TEMP_DEPLOY_DIR"
+
+        cd "$TEMP_DEPLOY_DIR"
+        tar -czf deploy-leyinvest.tar.gz .
+        ls -lh deploy-leyinvest.tar.gz
+        mv deploy-leyinvest.tar.gz $GITHUB_WORKSPACE/
 
     - name: Create backup on server
       uses: appleboy/ssh-action@v1.0.3
@@ -44,7 +62,6 @@ jobs:
             tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$LEYINVEST_DIR" . 2>/dev/null || true
             echo "$BACKUP_NAME" > /tmp/latest_backup.txt
 
-            # Keep only last 5 backups
             cd "$BACKUP_DIR"
             ls -t backup_leyinvest_*.tar.gz | tail -n +6 | xargs -r rm -f
             echo "✅ Backup created successfully"
@@ -74,34 +91,21 @@ jobs:
         script: |
           set -e
           LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
-
           echo "🚀 Starting deployment..."
-
-          # Create temp directory for extraction
           TEMP_DIR="/tmp/deploy-leyinvest-$(date +%Y%m%d_%H%M%S)"
           mkdir -p "$TEMP_DIR"
-
-          # Extract archive
-          echo "📦 Extracting archive..."
           tar -xzf /tmp/deploy-leyinvest.tar.gz -C "$TEMP_DIR"
 
           # Backup .env and .htaccess if they exist
-          if [ -f "$LEYINVEST_DIR/.env" ]; then
-            cp "$LEYINVEST_DIR/.env" /tmp/backup_env
-          fi
-          if [ -f "$LEYINVEST_DIR/public/.htaccess" ]; then
-            cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
-          fi
-          if [ -f "$LEYINVEST_DIR/.htaccess" ]; then
-            cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
-          fi
+          [ -f "$LEYINVEST_DIR/.env" ] && cp "$LEYINVEST_DIR/.env" /tmp/backup_env
+          [ -f "$LEYINVEST_DIR/public/.htaccess" ] && cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
+          [ -f "$LEYINVEST_DIR/.htaccess" ] && cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
 
           # Remove old files except storage
           cd "$LEYINVEST_DIR"
           find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
 
-          # Copy new files (preserves case sensitivity)
-          echo "📋 Copying new files..."
+          # Copy new files
           cp -rf "$TEMP_DIR"/* "$LEYINVEST_DIR"/
           cp -rf "$TEMP_DIR"/.[!.]* "$LEYINVEST_DIR"/ 2>/dev/null || true
 
@@ -113,19 +117,12 @@ jobs:
             cp "$LEYINVEST_DIR/.env.beta" "$LEYINVEST_DIR/.env"
           elif [ -f "$LEYINVEST_DIR/.env.example" ]; then
             cp "$LEYINVEST_DIR/.env.example" "$LEYINVEST_DIR/.env"
-            echo "⚠️ Warning: Using .env.example - please configure .env file"
+            echo "⚠️ Using .env.example"
           fi
 
-          # Restore or create .htaccess files
-          if [ -f /tmp/backup_htaccess_public ]; then
-            cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess"
-            rm /tmp/backup_htaccess_public
-          fi
-
-          if [ -f /tmp/backup_htaccess_root ]; then
-            cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess"
-            rm /tmp/backup_htaccess_root
-          fi
+          # Restore .htaccess files
+          [ -f /tmp/backup_htaccess_public ] && cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess" && rm /tmp/backup_htaccess_public
+          [ -f /tmp/backup_htaccess_root ] && cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess" && rm /tmp/backup_htaccess_root
 
           # Cleanup
           rm -rf "$TEMP_DIR" /tmp/deploy-leyinvest.tar.gz
@@ -144,28 +141,22 @@ jobs:
           set -e
           LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
           BACKUP_DIR="/home/u258421289/leyinvest/backups"
-
           cd "$LEYINVEST_DIR"
 
-          # Create necessary directories
           mkdir -p storage/framework/{cache/data,sessions,views,testing}
           mkdir -p storage/logs
           mkdir -p storage/app/public
           mkdir -p bootstrap/cache
 
-          # Set maintenance mode
           php artisan down --render="errors::503" --retry=60 2>/dev/null || true
 
-          # Set correct permissions
           chmod -R 755 storage bootstrap/cache 2>/dev/null || true
           chmod -R 775 storage/logs storage/framework 2>/dev/null || true
 
-          # Clear caches safely
           rm -rf bootstrap/cache/*.php 2>/dev/null || true
           find storage/framework/cache -type f -name "*.php" -delete 2>/dev/null || true
           find storage/framework/views -type f -name "*.php" -delete 2>/dev/null || true
 
-          # Install composer dependencies on server
           if command -v composer >/dev/null 2>&1; then
             echo "📦 Installing Composer dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
@@ -173,40 +164,30 @@ jobs:
             echo "⚠️ Composer not found, skipping..."
           fi
 
-          # Run Laravel artisan commands
           if command -v php >/dev/null 2>&1; then
             echo "🔄 Running migrations..."
             if php artisan migrate --force --no-interaction 2>&1; then
-              echo "✅ Migrations completed successfully"
-
+              echo "✅ Migrations successful"
               php artisan config:cache
               php artisan route:cache || echo "⚠️ Route cache skipped"
               php artisan view:cache
               php artisan optimize:clear
-
               MIGRATION_SUCCESS=true
             else
-              echo "❌ Migration failed - initiating rollback"
+              echo "❌ Migration failed - rollback"
               MIGRATION_SUCCESS=false
             fi
           else
-            echo "⚠️ PHP CLI not available"
             MIGRATION_SUCCESS=true
           fi
 
-          # Handle rollback if needed
           if [ "$MIGRATION_SUCCESS" = false ]; then
             LATEST_BACKUP=$(cat /tmp/latest_backup.txt 2>/dev/null || echo "none")
             if [ "$LATEST_BACKUP" != "none" ] && [ -f "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" ]; then
               echo "🔙 Rolling back to: $LATEST_BACKUP"
-
-              # Clear directory
               cd "$LEYINVEST_DIR"
               find . -maxdepth 1 ! -name '.' ! -name '..' -exec rm -rf {} +
-
-              # Restore backup
               tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$LEYINVEST_DIR"
-
               echo "ROLLBACK=true" > /tmp/deployment_status.txt
               echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
             else
@@ -216,47 +197,7 @@ jobs:
             exit 1
           fi
 
-          # Ensure .htaccess exists in root
-          if [ ! -f .htaccess ]; then
-            echo "⚠️ Creating root .htaccess"
-            cat > .htaccess <<'EOF'
-          <IfModule mod_rewrite.c>
-              RewriteEngine On
-              RewriteCond %{REQUEST_URI} !^/public
-              RewriteRule ^(.*)$ public/$1 [L]
-              <FilesMatch "^(\.env|artisan|composer\.(json|lock)|package(-lock)?\.json|webpack\.mix\.js|server\.php)$">
-                  Order allow,deny
-                  Deny from all
-              </FilesMatch>
-          </IfModule>
-          EOF
-          fi
-
-          # Ensure public/.htaccess exists
-          if [ ! -f public/.htaccess ]; then
-            echo "⚠️ Creating public/.htaccess"
-            cat > public/.htaccess <<'EOF'
-          <IfModule mod_rewrite.c>
-              <IfModule mod_negotiation.c>
-                  Options -MultiViews -Indexes
-              </IfModule>
-              RewriteEngine On
-              RewriteCond %{HTTP:Authorization} .
-              RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-              RewriteCond %{REQUEST_FILENAME} !-d
-              RewriteCond %{REQUEST_URI} (.+)/$
-              RewriteRule ^ %1 [L,R=301]
-              RewriteCond %{REQUEST_FILENAME} !-d
-              RewriteCond %{REQUEST_FILENAME} !-f
-              RewriteRule ^ index.php [L]
-          </IfModule>
-          EOF
-          fi
-
-          # Remove maintenance mode
           php artisan up 2>/dev/null || true
-
-          echo "✅ Deployment completed successfully"
           echo "ROLLBACK=false" > /tmp/deployment_status.txt
 
     - name: Check deployment status
@@ -290,18 +231,14 @@ jobs:
         from: eservice@efournisseurskygroups.ci
         body: |
           Bonjour Franck,
-
           Le déploiement sur l'environnement Beta a été effectué avec succès.
-
           📦 Projet : ${{ github.repository }}
           🔖 Branche : ${{ github.ref_name }}
           📝 Commit : ${{ github.sha }}
           👤 Auteur : ${{ github.actor }}
           🕐 Date : ${{ github.event.head_commit.timestamp }}
           📄 Message : ${{ github.event.head_commit.message }}
-
           🔗 URL Beta : https://leyinvest.skygroups.ci
-
           Cordialement,
           Système de déploiement automatique
 
@@ -319,19 +256,12 @@ jobs:
         from: eservice@efournisseurskygroups.ci
         body: |
           Bonjour Franck,
-
-          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué.
-          Un rollback automatique a été effectué pour restaurer la dernière version stable.
-
+          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué. Un rollback automatique a été effectué.
           📦 Projet : ${{ github.repository }}
           🔖 Branche : ${{ github.ref_name }}
           📝 Commit : ${{ github.sha }}
           👤 Auteur : ${{ github.actor }}
-          📦 Backup restauré : (voir logs pour le nom du backup)
-
-          🔍 Merci de vérifier les logs GitHub Actions :
-          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
+          🔍 Vérifiez les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Cordialement,
           Système de déploiement automatique
 
@@ -349,16 +279,11 @@ jobs:
         from: eservice@efournisseurskygroups.ci
         body: |
           Bonjour Franck,
-
           ❌ Le déploiement Beta sur Hostinger a échoué.
-
           📦 Projet : ${{ github.repository }}
           🔖 Branche : ${{ github.ref_name }}
           📝 Commit : ${{ github.sha }}
           👤 Auteur : ${{ github.actor }}
-
-          🔍 Merci de vérifier les logs GitHub Actions :
-          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
+          🔍 Vérifiez les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Cordialement,
           Système de déploiement automatique
