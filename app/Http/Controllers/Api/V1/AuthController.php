@@ -178,4 +178,63 @@ class AuthController extends Controller
             ],
         ]);
     }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $this->authService->changePassword(
+            $request->user(),
+            $request->input('current_password'),
+            $request->input('new_password')
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mot de passe changé avec succès.',
+        ]);
+    }
+
+    /**
+     * Mettre à jour le profil utilisateur
+     */
+public function updateProfile(Request $request): JsonResponse{
+    $request->validate([
+        'nom' => ['sometimes', 'string', 'max:255'],
+        'prenoms' => ['sometimes', 'string', 'max:255'],
+        'phone' => ['sometimes', 'string', 'max:20'],
+        'country' => ['sometimes', 'string', 'max:100'],
+        'avatar' => ['sometimes', 'image', 'max:2048'], // Max 2MB
+    ]);
+
+    $user = $request->user();
+
+    // Update Profile
+    $this->authService->updateProfile($user, $request->only(['nom', 'prenoms', 'phone', 'country']));
+
+    // Update Avatar
+    if ($request->hasFile('avatar')) {
+        $this->authService->updateAvatar($user, $request->file('avatar'));
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Profil mis à jour avec succès.',
+        'data' => [
+            'user' => new AuthUserResource($user->fresh()),
+        ],
+    ]);
+}
+/**  * Mettre à jour ou supprimer l'avatar de l'utilisateur
+  */public function manageAvatar(Request $request): void {
+    $user = $request->user();
+    // Update Avatar
+    if ($request->hasFile('avatar')) {
+        $this->authService->updateAvatar($user, $request->file('avatar'));
+        return;
+    }
+}
 }

@@ -30,6 +30,9 @@ Route::prefix('auth')->middleware('throttle:otp')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('/user', [AuthController::class, 'user']);
+        Route::post('/update-profile', [AuthController::class, 'updateProfile']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::post('/upload-avatar', [AuthController::class, 'uploadAvatar']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     });

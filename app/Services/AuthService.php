@@ -6,7 +6,9 @@ use App\Models\User;
 use App\Notifications\SendOtpNotification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\UploadedFile;
 
 class AuthService
 {
@@ -184,6 +186,103 @@ class AuthService
         $user->tokens()->delete();
 
         return $user;
+    }
+
+    /**
+     * Changer le mot de passe (utilisateur connecté)
+     */
+    public function changePassword(User $user, string $currentPassword, string $newPassword): User
+    {
+        if (!Hash::check($currentPassword, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Le mot de passe actuel est incorrect.'],
+            ]);
+        }
+
+        if (Hash::check($newPassword, $user->password)) {
+            throw ValidationException::withMessages([
+                'new_password' => ['Le nouveau mot de passe doit être différent de l\'ancien.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($newPassword),
+        ]);
+
+        Log::info("Password changed for user {$user->email}");
+
+        return $user->fresh();
+    }
+
+    /**
+     * Mettre à jour les informations du profil
+     */
+    public function updateProfile(User $user, array $data): User
+    {
+        $allowedFields = ['nom', 'prenoms', 'phone', 'country'];
+        $updateData = [];
+
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        if (empty($updateData)) {
+            throw ValidationException::withMessages([
+                'data' => ['Aucune donnée valide à mettre à jour.'],
+            ]);
+        }
+
+        $user->update($updateData);
+
+        Log::info("Profile updated for user {$user->email}", $updateData);
+
+        return $user->fresh();
+    }
+
+    /**
+     * Mettre à jour l'avatar de l'utilisateur
+     */
+    public function updateAvatar(User $user, UploadedFile $avatar): User
+    {
+        // Supprimer l'ancien avatar s'il existe
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        // Stocker le nouvel avatar
+        $path = $avatar->store('avatars', 'public');
+
+        $user->update([
+            'avatar' => $path,
+        ]);
+
+        Log::info("Avatar updated for user {$user->email}");
+
+        return $user->fresh();
+    }
+
+    /**
+     * Supprimer l'avatar de l'utilisateur
+     */
+    public function deleteAvatar(User $user): User
+    {
+        if (!$user->avatar) {
+            throw ValidationException::withMessages([
+                'avatar' => ['Aucun avatar à supprimer.'],
+            ]);
+        }
+
+        Storage::disk('public')->delete($user->avatar);
+
+        $user->update([
+            'avatar' => null,
+        ]);
+
+        Log::info("Avatar deleted for user {$user->email}");
+
+        return $user->fresh();
     }
 
     /**
