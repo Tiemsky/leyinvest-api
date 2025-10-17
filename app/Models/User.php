@@ -37,7 +37,6 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'otp_expires_at' => 'datetime',
             'email_verified' => 'boolean',
             'registration_completed' => 'boolean',
@@ -72,7 +71,6 @@ class User extends Authenticatable
         ) {
             $this->update([
                 'email_verified' => true,
-                'email_verified_at' => now(),
                 'otp_code' => null,
                 'otp_expires_at' => null,
             ]);
