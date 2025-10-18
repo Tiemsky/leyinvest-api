@@ -239,7 +239,7 @@ class AuthService
      */
     public function updateProfile(User $user, array $data): User
     {
-        $allowedFields = ['nom', 'prenoms', 'phone', 'country'];
+        $allowedFields = ['nom', 'prenoms', 'numero', 'country_id', 'whatsapp', 'age', 'situation_professionnelle'];
         $updateData = [];
 
         foreach ($allowedFields as $field) {
@@ -255,9 +255,7 @@ class AuthService
         }
 
         $user->update($updateData);
-
         Log::info("Profile updated for user {$user->email}", $updateData);
-
         return $user->fresh();
     }
 

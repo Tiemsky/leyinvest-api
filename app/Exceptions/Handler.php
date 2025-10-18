@@ -104,9 +104,8 @@ class Handler extends ExceptionHandler
         if (config('app.debug')) {
             $response['debug'] = [
                 'exception' => get_class($e),
-                'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
             ];
         }
 
@@ -124,7 +123,6 @@ class Handler extends ExceptionHandler
                 'message' => 'Non authentifié.',
             ], 401);
         }
-
         return redirect()->guest(route('login'));
     }
 }

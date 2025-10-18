@@ -487,17 +487,21 @@ class AuthController extends Controller
     /**
      * Mettre à jour le profil utilisateur
      */
+
+
 public function updateProfile(Request $request): JsonResponse{
     $request->validate([
         'nom' => ['sometimes', 'string', 'max:255'],
-        'prenomss' => ['sometimes', 'string', 'max:255'],
-        'phone' => ['sometimes', 'string', 'max:20'],
-        'country' => ['sometimes', 'string', 'max:100'],
+        'prenoms' => ['sometimes', 'string', 'max:255'],
+        'country_id' => ['sometimes', 'integer', 'max:100'],
+        'numero' => ['sometimes', 'string', 'max:20'],
+        'whatsaap' => ['sometimes', 'string', 'max:20'],
+        'age' => ['sometimes', 'integer', 'max:100'],
+        'situation_professionnelle' => ['sometimes', 'string', 'max:100'],
         'avatar' => ['sometimes', 'image', 'max:2048'], // Max 2MB
     ]);
 
     $user = $request->user();
-
     // Update Profile
     $this->authService->updateProfile($user, $request->only(['nom', 'prenomss', 'phone', 'country']));
 
