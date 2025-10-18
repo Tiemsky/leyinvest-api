@@ -539,7 +539,7 @@
         "/api/v1/auth/verify-reset-otp": {
             "post": {
                 "tags": [
-                    "Authentication"
+                    "Authentification"
                 ],
                 "summary": "Vérifier le code OTP pour la réinitialisation du mot de passe",
                 "description": "Permet de vérifier le code OTP envoyé à l'adresse e-mail de l'utilisateur avant la réinitialisation du mot de passe.",
@@ -647,6 +647,7 @@
                     "Authentification"
                 ],
                 "summary": "Réinitialiser le mot de passe via OTP",
+                "description": "Permet à un utilisateur de réinitialiser son mot de passe après vérification du code OTP envoyé par email.",
                 "operationId": "1032a68842312eda819d0b4888495d2b",
                 "requestBody": {
                     "required": true,
@@ -656,11 +657,13 @@
                                 "required": [
                                     "email",
                                     "otp",
-                                    "password"
+                                    "password",
+                                    "password_confirmation"
                                 ],
                                 "properties": {
                                     "email": {
                                         "type": "string",
+                                        "format": "email",
                                         "example": "john.doe@example.com"
                                     },
                                     "otp": {
@@ -668,6 +671,11 @@
                                         "example": "123456"
                                     },
                                     "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "newpassword123"
+                                    },
+                                    "password_confirmation": {
                                         "type": "string",
                                         "format": "password",
                                         "example": "newpassword123"
@@ -680,7 +688,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Mot de passe réinitialisé avec succès",
+                        "description": "Mot de passe réinitialisé avec succès.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -697,6 +705,65 @@
                                             "properties": {
                                                 "user": {
                                                     "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "OTP invalide ou expiré.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Code OTP invalide ou expiré."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation des champs.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Les données fournies sont invalides."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "email": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "L'adresse email est obligatoire."
+                                                    }
+                                                },
+                                                "password": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le mot de passe doit contenir au moins 8 caractères."
+                                                    }
                                                 }
                                             },
                                             "type": "object"
@@ -1462,10 +1529,6 @@
         {
             "name": "Actions Boursières",
             "description": "Actions Boursières"
-        },
-        {
-            "name": "Authentication",
-            "description": "Authentication"
         },
         {
             "name": "Pays de l'UEMOA",

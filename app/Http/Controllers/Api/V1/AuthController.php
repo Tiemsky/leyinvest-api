@@ -373,49 +373,76 @@ public function verifyResetOtp(VerifyOtpRequest $request): JsonResponse
 
 
 
-    /**
-  * @OA\Post(
-  *     path="/api/v1/auth/reset-password",
-  *     summary="Réinitialiser le mot de passe via OTP",
-  *     tags={"Authentification"},
-  *     @OA\RequestBody(
-  *         required=true,
-  *         @OA\JsonContent(
-  *             required={"email", "otp", "password"},
-  *             @OA\Property(property="email", type="string", example="john.doe@example.com"),
-  *             @OA\Property(property="password", type="string", format="password", example="newpassword123")
-  *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123")
-  *         )
-  *     ),
-  *     @OA\Response(
-  *         response=200,
-  *         description="Mot de passe réinitialisé avec succès",
-  *         @OA\JsonContent(
-  *             @OA\Property(property="success", type="boolean", example=true),
-  *             @OA\Property(property="message", type="string", example="Mot de passe réinitialisé avec succès."),
-  *             @OA\Property(property="data", type="object",
-  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
-  *             )
-  *         )
-  *     )
-  * )
-  **/
-    public function resetPassword(ResetPasswordRequest $request): JsonResponse
-    {
-        $user = $this->authService->resetPassword(
-            $request->input('email'),
-            $request->input('password'),
-            $request->input('password_confirmation'),
-        );
+ /**
+ * @OA\Post(
+ *     path="/api/v1/auth/reset-password",
+ *     summary="Réinitialiser le mot de passe via OTP",
+ *     description="Permet à un utilisateur de réinitialiser son mot de passe après vérification du code OTP envoyé par email.",
+ *     tags={"Authentification"},
+ *
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"email", "otp", "password", "password_confirmation"},
+ *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
+ *             @OA\Property(property="otp", type="string", example="123456"),
+ *             @OA\Property(property="password", type="string", format="password", example="newpassword123"),
+ *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123")
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=200,
+ *         description="Mot de passe réinitialisé avec succès.",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Mot de passe réinitialisé avec succès."),
+ *             @OA\Property(property="data", type="object",
+ *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+ *             )
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=400,
+ *         description="OTP invalide ou expiré.",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Code OTP invalide ou expiré.")
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=422,
+ *         description="Erreur de validation des champs.",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Les données fournies sont invalides."),
+ *             @OA\Property(property="errors", type="object",
+ *                 @OA\Property(property="email", type="array", @OA\Items(type="string", example="L'adresse email est obligatoire.")),
+ *                 @OA\Property(property="password", type="array", @OA\Items(type="string", example="Le mot de passe doit contenir au moins 8 caractères."))
+ *             )
+ *         )
+ *     )
+ * )
+ */
+public function resetPassword(ResetPasswordRequest $request): JsonResponse
+{
+    $user = $this->authService->resetPassword(
+        $request->input('email'),
+        $request->input('password'),
+        $request->input('password_confirmation')
+    );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Mot de passe réinitialisé avec succès.',
-            'data' => [
-                'user' => new AuthUserResource($user),
-            ],
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'message' => 'Mot de passe réinitialisé avec succès.',
+        'data' => [
+            'user' => new AuthUserResource($user),
+        ],
+    ]);
+}
+
 
 
     /**
