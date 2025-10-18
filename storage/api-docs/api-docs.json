@@ -1,7 +1,7 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "Your API Documentation",
+        "title": "LeyInvest API Documentation",
         "description": "API Documentation",
         "contact": {
             "email": "admin@example.com"
@@ -15,6 +15,138 @@
         }
     ],
     "paths": {
+        "/api/actions": {
+            "get": {
+                "tags": [
+                    "Actions Boursières"
+                ],
+                "summary": "Liste des actions",
+                "description": "Retourne la liste de toutes les actions boursières disponibles",
+                "operationId": "getActionsList",
+                "responses": {
+                    "200": {
+                        "description": "Opération réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "key": {
+                                                        "type": "string",
+                                                        "example": "ORGT_CI"
+                                                    },
+                                                    "symbole": {
+                                                        "type": "string",
+                                                        "example": "ORGT"
+                                                    },
+                                                    "nom": {
+                                                        "type": "string",
+                                                        "example": "Orange Côte d'Ivoire"
+                                                    },
+                                                    "volume": {
+                                                        "type": "string",
+                                                        "example": "125000"
+                                                    },
+                                                    "cours_veille": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 2500
+                                                    },
+                                                    "cours_ouverture": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 2520
+                                                    },
+                                                    "cours_cloture": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 2550
+                                                    },
+                                                    "variation": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 2
+                                                    },
+                                                    "categorie": {
+                                                        "type": "string",
+                                                        "example": "Technologie",
+                                                        "nullable": true
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 10:30:00"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 16:45:00"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Une erreur est survenue"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -70,7 +202,7 @@
                                         "data": {
                                             "properties": {
                                                 "user": {
-                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                    "$ref": "#/components/schemas/StepOneAuthResource"
                                                 },
                                                 "next_step": {
                                                     "type": "string",
@@ -138,11 +270,11 @@
                                         "data": {
                                             "properties": {
                                                 "user": {
-                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                    "$ref": "#/components/schemas/StepOneAuthResource"
                                                 },
                                                 "next_step": {
                                                     "type": "string",
-                                                    "example": "complete_registration"
+                                                    "example": "registration_on_progress"
                                                 }
                                             },
                                             "type": "object"
@@ -171,7 +303,8 @@
                                 "required": [
                                     "email",
                                     "password",
-                                    "country"
+                                    "country_id",
+                                    "password_confirmation"
                                 ],
                                 "properties": {
                                     "email": {
@@ -184,9 +317,34 @@
                                         "format": "password",
                                         "example": "password123"
                                     },
-                                    "country": {
+                                    "country_id": {
+                                        "type": "integer",
+                                        "example": "1"
+                                    },
+                                    "age": {
+                                        "type": "integer",
+                                        "example": 30,
+                                        "nullable": true
+                                    },
+                                    "genre": {
                                         "type": "string",
-                                        "example": "Côte d'Ivoire"
+                                        "example": "Masculin",
+                                        "nullable": true
+                                    },
+                                    "situation_professionnelle": {
+                                        "type": "string",
+                                        "example": "Salarié",
+                                        "nullable": true
+                                    },
+                                    "numero": {
+                                        "type": "string",
+                                        "example": "+2250707070707",
+                                        "nullable": true
+                                    },
+                                    "whatsapp": {
+                                        "type": "string",
+                                        "example": "+2250707070707",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -278,6 +436,68 @@
                     },
                     "401": {
                         "description": "Identifiants invalides"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/resend-code": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Renvoie le code OTP pour vérification",
+                "description": "Renvoyer un code OTP pour un utilisateur non encore vérifié ou inscrit",
+                "operationId": "7846817b856519431da3cc111ea37a49",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResendOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP renvoyé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le code OTP a été renvoyé sur votre email."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation (compte déjà vérifié ou email inexistant)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "errors": {
+                                            "properties": {
+                                                "email": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Ce compte est déjà vérifié et complété."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -462,10 +682,356 @@
                     }
                 ]
             }
+        },
+        "/api/v1/auth/change-password": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Changer le mot de passe",
+                "description": "L'utilisateur peut changer son mot de passe en fournissant l'ancien et le nouveau",
+                "operationId": "f83da601e5c46325635cedf21eb6be3d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe modifié avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le mot de passe a été modifié avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "errors": {
+                                            "properties": {
+                                                "current_password": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le mot de passe actuel est incorrect."
+                                                    }
+                                                },
+                                                "new_password": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le nouveau mot de passe doit être différent de l'ancien."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/countries": {
+            "get": {
+                "tags": [
+                    "Pays de l'UEMOA"
+                ],
+                "summary": "Liste des pays de L'UEMOA",
+                "description": "Retourne la liste de tous les pays de l'UEMOA",
+                "operationId": "getCountryList",
+                "responses": {
+                    "200": {
+                        "description": "Opération réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "nom": {
+                                                        "type": "string",
+                                                        "example": "Côte d'Ivoire"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string",
+                                                        "example": "cote-d-ivoire"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Une erreur est survenue"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/flops": {
+            "get": {
+                "tags": [
+                    "Flops"
+                ],
+                "summary": "Liste des flops",
+                "description": "Retourne la liste des actions avec les plus fortes baisses",
+                "operationId": "getFlopsList",
+                "responses": {
+                    "200": {
+                        "description": "Opération réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "key": {
+                                                        "type": "string",
+                                                        "example": "SICC_CI"
+                                                    },
+                                                    "symbole": {
+                                                        "type": "string",
+                                                        "example": "SICC"
+                                                    },
+                                                    "cours": {
+                                                        "type": "string",
+                                                        "example": "3 600"
+                                                    },
+                                                    "variation": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": -7.46
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 10:30:00"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 16:45:00"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/tops": {
+            "get": {
+                "tags": [
+                    "Tops"
+                ],
+                "summary": "Liste des tops",
+                "description": "Retourne la liste des actions avec les plus fortes hausses (Top 5 des meilleures performances)",
+                "operationId": "getTopsList",
+                "responses": {
+                    "200": {
+                        "description": "Opération réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "key": {
+                                                        "type": "string",
+                                                        "example": "SICC_CI"
+                                                    },
+                                                    "symbole": {
+                                                        "type": "string",
+                                                        "example": "SICC"
+                                                    },
+                                                    "cours": {
+                                                        "type": "string",
+                                                        "example": "6 007"
+                                                    },
+                                                    "variation": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 7.46
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 10:30:00"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "datetime",
+                                                        "example": "2024-01-15 16:45:00"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non authentifié."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
         }
     },
     "components": {
         "schemas": {
+            "ChangePasswordRequest": {
+                "required": [
+                    "current_password",
+                    "new_password",
+                    "new_password_confirmation"
+                ],
+                "properties": {
+                    "current_password": {
+                        "description": "Mot de passe actuel",
+                        "type": "string",
+                        "format": "password",
+                        "example": "oldPassword123"
+                    },
+                    "new_password": {
+                        "description": "Nouveau mot de passe",
+                        "type": "string",
+                        "format": "password",
+                        "example": "newPassword123"
+                    },
+                    "new_password_confirmation": {
+                        "description": "Confirmation du nouveau mot de passe",
+                        "type": "string",
+                        "format": "password",
+                        "example": "newPassword123"
+                    }
+                },
+                "type": "object"
+            },
             "LoginRequest": {
                 "title": "Login Request",
                 "required": [
@@ -482,6 +1048,20 @@
                         "type": "string",
                         "format": "password",
                         "example": "password123"
+                    }
+                },
+                "type": "object"
+            },
+            "ResendOtpRequest": {
+                "required": [
+                    "email"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Email de l'utilisateur pour renvoyer le code OTP",
+                        "type": "string",
+                        "format": "email",
+                        "example": "jean@example.com"
                     }
                 },
                 "type": "object"
@@ -527,7 +1107,7 @@
             },
             "AuthUserResource": {
                 "title": "Utilisateur Authentifié",
-                "description": "Représente un utilisateur connecté ou nouvellement inscrit",
+                "description": "Représente un utilisateur connecté et nouvellement inscrit",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -548,11 +1128,33 @@
                     },
                     "country": {
                         "type": "string",
-                        "example": "Côte d'Ivoire"
+                        "example": "Côte d'Ivoire",
+                        "nullable": true
                     },
-                    "phone": {
+                    "age": {
+                        "type": "integer",
+                        "example": 30,
+                        "nullable": true
+                    },
+                    "genre": {
                         "type": "string",
-                        "example": "+2250707070707"
+                        "example": "Masculin",
+                        "nullable": true
+                    },
+                    "situation_professionnelle": {
+                        "type": "string",
+                        "example": "Salarié",
+                        "nullable": true
+                    },
+                    "numero": {
+                        "type": "string",
+                        "example": "+2250707070707",
+                        "nullable": true
+                    },
+                    "whatsapp": {
+                        "type": "string",
+                        "example": "+2250707070707",
+                        "nullable": true
                     },
                     "email_verified": {
                         "type": "boolean",
@@ -565,7 +1167,8 @@
                     "email_verified_at": {
                         "type": "string",
                         "format": "date-time",
-                        "example": "2025-10-18T12:45:00Z"
+                        "example": "2025-10-18T12:45:00Z",
+                        "nullable": true
                     },
                     "created_at": {
                         "type": "string",
@@ -678,6 +1281,44 @@
                     }
                 },
                 "type": "object"
+            },
+            "StepOneAuthResource": {
+                "title": "Utilisateur En Première Étape d'inscription",
+                "description": "Représente un utilisateur ayant complété la première étape de l'inscription",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Doe"
+                    },
+                    "prenoms": {
+                        "type": "string",
+                        "example": "John"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "john.doe@example.com"
+                    },
+                    "email_verified": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T12:45:00Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T12:45:00Z"
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -692,6 +1333,22 @@
         {
             "name": "Authentification",
             "description": "Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
+        },
+        {
+            "name": "Actions Boursières",
+            "description": "Actions Boursières"
+        },
+        {
+            "name": "Pays de l'UEMOA",
+            "description": "Pays de l'UEMOA"
+        },
+        {
+            "name": "Flops",
+            "description": "Flops"
+        },
+        {
+            "name": "Tops",
+            "description": "Tops"
         }
     ]
 }

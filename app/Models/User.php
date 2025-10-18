@@ -3,12 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\HasKey;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -42,6 +44,22 @@ class User extends Authenticatable
             'registration_completed' => 'boolean',
             'password' => 'hashed',
         ];
+    }
+
+    public function getRouteKeyName(): string{
+        return 'key';
+    }
+
+    public function wallet(): HasOne{
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function sales(): HasMany{
+        return $this->hasMany(Sale::class);
+    }
+
+    public function purchases(): HasMany{
+        return $this->hasMany(Purchase::class);
     }
 
     /**
@@ -109,4 +127,6 @@ class User extends Authenticatable
     {
         return $this->registration_completed && $this->password !== null;
     }
+
+
 }

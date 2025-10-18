@@ -52,7 +52,7 @@ class AuthController extends Controller
   *             @OA\Property(property="success", type="boolean", example=true),
   *             @OA\Property(property="message", type="string", example="Inscription initiée. Un code de vérification a été envoyé à votre email."),
   *             @OA\Property(property="data", type="object",
-  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource"),
+  *                 @OA\Property(property="user", ref="#/components/schemas/StepOneAuthResource"),
   *                 @OA\Property(property="next_step", type="string", example="verify_otp")
   *             )
   *         )
@@ -95,8 +95,8 @@ class AuthController extends Controller
   *             @OA\Property(property="success", type="boolean", example=true),
   *             @OA\Property(property="message", type="string", example="Email vérifié avec succès."),
   *             @OA\Property(property="data", type="object",
-  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource"),
-  *                 @OA\Property(property="next_step", type="string", example="complete_registration")
+  *                 @OA\Property(property="user", ref="#/components/schemas/StepOneAuthResource"),
+  *                 @OA\Property(property="next_step", type="string", example="registration_on_progress")
   *             )
   *         )
   *     )
@@ -131,10 +131,15 @@ class AuthController extends Controller
   *     @OA\RequestBody(
   *         required=true,
   *         @OA\JsonContent(
-  *             required={"email", "password", "country"},
+  *             required={"email", "password", "country_id", "password_confirmation"},
   *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
   *             @OA\Property(property="password", type="string", format="password", example="password123"),
-  *             @OA\Property(property="country", type="string", example="Côte d'Ivoire")
+  *             @OA\Property(property="country_id", type="int",  example="1"),
+ *              @OA\Property(property="age", type="integer", nullable=true, example=30),
+ *              @OA\Property(property="genre", type="string", nullable=true, example="Masculin"),
+ *              @OA\Property(property="situation_professionnelle", type="string", nullable=true, example="Salarié"),
+ *              @OA\Property(property="numero", type="string", nullable=true, example="+2250707070707"),
+ *              @OA\Property(property="whatsapp", type="string", nullable=true, example="+2250707070707"),
   *         )
   *     ),
   *     @OA\Response(
@@ -212,6 +217,42 @@ class AuthController extends Controller
     /**
      * Renvoyer le code OTP
      */
+    /**
+ * @OA\Post(
+ *     path="/api/v1/auth/resend-code",
+ *     tags={"Authentification"},
+ *     summary="Renvoie le code OTP pour vérification",
+ *     description="Renvoyer un code OTP pour un utilisateur non encore vérifié ou inscrit",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(ref="#/components/schemas/ResendOtpRequest")
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="OTP renvoyé avec succès",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="message", type="string", example="Le code OTP a été renvoyé sur votre email.")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Erreur de validation (compte déjà vérifié ou email inexistant)",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(
+ *                 property="errors",
+ *                 type="object",
+ *                 @OA\Property(
+ *                     property="email",
+ *                     type="array",
+ *                     @OA\Items(type="string", example="Ce compte est déjà vérifié et complété.")
+ *                 )
+ *             )
+ *         )
+ *     )
+ * )
+ */
     public function resendOtp(Request $request): JsonResponse
     {
         $request->validate([
@@ -380,6 +421,50 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Changer le mot de passe utilisateur
+     */
+     /**
+ * @OA\Post(
+ *     path="/api/v1/auth/change-password",
+ *     tags={"Authentification"},
+ *     summary="Changer le mot de passe",
+ *     description="L'utilisateur peut changer son mot de passe en fournissant l'ancien et le nouveau",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(ref="#/components/schemas/ChangePasswordRequest")
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Mot de passe modifié avec succès",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="message", type="string", example="Le mot de passe a été modifié avec succès.")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Erreur de validation",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(
+ *                 property="errors",
+ *                 type="object",
+ *                 @OA\Property(
+ *                     property="current_password",
+ *                     type="array",
+ *                     @OA\Items(type="string", example="Le mot de passe actuel est incorrect.")
+ *                 ),
+ *                 @OA\Property(
+ *                     property="new_password",
+ *                     type="array",
+ *                     @OA\Items(type="string", example="Le nouveau mot de passe doit être différent de l'ancien.")
+ *                 )
+ *             )
+ *         )
+ *     )
+ * )
+ */
     public function changePassword(Request $request): JsonResponse
     {
         $request->validate([

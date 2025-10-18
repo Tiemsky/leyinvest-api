@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Notifications\SendOtpNotification;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
+use App\Models\Wallet;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use App\Notifications\SendOtpNotification;
+use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
@@ -78,13 +80,31 @@ class AuthService
             ]);
         }
 
-        $user->completeRegistration([
-            'password' => $data['password'],
-            'country' => $data['country'],
-            'phone' => $data['phone'] ?? null,
-        ]);
+        DB::beginTransaction();
 
-        return $user->fresh();
+        try {
+            // Compléter l'inscription
+            $user->completeRegistration([
+                'password' => $data['password'],
+                'country_id' => $data['country_id'],
+                'mumero' => $data['mumero'] ?? null,
+                'whatsapp' => $data['whatsapp'] ?? null,
+                'age' => $data['age'] ?? null,
+                'genre' => $data['genre'] ?? null,
+                'situation_professionnelle' => $data['situation_professionnelle'] ?? null,
+            ]);
+
+            // Créer automatiquement le wallet
+            Wallet::create([ 'user_id' => $user->id,]);
+
+            DB::commit();
+
+            return $user->fresh(['wallet']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     /**

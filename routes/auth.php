@@ -23,7 +23,7 @@ Route::prefix('auth')->middleware('throttle:auth')->group(function () {
 // Routes OTP avec rate limiting spécifique
 Route::prefix('auth')->middleware('throttle:otp')->group(function () {
     Route::post('/verify-email', [AuthController::class, 'verifyRegistrationOtp']);
-    Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+    Route::post('/resend-code', [AuthController::class, 'resendOtp']);
 });
 
 // Routes protégées (nécessitent authentification)
