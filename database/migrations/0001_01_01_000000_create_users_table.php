@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignIdFor(Country::class)->nullable();
             $table->string('role')->default(RoleEnum::USER->value);
             $table->string('nom');
-            $table->string('prenoms');
+            $table->string('prenom');
             $table->string('email')->unique();
             $table->string('genre')->nullable();
             $table->string('age')->nullable();

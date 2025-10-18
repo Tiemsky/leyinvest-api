@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *     description="Représente un utilisateur connecté et nouvellement inscrit",
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="nom", type="string", example="Doe"),
- *     @OA\Property(property="prenoms", type="string", example="John"),
+ *     @OA\Property(property="prenom", type="string", example="John"),
  *     @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
  *     @OA\Property(property="country", type="string", nullable=true, example="Côte d'Ivoire"),
  *     @OA\Property(property="age", type="integer", nullable=true, example=30),
@@ -42,7 +42,7 @@ class AuthUserResource extends JsonResource
          return [
             'id' => $this->id,
             'nom' => $this->nom,
-            'prenoms' => $this->prenoms,
+            'prenom' => $this->prenom,
             'email' => $this->email,
             'country' => $this->country,
             'age' => $this->age,

@@ -30,7 +30,7 @@ class UserSeeder extends Seeder
             ->create([
                 'email' => 'admin@example.com',
                 'nom' => 'Admin',
-                'prenoms' => 'Super',
+                'prenom' => 'Super',
             ]);
 
         // Create moderators (verified)
@@ -87,7 +87,7 @@ class UserSeeder extends Seeder
             ->create([
                 'email' => 'test@example.com',
                 'nom' => 'Test',
-                'prenoms' => 'User',
+                'prenom' => 'User',
             ]);
     }
 }

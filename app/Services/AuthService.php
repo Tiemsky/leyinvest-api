@@ -21,7 +21,7 @@ class AuthService
     {
         $user = User::create([
             'nom' => $data['nom'],
-            'prenoms' => $data['prenoms'],
+            'prenom' => $data['prenom'],
             'email' => $data['email'],
             'email_verified' => false,
             'registration_completed' => false,
@@ -116,7 +116,7 @@ class AuthService
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Les identifiants fournis sont incorrects.'],
+                'email' => ['Ces informations d\'identification ne correspondent pas à nos enregistrements.'],
             ]);
         }
 
@@ -239,7 +239,7 @@ class AuthService
      */
     public function updateProfile(User $user, array $data): User
     {
-        $allowedFields = ['nom', 'prenoms', 'numero', 'country_id', 'whatsapp', 'age', 'situation_professionnelle'];
+        $allowedFields = ['nom', 'prenom', 'numero', 'country_id', 'whatsapp', 'age', 'situation_professionnelle'];
         $updateData = [];
 
         foreach ($allowedFields as $field) {

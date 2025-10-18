@@ -15,7 +15,7 @@ class RegisterStepOneRequest extends FormRequest
     {
         return [
             'nom' => ['required', 'string', 'max:255'],
-            'prenoms' => ['required', 'string', 'max:255'],
+            'prenom' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
         ];
     }
