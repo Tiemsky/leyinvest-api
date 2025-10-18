@@ -2,10 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ResetPasswordRequest extends FormRequest
+class VerifyResetOtpRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -15,11 +14,16 @@ class ResetPasswordRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
     public function rules(): array
     {
         return [
             'email' => ['required', 'email', 'exists:users,email'],
-            'password' => ['required','confirmed', Password::defaults()],
+            'otp' => ['required', 'string', 'size:6'],
         ];
     }
 }

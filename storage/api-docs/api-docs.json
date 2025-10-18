@@ -15,7 +15,7 @@
         }
     ],
     "paths": {
-        "/api/actions": {
+        "/api/v1/actions": {
             "get": {
                 "tags": [
                     "Actions Boursières"
@@ -536,6 +536,111 @@
                 }
             }
         },
+        "/api/v1/auth/verify-reset-otp": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Vérifier le code OTP pour la réinitialisation du mot de passe",
+                "description": "Permet de vérifier le code OTP envoyé à l'adresse e-mail de l'utilisateur avant la réinitialisation du mot de passe.",
+                "operationId": "5f5855d8b37e83cec975f7df4d893cc6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP vérifié avec succès. L'utilisateur peut maintenant réinitialiser son mot de passe.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP de réinitialisation vérifié avec succès. Vous pouvez maintenant réinitialiser votre mot de passe."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "next_step": {
+                                                    "type": "string",
+                                                    "example": "reset_password"
+                                                },
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code OTP invalide ou expiré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le code OTP fourni est invalide ou a expiré."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation (email ou otp manquant / invalide)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "errors": {
+                                            "properties": {
+                                                "email": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "L'adresse e-mail est obligatoire."
+                                                    }
+                                                },
+                                                "otp": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le code OTP doit contenir 6 chiffres."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/reset-password": {
             "post": {
                 "tags": [
@@ -752,7 +857,7 @@
                 }
             }
         },
-        "/api/countries": {
+        "/api/v1/countries": {
             "get": {
                 "tags": [
                     "Pays de l'UEMOA"
@@ -825,7 +930,7 @@
                 ]
             }
         },
-        "/api/flops": {
+        "/api/v1/flops": {
             "get": {
                 "tags": [
                     "Flops"
@@ -913,7 +1018,7 @@
                 ]
             }
         },
-        "/api/tops": {
+        "/api/v1/tops": {
             "get": {
                 "tags": [
                     "Tops"
@@ -1066,6 +1171,26 @@
                 },
                 "type": "object"
             },
+            "VerifyOtpRequest": {
+                "required": [
+                    "email",
+                    "otp"
+                ],
+                "properties": {
+                    "email": {
+                        "description": "Adresse e-mail associée au compte à réinitialiser",
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com"
+                    },
+                    "otp": {
+                        "description": "Code OTP à 6 chiffres envoyé par e-mail",
+                        "type": "string",
+                        "example": "458120"
+                    }
+                },
+                "type": "object"
+            },
             "StoreSaleRequest": {
                 "title": "Requête de création de vente",
                 "description": "Données nécessaires pour créer une vente",
@@ -1117,7 +1242,7 @@
                         "type": "string",
                         "example": "Doe"
                     },
-                    "prenoms": {
+                    "prenom": {
                         "type": "string",
                         "example": "John"
                     },
@@ -1294,7 +1419,7 @@
                         "type": "string",
                         "example": "Doe"
                     },
-                    "prenoms": {
+                    "prenom": {
                         "type": "string",
                         "example": "John"
                     },
@@ -1337,6 +1462,10 @@
         {
             "name": "Actions Boursières",
             "description": "Actions Boursières"
+        },
+        {
+            "name": "Authentication",
+            "description": "Authentication"
         },
         {
             "name": "Pays de l'UEMOA",

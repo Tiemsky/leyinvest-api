@@ -299,6 +299,79 @@ class AuthController extends Controller
         ]);
     }
 
+  /**
+ * @OA\Post(
+ *     path="/api/v1/auth/verify-reset-otp",
+ *     tags={"Authentification"},
+ *     summary="Vérifier le code OTP pour la réinitialisation du mot de passe",
+ *     description="Permet de vérifier le code OTP envoyé à l'adresse e-mail de l'utilisateur avant la réinitialisation du mot de passe.",
+ *
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(ref="#/components/schemas/VerifyOtpRequest")
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=200,
+ *         description="OTP vérifié avec succès. L'utilisateur peut maintenant réinitialiser son mot de passe.",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="OTP de réinitialisation vérifié avec succès. Vous pouvez maintenant réinitialiser votre mot de passe."),
+ *             @OA\Property(
+ *                 property="data",
+ *                 type="object",
+ *                 @OA\Property(property="next_step", type="string", example="reset_password"),
+ *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+ *             )
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=400,
+ *         description="Code OTP invalide ou expiré",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Le code OTP fourni est invalide ou a expiré."),
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=422,
+ *         description="Erreur de validation (email ou otp manquant / invalide)",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(
+ *                 property="errors",
+ *                 type="object",
+ *                 @OA\Property(property="email", type="array", @OA\Items(type="string", example="L'adresse e-mail est obligatoire.")),
+ *                 @OA\Property(property="otp", type="array", @OA\Items(type="string", example="Le code OTP doit contenir 6 chiffres."))
+ *             )
+ *         )
+ *     )
+ * )
+ */
+public function verifyResetOtp(VerifyOtpRequest $request): JsonResponse
+{
+    $request->validated();
+
+    $user = $this->authService->verifyResetOtp(
+        $request->input('email'),
+        $request->input('otp')
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => 'OTP de réinitialisation vérifié avec succès. Vous pouvez maintenant réinitialiser votre mot de passe.',
+        'data' => [
+            'user' => new AuthUserResource($user),
+            'next_step' => 'reset_password',
+        ],
+    ]);
+}
+
+
 
     /**
   * @OA\Post(
@@ -310,8 +383,8 @@ class AuthController extends Controller
   *         @OA\JsonContent(
   *             required={"email", "otp", "password"},
   *             @OA\Property(property="email", type="string", example="john.doe@example.com"),
-  *             @OA\Property(property="otp", type="string", example="123456"),
   *             @OA\Property(property="password", type="string", format="password", example="newpassword123")
+  *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123")
   *         )
   *     ),
   *     @OA\Response(
@@ -331,8 +404,8 @@ class AuthController extends Controller
     {
         $user = $this->authService->resetPassword(
             $request->input('email'),
-            $request->input('otp'),
-            $request->input('password')
+            $request->input('password'),
+            $request->input('password_confirmation'),
         );
 
         return response()->json([
@@ -343,6 +416,7 @@ class AuthController extends Controller
             ],
         ]);
     }
+
 
     /**
      * Déconnexion

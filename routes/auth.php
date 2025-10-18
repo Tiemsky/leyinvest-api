@@ -18,8 +18,12 @@ Route::prefix('v1')->group(function () {
         // Connexion
         Route::post('login', [AuthController::class, 'login']);
 
+        // Refresh token (route publique car le user n'a plus d'access token valide)
+        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+
         // Mot de passe oublié
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
     });
 

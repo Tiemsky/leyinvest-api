@@ -47,9 +47,29 @@ return [
     |
     */
 
-    'expiration' => env('ACCESS_TOKEN_EXPIRATION_TIME', 15),
-    'rt_expiration' => env('REFRESH_TOKEN_EXPIRATION_TIME', 24 * 60),
+      /*
+    |--------------------------------------------------------------------------
+    | Access Token Expiration (Custom)
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes until an access token expires.
+    | Default: 15 minutes
+    |
+    */
 
+    'access_token_expiration' => env('SANCTUM_ACCESS_TOKEN_EXPIRATION', 15),
+
+      /*
+    |--------------------------------------------------------------------------
+    | Refresh Token Expiration (Custom)
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes until a refresh token expires.
+    | Default: 10080 minutes (7 days)
+    |
+    */
+
+    'refresh_token_expiration' => env('SANCTUM_REFRESH_TOKEN_EXPIRATION', 10080),
     /*
     |--------------------------------------------------------------------------
     | Token Prefix

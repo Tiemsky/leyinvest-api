@@ -177,10 +177,7 @@ class AuthService
         $user->notify(new SendOtpNotification($otp, 'reset'));
     }
 
-    /**
-     * Réinitialiser le mot de passe
-     */
-    public function resetPassword(string $email, string $otp, string $password): User
+    public function verifyResetOtp(string $email, string $otp): User
     {
         $user = User::where('email', $email)->firstOrFail();
 
@@ -197,9 +194,26 @@ class AuthService
         }
 
         $user->update([
-            'password' => Hash::make($password),
             'otp_code' => null,
             'otp_expires_at' => null,
+        ]);
+        return $user;
+    }
+
+    /**
+     * Réinitialiser le mot de passe
+     */
+    public function resetPassword(string $email, string $password, string $passwordConfirmation): User
+    {
+        $user = User::where('email', $email)->firstOrFail();
+        if ($password !== $passwordConfirmation) {
+            throw ValidationException::withMessages([
+                'password_confirmation' => ['Les mot de passe ne sont pas identiques.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($password),
         ]);
 
         // Révoquer tous les tokens existants
