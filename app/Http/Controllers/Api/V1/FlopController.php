@@ -11,7 +11,7 @@ class FlopController extends Controller
 {
     /**
      * @OA\Get(
-     *     path="/api/flops",
+     *     path="/api/v1/flops",
      *     operationId="getFlopsList",
      *     tags={"Flops"},
      *     summary="Liste des flops",

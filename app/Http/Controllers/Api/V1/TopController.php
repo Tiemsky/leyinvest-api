@@ -11,7 +11,7 @@ class TopController extends Controller
 {
  /**
      * @OA\Get(
-     *      path="/api/tops",
+     *      path="/api/v1/tops",
      *      operationId="getTopsList",
      *      tags={"Tops"},
      *      summary="Liste des tops",

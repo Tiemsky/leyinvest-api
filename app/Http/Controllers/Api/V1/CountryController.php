@@ -12,7 +12,7 @@ class CountryController extends Controller
 {
      /**
      * @OA\Get(
-     *      path="/api/countries",
+     *      path="/api/v1/countries",
      *      operationId="getCountryList",
      *      tags={"Pays de l'UEMOA"},
      *      summary="Liste des pays de L'UEMOA",

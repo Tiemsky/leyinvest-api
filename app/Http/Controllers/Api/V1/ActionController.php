@@ -12,7 +12,7 @@ class ActionController extends Controller
 {
     /**
      * @OA\Get(
-     *      path="/api/actions",
+     *      path="/api/v1/actions",
      *      operationId="getActionsList",
      *      tags={"Actions Boursières"},
      *      summary="Liste des actions",
