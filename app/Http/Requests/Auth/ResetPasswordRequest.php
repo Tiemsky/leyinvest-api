@@ -20,7 +20,7 @@ class ResetPasswordRequest extends FormRequest
         return [
             'email' => ['required', 'email', 'exists:users,email'],
             'otp' => ['required', 'string', 'size:6'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', Password::defaults()],
         ];
     }
 }
