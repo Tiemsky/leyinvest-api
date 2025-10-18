@@ -114,8 +114,12 @@ class User extends Authenticatable
     {
         return $this->update([
             'password' => $data['password'],
-            'country' => $data['country'] ?? null,
-            'phone' => $data['phone'] ?? null,
+            'country_id' => $data['country_id'],
+            'numero' => $data['numero'] ?? null,
+            'whatsapp' => $data['whatsapp'] ?? null,
+            'age' => $data['age'] ?? null,
+            'genre' => $data['genre'] ?? null,
+            'situation_professionnelle' => $data['situation_professionnelle'] ?? null,
             'registration_completed' => true,
         ]);
     }

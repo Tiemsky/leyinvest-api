@@ -16,11 +16,11 @@ class RegisterStepTwoRequest extends FormRequest
     {
         return [
             'email'         => ['required', 'email', 'exists:users,email'],
-            'password'      => ['required', 'confirmed', Password::defaults()],
-            'country_id'    => ['nullable', 'string', 'max:255'],
+            'password'      => ['required', Password::defaults()],
+            'country_id'    => ['nullable', 'integer', 'max:255'],
             'numero'        => ['nullable', 'string', 'max:20'],
             'whatsapp'      => ['nullable', 'string', 'max:20'],
-            'age'           => ['nullable', 'string', 'min:16'],
+            'age'           => ['nullable', 'integer', 'min:16'],
             'situation_professionnelle' => ['nullable', 'string'],
             'genre' => ['nullable', 'string'],
         ];

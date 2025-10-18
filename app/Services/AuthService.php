@@ -87,7 +87,7 @@ class AuthService
             $user->completeRegistration([
                 'password' => $data['password'],
                 'country_id' => $data['country_id'],
-                'mumero' => $data['mumero'] ?? null,
+                'numero' => $data['numero'] ?? null,
                 'whatsapp' => $data['whatsapp'] ?? null,
                 'age' => $data['age'] ?? null,
                 'genre' => $data['genre'] ?? null,

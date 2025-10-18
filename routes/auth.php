@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use Illuminate\Support\Facades\Route;
+use function Pest\Laravel\json;
 
 Route::prefix('v1')->group(function(){
     // Routes publiques avec rate limiting
@@ -29,6 +30,7 @@ Route::prefix('auth')->middleware('throttle:otp')->group(function () {
 // Routes protégées (nécessitent authentification)
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
+        Route::get('login', function(){return response()->json(['success'=>true, 'message'=>'login route']);})->name('login');
         Route::get('/user', [AuthController::class, 'user']);
         Route::post('/update-profile', [AuthController::class, 'updateProfile']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
