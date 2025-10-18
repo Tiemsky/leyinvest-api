@@ -5,44 +5,24 @@ namespace App\Exceptions;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
 {
-    /**
-     * A list of exception types with their corresponding custom log levels.
-     *
-     * @var array<class-string<\Throwable>, \Psr\Log\LogLevel::*>
-     */
-    protected $levels = [
-        //
-    ];
+    protected $levels = [];
 
-    /**
-     * A list of the exception types that are not reported.
-     *
-     * @var array<int, class-string<\Throwable>>
-     */
-    protected $dontReport = [
-        //
-    ];
+    protected $dontReport = [];
 
-    /**
-     * A list of the inputs that are never flashed to the session on validation exceptions.
-     *
-     * @var array<int, string>
-     */
     protected $dontFlash = [
         'current_password',
         'password',
         'password_confirmation',
     ];
 
-    /**
-     * Register the exception handling callbacks for the application.
-     */
     public function register(): void
     {
         $this->reportable(function (Throwable $e) {
@@ -50,12 +30,9 @@ class Handler extends ExceptionHandler
         });
     }
 
-    /**
-     * Render an exception into an HTTP response.
-     */
     public function render($request, Throwable $e)
     {
-        // API requests should return JSON
+        // Forcer JSON sur toute requête API
         if ($request->is('api/*') || $request->expectsJson()) {
             return $this->handleApiException($request, $e);
         }
@@ -63,58 +40,72 @@ class Handler extends ExceptionHandler
         return parent::render($request, $e);
     }
 
-    /**
-     * Handle API exceptions
-     */
     protected function handleApiException($request, Throwable $e)
     {
-        $statusCode = 500;
-        $message = 'Une erreur est survenue.';
-        $errors = null;
-
+        // Cas spécifiques
         if ($e instanceof ValidationException) {
-            $statusCode = 422;
-            $message = 'Les données fournies sont invalides.';
-            $errors = $e->errors();
-        } elseif ($e instanceof AuthenticationException) {
-            $statusCode = 401;
-            $message = 'Non authentifié.';
-        } elseif ($e instanceof NotFoundHttpException) {
-            $statusCode = 404;
-            $message = 'Ressource non trouvée.';
-        } elseif ($e instanceof MethodNotAllowedHttpException) {
-            $statusCode = 405;
-            $message = 'Méthode non autorisée.';
-        } elseif (method_exists($e, 'getStatusCode')) {
-            $statusCode = $e->getStatusCode();
-            $message = $e->getMessage();
-        } elseif ($e->getMessage()) {
-            $message = $e->getMessage();
+            return response()->json([
+                'success' => false,
+                'message' => 'Les données fournies sont invalides.',
+                'errors' => $e->errors(),
+            ], 422);
         }
+
+        if ($e instanceof HttpResponseException) {
+            // Renvoyer directement la réponse prévue par la validation
+            return $e->getResponse();
+        }
+
+        if ($e instanceof AuthenticationException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non authentifié.',
+            ], 401);
+        }
+
+        if ($e instanceof NotFoundHttpException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ressource non trouvée.',
+            ], 404);
+        }
+
+        if ($e instanceof MethodNotAllowedHttpException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Méthode HTTP non autorisée.',
+            ], 405);
+        }
+
+        if ($e instanceof HttpException) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Erreur HTTP détectée.',
+            ], $e->getStatusCode());
+        }
+
+        // Cas générique (erreur interne)
+        $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
         $response = [
             'success' => false,
-            'message' => $message,
+            'message' => app()->isProduction()
+                ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
+                : $e->getMessage(),
         ];
 
-        if ($errors) {
-            $response['errors'] = $errors;
-        }
-
+        // Debug optionnel
         if (config('app.debug')) {
             $response['debug'] = [
                 'exception' => get_class($e),
-                'line' => $e->getLine(),
                 'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ];
         }
 
-        return response()->json($response, $statusCode);
+        return response()->json($response, $status);
     }
 
-    /**
-     * Handle unauthenticated user
-     */
     protected function unauthenticated($request, AuthenticationException $exception)
     {
         if ($request->expectsJson()) {
@@ -123,6 +114,7 @@ class Handler extends ExceptionHandler
                 'message' => 'Non authentifié.',
             ], 401);
         }
+
         return redirect()->guest(route('login'));
     }
 }

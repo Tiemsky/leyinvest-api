@@ -9,14 +9,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-
 return Application::configure(basePath: dirname(__DIR__))
     /*
     |--------------------------------------------------------------------------
     | Routing Configuration
     |--------------------------------------------------------------------------
-    | Déclare les fichiers de routes web, api et console.
-    | La route de santé '/up' permet au load balancer de vérifier l’état du serveur.
     */
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
@@ -29,23 +26,37 @@ return Application::configure(basePath: dirname(__DIR__))
     |--------------------------------------------------------------------------
     | Middleware Configuration
     |--------------------------------------------------------------------------
-    | Enregistre et configure les middlewares globaux, groupes et alias.
-    | Bonnes pratiques : API stateful pour SPA, alias "verified", "role" et "json".
     */
     ->withMiddleware(function (Middleware $middleware): void {
 
-        // Middleware global pour les requêtes API
+        /**
+         * ✅ GLOBAL MIDDLEWARE
+         * Important : CORS doit être appliqué globalement pour toutes les requêtes,
+         * surtout celles venant de React (http://localhost:3000 ou app.yks-ci.com)
+         */
+        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+
+        /**
+         * ✅ API MIDDLEWARE GROUP
+         * EnsureFrontendRequestsAreStateful : reconnaît les requêtes SPA "stateful"
+         * ForceJsonResponse : force le JSON pour toutes les réponses API
+         */
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \App\Http\Middleware\ForceJsonResponse::class, // Force JSON responses
+            \App\Http\Middleware\ForceJsonResponse::class,
         ]);
 
-        // Alias custom pour plus de lisibilité
+        /**
+         * ✅ Alias customs
+         */
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
 
+        /**
+         * ✅ Limitation du trafic API (throttling)
+         */
         $middleware->throttleApi('api');
     })
 
@@ -53,17 +64,13 @@ return Application::configure(basePath: dirname(__DIR__))
     |--------------------------------------------------------------------------
     | Exception Handling Configuration
     |--------------------------------------------------------------------------
-    | Centralisation des erreurs et personnalisation des réponses JSON.
-    | Objectif : ne jamais retourner de HTML à une requête API.
     */
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        // 🔸 Toutes les requêtes API doivent retourner du JSON
         $exceptions->shouldRenderJsonWhen(function (Request $request, Exception $e) {
             return $request->is('api/*') || $request->expectsJson();
         });
 
-        // 🔸 404 Not Found
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
@@ -75,7 +82,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 🔸 405 Method Not Allowed
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
@@ -87,12 +93,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 🔸 401 Unauthorized / AuthenticationException
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Non authentifié. Veuillez vous connecter pour accéder à cette ressource.',
+                    'message' => 'Non authentifié. Veuillez vous connecter.',
                     'code' => 401,
                     'timestamp' => now(),
                 ], 401);
@@ -100,7 +105,6 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect()->guest(route('login'));
         });
 
-        // 🔸 HTTP Exception personnalisée (403, 500, etc.)
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
@@ -112,10 +116,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 🔸 Gestion générique des exceptions non capturées
         $exceptions->render(function (Exception $e, Request $request) {
             if ($request->is('api/*')) {
-                report($e); // journalisation
+                report($e);
                 return response()->json([
                     'status' => 'error',
                     'message' => app()->isProduction()

@@ -53,6 +53,7 @@ class AuthUserResource extends JsonResource
             'email_verified' => (bool) $this->email_verified,
             'registration_completed' => (bool) $this->registration_completed,
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
+            'role' => $this->role,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
             'wallet' => new WalletResource($this->whenLoaded('wallet')),
