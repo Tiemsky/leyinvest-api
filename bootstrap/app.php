@@ -30,16 +30,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
 
         /**
-         * ✅ GLOBAL MIDDLEWARE
-         * Important : CORS doit être appliqué globalement pour toutes les requêtes,
-         * surtout celles venant de React (http://localhost:3000 ou app.yks-ci.com)
+         * ✅ CORS MIDDLEWARE - DOIT ÊTRE EN PREMIER
+         * CRITIQUE : HandleCors doit traiter les requêtes OPTIONS (preflight)
+         * AVANT tout autre middleware qui pourrait rediriger
          */
-        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
 
         /**
          * ✅ API MIDDLEWARE GROUP
-         * EnsureFrontendRequestsAreStateful : reconnaît les requêtes SPA "stateful"
-         * ForceJsonResponse : force le JSON pour toutes les réponses API
+         * - EnsureFrontendRequestsAreStateful : Pour Sanctum SPA authentication
+         * - ForceJsonResponse : Force les réponses JSON pour l'API
          */
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
@@ -47,7 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         /**
-         * ✅ Alias customs
+         * ✅ MIDDLEWARE ALIASES
          */
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
@@ -55,9 +55,34 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         /**
-         * ✅ Limitation du trafic API (throttling)
+         * 🔥 CRITIQUE : Empêcher les redirections automatiques pour l'API
+         * Sans cela, les requêtes non-authentifiées vers /api/* seront redirigées
+         * vers route('login'), ce qui casse le preflight CORS
          */
-        $middleware->throttleApi('api');
+        $middleware->redirectGuestsTo(function (Request $request) {
+            // Si c'est une requête API, retourner JSON 401 au lieu de rediriger
+            if ($request->is('api/*')) {
+                abort(response()->json([
+                    'status' => 'error',
+                    'message' => 'Non authentifié. Veuillez vous connecter.',
+                    'code' => 401,
+                    'timestamp' => now(),
+                ], 401));
+            }
+
+            // Pour les requêtes web, rediriger vers login
+            return route('login');
+        });
+
+        /**
+         * ✅ Configuration API stateful (pour Sanctum SPA)
+         */
+        $middleware->statefulApi();
+
+        /**
+         * ✅ Limitation du trafic API avec le rate limiter par défaut
+         */
+        $middleware->throttleApi();
     })
 
     /*
@@ -67,44 +92,109 @@ return Application::configure(basePath: dirname(__DIR__))
     */
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        $exceptions->shouldRenderJsonWhen(function (Request $request, Exception $e) {
+        /**
+         * ✅ Forcer les réponses JSON pour toutes les requêtes API
+         */
+        $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
             return $request->is('api/*') || $request->expectsJson();
         });
 
+        /**
+         * 🔥 CRITIQUE : Erreur 404 - Route non trouvée
+         * SANS REDIRECTION pour éviter de casser CORS
+         */
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Ressource non trouvée.',
+                    'message' => 'Route non trouvée. Vérifiez l\'URL et la méthode HTTP.',
+                    'requested_url' => $request->fullUrl(),
                     'code' => 404,
                     'timestamp' => now(),
                 ], 404);
             }
         });
 
+        /**
+         * ✅ Erreur 405 - Méthode HTTP non autorisée
+         */
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Méthode HTTP non autorisée pour cette route.',
+                    'allowed_methods' => $e->getHeaders()['Allow'] ?? 'N/A',
                     'code' => 405,
                     'timestamp' => now(),
                 ], 405);
             }
         });
 
+        /**
+         * 🔥 CRITIQUE : Erreur 401 - Non authentifié
+         * TOUJOURS retourner JSON pour l'API, JAMAIS de redirection
+         */
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Non authentifié. Veuillez vous connecter.',
+                    'message' => 'Non authentifié. Veuillez vous connecter pour accéder à cette ressource.',
                     'code' => 401,
                     'timestamp' => now(),
                 ], 401);
             }
+
+            // Pour les requêtes web, rediriger vers login
             return redirect()->guest(route('login'));
         });
 
+        /**
+         * ✅ Erreur 403 - Accès interdit
+         */
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Accès interdit. Vous n\'avez pas les permissions nécessaires.',
+                    'code' => 403,
+                    'timestamp' => now(),
+                ], 403);
+            }
+        });
+
+        /**
+         * ✅ Erreur 422 - Validation échouée
+         */
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Erreur de validation des données.',
+                    'errors' => $e->errors(),
+                    'code' => 422,
+                    'timestamp' => now(),
+                ], 422);
+            }
+        });
+
+        /**
+         * ✅ Erreur 429 - Trop de requêtes (Rate Limit)
+         */
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Trop de requêtes. Veuillez patienter avant de réessayer.',
+                    'retry_after' => $e->getHeaders()['Retry-After'] ?? 60,
+                    'code' => 429,
+                    'timestamp' => now(),
+                ], 429);
+            }
+        });
+
+        /**
+         * ✅ Erreurs HTTP génériques (4xx, 5xx)
+         */
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
@@ -116,14 +206,22 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (Exception $e, Request $request) {
+        /**
+         * ✅ Erreur 500 - Erreur serveur générique
+         * Masquer les détails en production
+         */
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->is('api/*')) {
+                // Logger l'erreur pour investigation
                 report($e);
+
                 return response()->json([
                     'status' => 'error',
                     'message' => app()->isProduction()
                         ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
                         : $e->getMessage(),
+                    'file' => app()->isProduction() ? null : $e->getFile(),
+                    'line' => app()->isProduction() ? null : $e->getLine(),
                     'trace' => app()->isProduction() ? null : $e->getTrace(),
                     'code' => 500,
                     'timestamp' => now(),
