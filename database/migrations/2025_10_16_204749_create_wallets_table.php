@@ -16,6 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique();
             $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
+            $table->decimal('capital')->default(0);
             $table->decimal('total_value')->default(0);
             $table->decimal('total_gain_loss')->default(0);
             $table->decimal('total_invested')->default(0);
