@@ -15,15 +15,50 @@ use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+ /**
+ * @OA\Tag(
+ *     name="Authentification",
+ *     description="Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
+ * )
+ */
 class AuthController extends Controller
 {
+
     public function __construct(
         private AuthService $authService
     ) {}
 
     /**
      * Étape 1 : Inscription - Nom, Prénom, Email
-     */
+    */
+  /**
+  * @OA\Post(
+  *     path="/api/v1/auth/register",
+  *     summary="Étape 1 - Inscription : Nom, Prénom, Email",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(
+  *             required={"nom", "prenoms", "email"},
+  *             @OA\Property(property="nom", type="string", example="Doe"),
+  *             @OA\Property(property="prenoms", type="string", example="John"),
+  *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com")
+  *         )
+  *     ),
+  *     @OA\Response(
+  *         response=201,
+  *         description="Inscription initiée avec succès",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="message", type="string", example="Inscription initiée. Un code de vérification a été envoyé à votre email."),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource"),
+  *                 @OA\Property(property="next_step", type="string", example="verify_otp")
+  *             )
+  *         )
+  *     )
+  * )
+  */
     public function registerStepOne(RegisterStepOneRequest $request): JsonResponse
     {
         $user = $this->authService->registerStepOne($request->validated());
@@ -40,6 +75,33 @@ class AuthController extends Controller
     /**
      * Vérifier le code OTP pour l'inscription
      */
+    /**
+  * @OA\Post(
+  *     path="/api/v1/auth/verify-email",
+  *     summary="Vérifier le code OTP d'inscription",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(
+  *             required={"email", "otp"},
+  *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
+  *             @OA\Property(property="otp", type="string", example="123456")
+  *         )
+  *     ),
+  *     @OA\Response(
+  *         response=200,
+  *         description="OTP vérifié avec succès",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="message", type="string", example="Email vérifié avec succès."),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource"),
+  *                 @OA\Property(property="next_step", type="string", example="complete_registration")
+  *             )
+  *         )
+  *     )
+  * )
+   */
     public function verifyRegistrationOtp(VerifyOtpRequest $request): JsonResponse
     {
         $request->validated();
@@ -61,6 +123,34 @@ class AuthController extends Controller
     /**
      * Étape 2 : Compléter l'inscription - Mot de passe, Pays, etc.
      */
+    /**
+  * @OA\Post(
+  *     path="/api/v1/auth/complete-profile",
+  *     summary="Étape 2 - Compléter l'inscription",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(
+  *             required={"email", "password", "country"},
+  *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
+  *             @OA\Property(property="password", type="string", format="password", example="password123"),
+  *             @OA\Property(property="country", type="string", example="Côte d'Ivoire")
+  *         )
+  *     ),
+  *     @OA\Response(
+  *         response=201,
+  *         description="Inscription complétée avec succès",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="message", type="string", example="Inscription complétée avec succès."),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+  *             )
+  *         )
+  *     )
+  * )
+  *
+  **/
     public function registerStepTwo(RegisterStepTwoRequest $request): JsonResponse
     {
         $user = $this->authService->registerStepTwo($request->validated());
@@ -77,6 +167,31 @@ class AuthController extends Controller
     /**
      * Connexion utilisateur
      */
+     /**
+  * @OA\Post(
+  *     path="/api/v1/auth/login",
+  *     summary="Connexion utilisateur",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(ref="#/components/schemas/LoginRequest")
+  *     ),
+  *     @OA\Response(
+  *         response=200,
+  *         description="Connexion réussie",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="message", type="string", example="Connexion réussie."),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource"),
+  *                 @OA\Property(property="token", type="string", example="1|eyJhbGciOi...")
+  *             )
+  *         )
+  *     ),
+  *     @OA\Response(response=401, description="Identifiants invalides")
+  * )
+  *
+  **/
     public function login(LoginRequest $request): JsonResponse
     {
         $result = $this->authService->login(
@@ -114,6 +229,25 @@ class AuthController extends Controller
     /**
      * Demander la réinitialisation du mot de passe
      */
+     /**
+  * @OA\Post(
+  *     path="/api/v1/auth/forgot-password",
+  *     summary="Demander la réinitialisation du mot de passe",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(
+  *             required={"email"},
+  *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com")
+  *         )
+  *     ),
+  *     @OA\Response(
+  *         response=200,
+  *         description="Email de réinitialisation envoyé"
+  *     )
+  * )
+  *
+  **/
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
         $this->authService->forgotPassword($request->input('email'));
@@ -123,6 +257,35 @@ class AuthController extends Controller
             'message' => 'Un code de réinitialisation a été envoyé à votre email.',
         ]);
     }
+
+
+    /**
+  * @OA\Post(
+  *     path="/api/v1/auth/reset-password",
+  *     summary="Réinitialiser le mot de passe via OTP",
+  *     tags={"Authentification"},
+  *     @OA\RequestBody(
+  *         required=true,
+  *         @OA\JsonContent(
+  *             required={"email", "otp", "password"},
+  *             @OA\Property(property="email", type="string", example="john.doe@example.com"),
+  *             @OA\Property(property="otp", type="string", example="123456"),
+  *             @OA\Property(property="password", type="string", format="password", example="newpassword123")
+  *         )
+  *     ),
+  *     @OA\Response(
+  *         response=200,
+  *         description="Mot de passe réinitialisé avec succès",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="message", type="string", example="Mot de passe réinitialisé avec succès."),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+  *             )
+  *         )
+  *     )
+  * )
+  **/
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
         $user = $this->authService->resetPassword(
@@ -143,6 +306,16 @@ class AuthController extends Controller
     /**
      * Déconnexion
      */
+
+         /**
+  * @OA\Post(
+  *     path="/api/v1/auth/logout",
+  *     summary="Déconnexion de l'utilisateur courant",
+  *     security={{"sanctum": {}}},
+  *     tags={"Authentification"},
+  *     @OA\Response(response=200, description="Déconnexion réussie")
+  * )
+  **/
     public function logout(Request $request): JsonResponse
     {
         $this->authService->logout($request->user());
@@ -156,6 +329,16 @@ class AuthController extends Controller
     /**
      * Déconnexion de tous les appareils
      */
+    /**
+  * @OA\Post(
+  *     path="/api/v1/auth/logout-all",
+  *     summary="Déconnexion de tous les appareils",
+  *     security={{"sanctum": {}}},
+  *     tags={"Authentification"},
+  *     @OA\Response(response=200, description="Tous les appareils déconnectés avec succès")
+  * )
+  *
+    **/
     public function logoutAll(Request $request): JsonResponse
     {
         $this->authService->logoutAll($request->user());
@@ -169,6 +352,24 @@ class AuthController extends Controller
     /**
      * Obtenir l'utilisateur authentifié
      */
+       /**
+  * @OA\Get(
+  *     path="/api/v1/auth/user",
+  *     summary="Obtenir les informations de l'utilisateur connecté",
+  *     security={{"sanctum": {}}},
+  *     tags={"Authentification"},
+  *     @OA\Response(
+  *         response=200,
+  *         description="Utilisateur connecté",
+  *         @OA\JsonContent(
+  *             @OA\Property(property="success", type="boolean", example=true),
+  *             @OA\Property(property="data", type="object",
+  *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+  *             )
+  *         )
+  *     )
+  * )
+  */
     public function user(Request $request): JsonResponse
     {
         return response()->json([
@@ -204,7 +405,7 @@ class AuthController extends Controller
 public function updateProfile(Request $request): JsonResponse{
     $request->validate([
         'nom' => ['sometimes', 'string', 'max:255'],
-        'prenoms' => ['sometimes', 'string', 'max:255'],
+        'prenomss' => ['sometimes', 'string', 'max:255'],
         'phone' => ['sometimes', 'string', 'max:20'],
         'country' => ['sometimes', 'string', 'max:100'],
         'avatar' => ['sometimes', 'image', 'max:2048'], // Max 2MB
@@ -213,7 +414,7 @@ public function updateProfile(Request $request): JsonResponse{
     $user = $request->user();
 
     // Update Profile
-    $this->authService->updateProfile($user, $request->only(['nom', 'prenoms', 'phone', 'country']));
+    $this->authService->updateProfile($user, $request->only(['nom', 'prenomss', 'phone', 'country']));
 
     // Update Avatar
     if ($request->hasFile('avatar')) {

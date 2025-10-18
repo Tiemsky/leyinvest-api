@@ -23,6 +23,12 @@ jobs:
     - name: Install Composer dependencies
       run: composer install --no-dev --optimize-autoloader --no-interaction
 
+    - name: Generate Swagger Documentation
+      run: |
+        echo "📚 Generating Swagger documentation..."
+        php artisan l5-swagger:generate
+        echo "✅ Swagger documentation generated successfully"
+
     - name: Create deployment archive
       run: |
         set -e
@@ -46,6 +52,12 @@ jobs:
         # Ensure vendor directory is included
         if [ -d "vendor" ]; then
           cp -r vendor deploy-temp/vendor
+        fi
+
+        # Ensure Swagger documentation is included
+        if [ -d "storage/api-docs" ]; then
+          mkdir -p deploy-temp/storage/api-docs
+          cp -r storage/api-docs/* deploy-temp/storage/api-docs/
         fi
 
         # Create the archive
@@ -150,12 +162,12 @@ jobs:
           BACKUP_DIR="/home/u258421289/leyinvest/backups"
 
           cd "$LEYINVEST_DIR"
-          mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public bootstrap/cache
+          mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public storage/api-docs bootstrap/cache
 
           php artisan down --render="errors::503" --retry=60 2>/dev/null || true
 
           chmod -R 755 storage bootstrap/cache 2>/dev/null || true
-          chmod -R 775 storage/logs storage/framework 2>/dev/null || true
+          chmod -R 775 storage/logs storage/framework storage/api-docs 2>/dev/null || true
 
           rm -rf bootstrap/cache/*.php 2>/dev/null || true
           find storage/framework/cache -type f -name "*.php" -delete 2>/dev/null || true
@@ -190,6 +202,9 @@ jobs:
             fi
             exit 1
           fi
+
+          echo "📚 Regenerating Swagger documentation on server..."
+          php artisan l5-swagger:generate 2>/dev/null || echo "⚠️ Swagger generation failed, but continuing..."
 
           php artisan up 2>/dev/null || true
           echo "ROLLBACK=false" > /tmp/deployment_status.txt
@@ -231,6 +246,7 @@ jobs:
           📝 Commit : ${{ github.sha }}
           👤 Auteur : ${{ github.actor }}
           🔗 URL Beta : https://leyinvest.skygroups.ci
+          📚 Documentation API : https://leyinvest.skygroups.ci/api/documentation
 
     - name: Send rollback notification
       if: failure() && contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')

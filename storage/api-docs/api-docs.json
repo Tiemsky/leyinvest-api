@@ -1,0 +1,697 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Your API Documentation",
+        "description": "API Documentation",
+        "contact": {
+            "email": "admin@example.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://my-default-host.com",
+            "description": "API Server"
+        }
+    ],
+    "paths": {
+        "/api/v1/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Étape 1 - Inscription : Nom, Prénom, Email",
+                "operationId": "94295b317b204c7864e9140c86be0c90",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nom",
+                                    "prenoms",
+                                    "email"
+                                ],
+                                "properties": {
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Doe"
+                                    },
+                                    "prenoms": {
+                                        "type": "string",
+                                        "example": "John"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Inscription initiée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Inscription initiée. Un code de vérification a été envoyé à votre email."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                },
+                                                "next_step": {
+                                                    "type": "string",
+                                                    "example": "verify_otp"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify-email": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Vérifier le code OTP d'inscription",
+                "operationId": "9ee61b859bcd49bb5debc5f657194d85",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "otp"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP vérifié avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Email vérifié avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                },
+                                                "next_step": {
+                                                    "type": "string",
+                                                    "example": "complete_registration"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/complete-profile": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Étape 2 - Compléter l'inscription",
+                "operationId": "001039047d5b6c8c92328829c56916a6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password",
+                                    "country"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "country": {
+                                        "type": "string",
+                                        "example": "Côte d'Ivoire"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Inscription complétée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Inscription complétée avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Connexion utilisateur",
+                "operationId": "a7997e7c1e3bfed64d4e56de82415931",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Connexion réussie."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                },
+                                                "token": {
+                                                    "type": "string",
+                                                    "example": "1|eyJhbGciOi..."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Identifiants invalides"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Demander la réinitialisation du mot de passe",
+                "operationId": "258f8322e6e587094f858db597dee996",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Email de réinitialisation envoyé"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Réinitialiser le mot de passe via OTP",
+                "operationId": "1032a68842312eda819d0b4888495d2b",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "otp",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "newpassword123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe réinitialisé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Mot de passe réinitialisé avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Déconnexion de l'utilisateur courant",
+                "operationId": "f6b8957b4c0b25636613a9f0512a8ba9",
+                "responses": {
+                    "200": {
+                        "description": "Déconnexion réussie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/logout-all": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Déconnexion de tous les appareils",
+                "operationId": "621f1d35fd68b2b119a1af7985828ca8",
+                "responses": {
+                    "200": {
+                        "description": "Tous les appareils déconnectés avec succès"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/user": {
+            "get": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Obtenir les informations de l'utilisateur connecté",
+                "operationId": "8da19d20faaa3c751514549040698f0d",
+                "responses": {
+                    "200": {
+                        "description": "Utilisateur connecté",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "LoginRequest": {
+                "title": "Login Request",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "john.doe@example.com"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "example": "password123"
+                    }
+                },
+                "type": "object"
+            },
+            "StoreSaleRequest": {
+                "title": "Requête de création de vente",
+                "description": "Données nécessaires pour créer une vente",
+                "required": [
+                    "action_id",
+                    "quantite",
+                    "prix_par_action"
+                ],
+                "properties": {
+                    "action_id": {
+                        "description": "Identifiant de l'action que l'utilisateur souhaite vendre",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "quantite": {
+                        "description": "Quantité d'actions à vendre",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "prix_par_action": {
+                        "description": "Prix unitaire de l'action",
+                        "type": "number",
+                        "format": "float",
+                        "example": 2500.75
+                    },
+                    "montant_vente": {
+                        "description": "Montant total de la vente",
+                        "type": "number",
+                        "format": "float",
+                        "example": 25007.5
+                    },
+                    "comment": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "example": "Vente partielle pour ajustement de portefeuille"
+                    }
+                },
+                "type": "object"
+            },
+            "AuthUserResource": {
+                "title": "Utilisateur Authentifié",
+                "description": "Représente un utilisateur connecté ou nouvellement inscrit",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Doe"
+                    },
+                    "prenoms": {
+                        "type": "string",
+                        "example": "John"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "john.doe@example.com"
+                    },
+                    "country": {
+                        "type": "string",
+                        "example": "Côte d'Ivoire"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "example": "+2250707070707"
+                    },
+                    "email_verified": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "registration_completed": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "email_verified_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T12:45:00Z"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T12:45:00Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T12:45:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "SaleResource": {
+                "title": "Ressource Vente",
+                "description": "Représentation d'une vente d'actions",
+                "properties": {
+                    "id": {
+                        "description": "Identifiant unique de la vente",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "key": {
+                        "description": "Clé unique de la vente",
+                        "type": "string",
+                        "example": "SLE-98237AHS"
+                    },
+                    "wallet": {
+                        "description": "Informations du portefeuille associé",
+                        "properties": {
+                            "id": {
+                                "description": "Identifiant du portefeuille",
+                                "type": "integer",
+                                "example": 5
+                            },
+                            "key": {
+                                "description": "Clé unique du portefeuille",
+                                "type": "string",
+                                "example": "WALLET-5489XYZ"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "user": {
+                        "description": "Informations de l'utilisateur ayant effectué la vente",
+                        "properties": {
+                            "id": {
+                                "description": "Identifiant de l'utilisateur",
+                                "type": "integer",
+                                "example": 10
+                            },
+                            "nom": {
+                                "description": "Nom de l'utilisateur",
+                                "type": "string",
+                                "example": "Doe"
+                            },
+                            "prenoms": {
+                                "description": "Prénoms de l'utilisateur",
+                                "type": "string",
+                                "example": "John"
+                            },
+                            "email": {
+                                "description": "Adresse e-mail de l'utilisateur",
+                                "type": "string",
+                                "example": "john.doe@example.com"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "quantite": {
+                        "description": "Quantité d'actions vendues",
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "prix_par_action": {
+                        "description": "Prix unitaire de chaque action",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1500.25
+                    },
+                    "montant_vente": {
+                        "description": "Montant total de la vente",
+                        "type": "number",
+                        "format": "float",
+                        "example": 75012.5
+                    },
+                    "montant_vente_formatted": {
+                        "description": "Montant formaté pour affichage",
+                        "type": "string",
+                        "example": "75 012,50 F CFA"
+                    },
+                    "comment": {
+                        "description": "Commentaire optionnel sur la vente",
+                        "type": "string",
+                        "example": "Vente partielle du portefeuille",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Date de création de la vente",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T09:45:00Z"
+                    },
+                    "updated_at": {
+                        "description": "Date de dernière mise à jour",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-18T09:46:00Z"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentification",
+            "description": "Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
+        }
+    ]
+}

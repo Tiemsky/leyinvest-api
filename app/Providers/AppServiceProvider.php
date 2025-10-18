@@ -48,8 +48,7 @@ class AppServiceProvider extends ServiceProvider
                 ->letters()
                 ->mixedCase()
                 ->numbers()
-                ->symbols()
-                ->uncompromised();
+                ->symbols();
         });
     }
 }

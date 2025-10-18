@@ -40,7 +40,7 @@ class AuthService
 
         if ($user->email_verified) {
             throw ValidationException::withMessages([
-                'otp' => ['Cet email est déjà vérifié.'],
+                'otp' => ['Cet email est déjà vérifié. Veuillez veuillez complétez votre inscription.'],
             ]);
         }
 
