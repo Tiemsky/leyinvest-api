@@ -161,7 +161,7 @@
                             "schema": {
                                 "required": [
                                     "nom",
-                                    "prenoms",
+                                    "prenom",
                                     "email"
                                 ],
                                 "properties": {
@@ -169,7 +169,7 @@
                                         "type": "string",
                                         "example": "Doe"
                                     },
-                                    "prenoms": {
+                                    "prenom": {
                                         "type": "string",
                                         "example": "John"
                                     },
@@ -380,62 +380,6 @@
                                 }
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/login": {
-            "post": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Connexion utilisateur",
-                "operationId": "a7997e7c1e3bfed64d4e56de82415931",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Connexion réussie",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Connexion réussie."
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "user": {
-                                                    "$ref": "#/components/schemas/AuthUserResource"
-                                                },
-                                                "token": {
-                                                    "type": "string",
-                                                    "example": "1|eyJhbGciOi..."
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Identifiants invalides"
                     }
                 }
             }
@@ -1085,6 +1029,324 @@
                 ]
             }
         },
+        "/api/v1/auth/google/login": {
+            "get": {
+                "tags": [
+                    "Google Authentication"
+                ],
+                "summary": "Initier la connexion Google",
+                "description": "Retourne l'URL d'authentification Google à laquelle le frontend doit rediriger l'utilisateur.",
+                "operationId": "95c1f22694e7b8fac149e51bea1d5659",
+                "responses": {
+                    "200": {
+                        "description": "URL générée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "example": "https://accounts.google.com/o/oauth2/auth?..."
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Redirect to this URL for Google authentication"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur lors de la génération de l'URL Google",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "google_login_failed"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Impossible de générer l'URL d'authentification Google"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/google/callback": {
+            "get": {
+                "tags": [
+                    "Google Authentication"
+                ],
+                "summary": "Callback Google OAuth",
+                "description": "Endpoint appelé par Google après autorisation OAuth. Gère la création/connexion de l'utilisateur et retourne un token Sanctum.",
+                "operationId": "d2eec3ee3195732a28b7865a1972702b",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "query",
+                        "description": "Code d'autorisation OAuth renvoyé par Google",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "4/0AbCdeF..."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Connexion Google réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "1|YvX9aT7X..."
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "bearer"
+                                        },
+                                        "redirect_url": {
+                                            "type": "string",
+                                            "example": "https://frontend.com/dashboard?token=1|YvX9aT7X..."
+                                        },
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 12
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "user@gmail.com"
+                                                },
+                                                "nom": {
+                                                    "type": "string",
+                                                    "example": "Kouadio"
+                                                },
+                                                "prenom": {
+                                                    "type": "string",
+                                                    "example": "Yao"
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "avatar": {
+                                                    "type": "string",
+                                                    "example": "https://lh3.googleusercontent.com/photo.jpg"
+                                                },
+                                                "role": {
+                                                    "type": "string",
+                                                    "example": "user"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code d'autorisation manquant ou session expirée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "missing_code"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Code d'autorisation manquant"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne Google OAuth",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "google_auth_failed"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur lors du traitement du callback Google"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/google/token": {
+            "post": {
+                "tags": [
+                    "Google Authentication"
+                ],
+                "summary": "Connexion via Google ID Token (pour mobile / SPA)",
+                "description": "Permet la connexion directe à l'aide d'un token ID Google. Utilisée pour les apps mobiles et SPA.",
+                "operationId": "4e1aae99b8aa16247a8731f6deb7fb0d",
+                "requestBody": {
+                    "description": "Token ID fourni par Google après authentification sur le client",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "type": "string",
+                                        "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjUxYz..."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Authentification réussie avec Google Token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "1|Xf9aKj7t..."
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "bearer"
+                                        },
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 8
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "user@gmail.com"
+                                                },
+                                                "nom": {
+                                                    "type": "string",
+                                                    "example": "Konan"
+                                                },
+                                                "prenom": {
+                                                    "type": "string",
+                                                    "example": "Eric"
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "avatar": {
+                                                    "type": "string",
+                                                    "example": "https://lh3.googleusercontent.com/..."
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "requires_profile_completion": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Google invalide ou expiré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "invalid_token"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Token Google invalide"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "validation_error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le champ token est requis."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "google_auth_failed"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur lors de l'authentification Google"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tops": {
             "get": {
                 "tags": [
@@ -1537,6 +1799,10 @@
         {
             "name": "Flops",
             "description": "Flops"
+        },
+        {
+            "name": "Google Authentication",
+            "description": "Google Authentication"
         },
         {
             "name": "Tops",
