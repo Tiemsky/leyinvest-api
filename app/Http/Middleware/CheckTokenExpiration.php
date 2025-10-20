@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Carbon\Carbon;
 
 class CheckTokenExpiration
 {
@@ -20,13 +21,27 @@ class CheckTokenExpiration
         if ($user) {
             $token = $user->currentAccessToken();
 
-            // Vérifier si le token a une date d'expiration et s'il est expiré
-            if ($token && $token->expires_at && $token->expires_at->isPast()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token expiré. Veuillez utiliser votre refresh token.',
-                    'error_code' => 'TOKEN_EXPIRED',
-                ], 401);
+            if ($token && $token->expires_at) {
+                // Vérifier si le token est expiré
+                if ($token->expires_at->isPast()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Token expiré. Veuillez utiliser votre refresh token pour obtenir un nouveau token.',
+                        'error_code' => 'TOKEN_EXPIRED',
+                        'expired_at' => $token->expires_at->toIso8601String(),
+                    ], 401);
+                }
+
+                // Optionnel : Avertir si le token expire bientôt (dans les 2 prochaines minutes)
+                $minutesUntilExpiration = Carbon::now()->diffInMinutes($token->expires_at, false);
+
+                if ($minutesUntilExpiration > 0 && $minutesUntilExpiration <= 2) {
+                    // Ajouter un header pour informer le frontend
+                    $response = $next($request);
+                    $response->headers->set('X-Token-Expires-Soon', 'true');
+                    $response->headers->set('X-Token-Expires-In', $minutesUntilExpiration * 60); // en secondes
+                    return $response;
+                }
             }
         }
 

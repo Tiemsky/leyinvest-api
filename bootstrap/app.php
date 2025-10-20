@@ -52,6 +52,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+
+            // Custom middleware pour les tokens
+            'check.token.expiration' => \App\Http\Middleware\CheckTokenExpiration::class,
         ]);
 
         /**

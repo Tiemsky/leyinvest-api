@@ -14,6 +14,12 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
+    protected RefreshTokenService $refreshTokenService;
+
+    public function __construct(RefreshTokenService $refreshTokenService)
+    {
+        $this->refreshTokenService = $refreshTokenService;
+    }
     /**
      * Étape 1 : Enregistrer les informations de base et envoyer l'OTP
      */
@@ -108,7 +114,7 @@ class AuthService
     }
 
     /**
-     * Connexion utilisateur
+     * Connexion utilisateur avec refresh token
      */
     public function login(array $credentials, string $deviceName = 'api'): array
     {
@@ -132,14 +138,37 @@ class AuthService
             ]);
         }
 
-        // Révoquer les anciens tokens (optionnel)
-        // $user->tokens()->delete();
-
-        $token = $user->createToken($deviceName)->plainTextToken;
+        // Créer les tokens (access + refresh)
+        $tokens = $this->refreshTokenService->createTokens($user, $deviceName);
 
         return [
             'user' => $user,
-            'token' => $token,
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'token_type' => $tokens['token_type'],
+            'expires_in' => $tokens['expires_in'],
+            'refresh_expires_in' => $tokens['refresh_expires_in'],
+        ];
+    }
+
+        /**
+     * Rafraîchir l'access token
+     */
+    public function refreshToken(string $refreshToken): array
+    {
+        $tokens = $this->refreshTokenService->refreshToken($refreshToken);
+
+        // Récupérer l'utilisateur pour l'inclure dans la réponse
+        $tokenInfo = $this->refreshTokenService->getTokenInfo($tokens['refresh_token']);
+        $user = User::find($tokenInfo['user_id']);
+
+        return [
+            'user' => $user,
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'token_type' => $tokens['token_type'],
+            'expires_in' => $tokens['expires_in'],
+            'refresh_expires_in' => $tokens['refresh_expires_in'],
         ];
     }
 
@@ -317,7 +346,7 @@ class AuthService
         return $user->fresh();
     }
 
-    /**
+      /**
      * Déconnexion
      */
     public function logout(User $user): void
@@ -330,6 +359,6 @@ class AuthService
      */
     public function logoutAll(User $user): void
     {
-        $user->tokens()->delete();
+        $this->refreshTokenService->revokeAllUserTokens($user);
     }
 }

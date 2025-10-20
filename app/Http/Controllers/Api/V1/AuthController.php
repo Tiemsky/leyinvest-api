@@ -14,6 +14,8 @@ use App\Http\Resources\AuthUserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
  /**
  * @OA\Tag(
@@ -39,9 +41,9 @@ class AuthController extends Controller
   *     @OA\RequestBody(
   *         required=true,
   *         @OA\JsonContent(
-  *             required={"nom", "prenoms", "email"},
+  *             required={"nom", "prenom", "email"},
   *             @OA\Property(property="nom", type="string", example="Doe"),
-  *             @OA\Property(property="prenoms", type="string", example="John"),
+  *             @OA\Property(property="prenom", type="string", example="John"),
   *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com")
   *         )
   *     ),
@@ -197,21 +199,80 @@ class AuthController extends Controller
   * )
   *
   **/
+  /**
+     * Connexion
+     */
     public function login(LoginRequest $request): JsonResponse
     {
-        $result = $this->authService->login(
-            $request->validated(),
-            $request->input('device_name', 'api')
-        );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Connexion réussie.',
-            'data' => [
-                'user' => new AuthUserResource($result['user']),
-                'token' => $result['token'],
-            ],
+        try {
+            $result = $this->authService->login(
+                $request->only('email', 'password'),
+                $request->input('device_name', 'api')
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Connexion réussie',
+                'data' => [
+                    'user' => new AuthUserResource($result['user']),
+                    'access_token' => $result['access_token'],
+                    'refresh_token' => $result['refresh_token'],
+                    'token_type' => $result['token_type'],
+                    'expires_in' => $result['expires_in'],
+                    'refresh_expires_in' => $result['refresh_expires_in'],
+                ],
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Échec de la connexion',
+                'errors' => $e->errors(),
+            ], 401);
+        }
+    }
+
+    /**
+     * Rafraîchir l'access token
+     */
+    public function refreshToken(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'refresh_token' => 'required|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur de validation',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = $this->authService->refreshToken($request->input('refresh_token'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token rafraîchi avec succès',
+                'data' => [
+                    'user' => $result['user'],
+                    'access_token' => $result['access_token'],
+                    'refresh_token' => $result['refresh_token'],
+                    'token_type' => $result['token_type'],
+                    'expires_in' => $result['expires_in'],
+                    'refresh_expires_in' => $result['refresh_expires_in'],
+                ],
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Échec du rafraîchissement du token',
+                'errors' => $e->errors(),
+            ], 401);
+        }
     }
 
     /**

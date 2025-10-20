@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('google_id')->nullable()->unique();
             $table->string('key')->unique();
             $table->foreignIdFor(Country::class)->nullable();
             $table->string('role')->default(RoleEnum::USER->value);
@@ -32,6 +33,7 @@ return new class extends Migration
             $table->boolean('email_verified')->default(false);
             $table->boolean('registration_completed')->default(false);
             $table->string('avatar')->nullable();
+            $table->string('auth_provider')->default('email');
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\GoogleAuthController;
 
 Route::prefix('v1')->group(function () {
 
@@ -25,6 +26,24 @@ Route::prefix('v1')->group(function () {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
+
+
+        // ============================================
+        // GOOGLE OAUTH ROUTES
+        // ============================================
+
+        // Initier la connexion Google
+    Route::get('/google/login', [GoogleAuthController::class, 'login'])
+    ->name('google.login');
+
+// Callback après autorisation Google
+Route::get('/google/callback', [GoogleAuthController::class, 'callback'])
+    ->name('google.callback');
+
+// Connexion avec Google ID Token (Mobile/SPA)
+Route::post('/google/token', [GoogleAuthController::class, 'tokenLogin'])
+    ->name('google.token');
     });
 
     // ============================================
@@ -41,7 +60,7 @@ Route::prefix('v1')->group(function () {
     // ============================================
     // ROUTES PROTÉGÉES - AUTHENTIFICATION REQUISE
     // ============================================
-    Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.token.expiration'])->prefix('auth')->group(function () {
         // Informations utilisateur
         Route::get('user', [AuthController::class, 'user']);
 
