@@ -114,52 +114,67 @@ class GoogleAuthController extends Controller
      * )
      */
     public function callback(Request $request): JsonResponse
-    {
-        try {
-            if (!$request->has('code')) {
-                return response()->json([
-                    'error' => 'missing_code',
-                    'message' => 'Code d\'autorisation manquant'
-                ], 400);
-            }
-
-            $googleUser = $this->googleAuthService->getGoogleUser();
-            $user = $this->googleAuthService->getOrCreateUser($googleUser);
-
-            $token = $user->createToken('google_auth_token')->plainTextToken;
-            $frontendUrl = config('services.frontend.url');
-            $redirectUrl = $user->email_verified
-                ? "{$frontendUrl}/dashboard?token={$token}"
-                : "{$frontendUrl}/complete-profile?token={$token}&email={$user->email}";
-
+{
+    try {
+        // Vérifie si le code d’autorisation est présent
+        if (!$request->has('code')) {
             return response()->json([
-                'access_token' => $token,
-                'token_type' => 'bearer',
-                'redirect_url' => $redirectUrl,
-                'user' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'nom' => $user->nom,
-                    'prenom' => $user->prenom,
-                    'email_verified' => $user->email_verified,
-                    'avatar' => $user->avatar,
-                    'role' => $user->role,
-                ]
-            ], 200);
-        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
-            Log::error('Google Auth - Invalid State: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'invalid_state',
-                'message' => 'Session expirée ou invalide. Veuillez réessayer.'
+                'error' => 'missing_code',
+                'message' => 'Code d\'autorisation manquant',
             ], 400);
-        } catch (\Exception $e) {
-            Log::error('Google Callback Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json([
-                'error' => 'google_auth_failed',
-                'message' => $e->getMessage()
-            ], 500);
         }
+
+        // Récupération de l'utilisateur Google
+        $googleUser = $this->googleAuthService->getGoogleUser();
+
+        // Création ou récupération de l'utilisateur
+        $user = $this->googleAuthService->getOrCreateUser($googleUser);
+
+        // Création du token Sanctum
+        $token = $user->createToken('google_auth_token')->plainTextToken;
+
+        // Récupération de l'URL frontend depuis .env
+        $frontendUrl = rtrim(config('app.frontend_url'), '/');
+
+        // Construction de l'URL de redirection
+        $redirectUrl = $user->email_verified
+            ? "{$frontendUrl}/dashboard?token={$token}"
+            : "{$frontendUrl}/complete-profile?token={$token}&email={$user->email}";
+
+        // Réponse JSON propre
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'redirect_url' => $redirectUrl,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'nom' => $user->nom,
+                'prenom' => $user->prenom,
+                'email_verified' => $user->email_verified,
+                'avatar' => $user->avatar,
+                'role' => $user->role,
+            ],
+        ]);
+    } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+        \Log::error('Google Auth - Invalid State: ' . $e->getMessage());
+
+        return response()->json([
+            'error' => 'invalid_state',
+            'message' => 'Session expirée ou invalide. Veuillez réessayer.',
+        ], 400);
+    } catch (\Exception $e) {
+        \Log::error('Google Callback Error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => 'google_auth_failed',
+            'message' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     /**
      * @OA\Post(

@@ -199,9 +199,6 @@ class AuthController extends Controller
   * )
   *
   **/
-  /**
-     * Connexion
-     */
     public function login(LoginRequest $request): JsonResponse
     {
 
