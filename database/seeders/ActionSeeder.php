@@ -39,7 +39,7 @@ class ActionSeeder extends Seeder
 
         foreach ($actions as $action) {
             Action::create(array_merge($action, [
-                'key' => 'act-' . strtolower(Str::random(8)),
+                'key' => 'act_' . strtolower(Str::random(8)),
             ]));
         }
     }

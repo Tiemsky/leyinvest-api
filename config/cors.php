@@ -24,8 +24,7 @@ return [
         'http://localhost:3000',
         'http://127.0.0.1:8080',
         'http://127.0.0.1:3000',
-        // Ajoutez vos domaines de production
-        // 'https://app.yks-ci.com',
+        'https://leyinvest.vercel.app',
     ],
 
     'allowed_origins_patterns' => [],

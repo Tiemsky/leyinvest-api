@@ -100,12 +100,10 @@ class AuthService
                 'situation_professionnelle' => $data['situation_professionnelle'] ?? null,
             ]);
 
-            // Créer automatiquement le wallet
-            Wallet::create([ 'user_id' => $user->id,]);
 
             DB::commit();
 
-            return $user->fresh(['wallet']);
+            return $user->fresh();
 
         } catch (\Exception $e) {
             DB::rollBack();

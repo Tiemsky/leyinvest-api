@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -49,18 +50,13 @@ class User extends Authenticatable
     public function getRouteKeyName(): string{
         return 'key';
     }
-
-    public function wallet(): HasOne{
-        return $this->hasOne(Wallet::class);
+       /**
+     * Les actions que cet utilisateur suit
+     */
+    public function followedActions(): HasMany{
+        return $this->hasMany(UserAction::class, 'user_id');
     }
 
-    public function sales(): HasMany{
-        return $this->hasMany(Sale::class);
-    }
-
-    public function purchases(): HasMany{
-        return $this->hasMany(Purchase::class);
-    }
 
     /**
      * Générer un code OTP

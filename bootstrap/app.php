@@ -213,23 +213,23 @@ return Application::configure(basePath: dirname(__DIR__))
          * ✅ Erreur 500 - Erreur serveur générique
          * Masquer les détails en production
          */
-        $exceptions->render(function (Throwable $e, Request $request) {
-            if ($request->is('api/*')) {
-                // Logger l'erreur pour investigation
-                report($e);
+        // $exceptions->render(function (Throwable $e, Request $request) {
+        //     if ($request->is('api/*')) {
+        //         // Logger l'erreur pour investigation
+        //         report($e);
 
-                return response()->json([
-                    'status' => 'error',
-                    'message' => app()->isProduction()
-                        ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
-                        : $e->getMessage(),
-                    'file' => app()->isProduction() ? null : $e->getFile(),
-                    'line' => app()->isProduction() ? null : $e->getLine(),
-                    'trace' => app()->isProduction() ? null : $e->getTrace(),
-                    'code' => 500,
-                    'timestamp' => now(),
-                ], 500);
-            }
-        });
+        //         return response()->json([
+        //             'status' => 'error',
+        //             'message' => app()->isProduction()
+        //                 ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
+        //                 : $e->getMessage(),
+        //             'file' => app()->isProduction() ? null : $e->getFile(),
+        //             'line' => app()->isProduction() ? null : $e->getLine(),
+        //             'trace' => app()->isProduction() ? null : $e->getTrace(),
+        //             'code' => 500,
+        //             'timestamp' => now(),
+        //         ], 500);
+        //     }
+        // });
     })
     ->create();

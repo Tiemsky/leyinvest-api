@@ -62,7 +62,7 @@ Route::post('/google/token', [GoogleAuthController::class, 'tokenLogin'])
     // ============================================
     Route::middleware(['auth:sanctum', 'check.token.expiration'])->prefix('auth')->group(function () {
         // Informations utilisateur
-        Route::get('user', [AuthController::class, 'user']);
+        Route::get('user/me', [AuthController::class, 'user']);
 
         // Mise à jour du profil
         Route::post('update-profile', [AuthController::class, 'updateProfile']);

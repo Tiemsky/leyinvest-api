@@ -233,6 +233,71 @@ class AuthController extends Controller
     /**
      * Rafraîchir l'access token
      */
+    /**
+     * @OA\Post(
+     *     path="/api/v1/auth/refresh-token",
+     *     tags={"Authentification"},
+     *     summary="Rafraîchir un access token",
+     *     description="Permet de rafraîchir un access token expiré en utilisant le refresh token. Le refresh token doit être valide et non expiré.",
+     *     operationId="refreshToken",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Le refresh token reçu lors de la connexion",
+     *         @OA\JsonContent(
+     *             required={"refresh_token"},
+     *             @OA\Property(
+     *                 property="refresh_token",
+     *                 type="string",
+     *                 example="4fdc9a77ef61c91eabcd1234567890abcdef1234567890abcdef1234567890ab",
+     *                 description="Le refresh token sécurisé reçu lors de la connexion initiale"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token rafraîchi avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Token rafraîchi avec succès"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="user", type="object",
+     *                     @OA\Property(property="id", type="integer", example=3),
+     *                     @OA\Property(property="nom", type="string", example="Kouassi"),
+     *                     @OA\Property(property="prenoms", type="string", example="Eren"),
+     *                     @OA\Property(property="email", type="string", example="eren@example.com"),
+     *                     @OA\Property(property="numero", type="string", example="+2250700000000")
+     *                 ),
+     *                 @OA\Property(property="access_token", type="string", example="1|asJd82Ds8f...Uq"),
+     *                 @OA\Property(property="refresh_token", type="string", example="4fdc9a77ef61c91eabcd1234567890abcdef1234567890abcdef1234567890ab"),
+     *                 @OA\Property(property="token_type", type="string", example="Bearer"),
+     *                 @OA\Property(property="expires_in", type="integer", example=900, description="Durée de vie de l'access token en secondes"),
+     *                 @OA\Property(property="refresh_expires_in", type="integer", example=604800, description="Durée de vie du refresh token en secondes")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Échec du rafraîchissement du token (token invalide ou utilisateur introuvable)",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Échec du rafraîchissement du token"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Erreur de validation (refresh_token manquant ou invalide)",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Erreur de validation"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     security={{"sanctum": {}}}
+     * )
+     */
     public function refreshToken(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -554,7 +619,7 @@ public function resetPassword(ResetPasswordRequest $request): JsonResponse
      */
        /**
   * @OA\Get(
-  *     path="/api/v1/auth/user",
+  *     path="/api/v1/auth/user/me",
   *     summary="Obtenir les informations de l'utilisateur connecté",
   *     security={{"sanctum": {}}},
   *     tags={"Authentification"},

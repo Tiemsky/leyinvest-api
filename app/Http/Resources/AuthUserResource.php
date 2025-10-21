@@ -56,7 +56,6 @@ class AuthUserResource extends JsonResource
             'role' => $this->role,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
-            'wallet' => new WalletResource($this->whenLoaded('wallet')),
         ];
     }
 }

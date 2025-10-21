@@ -2,11 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Role;
-use App\Models\Sale;
 use App\Models\User;
-use App\Models\Wallet;
-use App\Models\Purchase;
 use Illuminate\Database\Seeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -27,9 +23,6 @@ class DatabaseSeeder extends Seeder
             TopSeeder::class,
             FlopSeeder::class,
         ]);
-         User::factory(500)->create();
-         Wallet::factory()->count(500)->create();
-         Purchase::factory()->count(700)->create();
-         Sale::factory()->count(700)->create();
+         User::factory(50)->create();
     }
 }

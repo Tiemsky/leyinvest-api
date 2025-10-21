@@ -2,16 +2,21 @@
     "openapi": "3.0.0",
     "info": {
         "title": "LeyInvest API Documentation",
-        "description": "API Documentation",
+        "description": "Documentation complète de l'API LeyInvest. Cette API permet la gestion des utilisateurs, des actions suivies (follow/unfollow), ainsi que des opérations financières automatisées (take profit, stop loss).",
         "contact": {
-            "email": "admin@example.com"
+            "name": "API Support",
+            "email": "tiafranck@leycom.ci"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
         },
         "version": "1.0.0"
     },
     "servers": [
         {
             "url": "http://my-default-host.com",
-            "description": "API Server"
+            "description": "Serveur principal de l'API LeyInvest"
         }
     ],
     "paths": {
@@ -440,6 +445,162 @@
                 }
             }
         },
+        "/api/v1/auth/refresh-token": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Rafraîchir un access token",
+                "description": "Permet de rafraîchir un access token expiré en utilisant le refresh token. Le refresh token doit être valide et non expiré.",
+                "operationId": "refreshToken",
+                "requestBody": {
+                    "description": "Le refresh token reçu lors de la connexion",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "refresh_token"
+                                ],
+                                "properties": {
+                                    "refresh_token": {
+                                        "description": "Le refresh token sécurisé reçu lors de la connexion initiale",
+                                        "type": "string",
+                                        "example": "4fdc9a77ef61c91eabcd1234567890abcdef1234567890abcdef1234567890ab"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Token rafraîchi avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Token rafraîchi avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "nom": {
+                                                            "type": "string",
+                                                            "example": "Kouassi"
+                                                        },
+                                                        "prenoms": {
+                                                            "type": "string",
+                                                            "example": "Eren"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "eren@example.com"
+                                                        },
+                                                        "numero": {
+                                                            "type": "string",
+                                                            "example": "+2250700000000"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "access_token": {
+                                                    "type": "string",
+                                                    "example": "1|asJd82Ds8f...Uq"
+                                                },
+                                                "refresh_token": {
+                                                    "type": "string",
+                                                    "example": "4fdc9a77ef61c91eabcd1234567890abcdef1234567890abcdef1234567890ab"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "example": "Bearer"
+                                                },
+                                                "expires_in": {
+                                                    "description": "Durée de vie de l'access token en secondes",
+                                                    "type": "integer",
+                                                    "example": 900
+                                                },
+                                                "refresh_expires_in": {
+                                                    "description": "Durée de vie du refresh token en secondes",
+                                                    "type": "integer",
+                                                    "example": 604800
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Échec du rafraîchissement du token (token invalide ou utilisateur introuvable)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Échec du rafraîchissement du token"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation (refresh_token manquant ou invalide)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur de validation"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/resend-code": {
             "post": {
                 "tags": [
@@ -815,13 +976,13 @@
                 ]
             }
         },
-        "/api/v1/auth/user": {
+        "/api/v1/auth/user/me": {
             "get": {
                 "tags": [
                     "Authentification"
                 ],
                 "summary": "Obtenir les informations de l'utilisateur connecté",
-                "operationId": "8da19d20faaa3c751514549040698f0d",
+                "operationId": "3c935c69db214e28ff6318ec48bc555f",
                 "responses": {
                     "200": {
                         "description": "Utilisateur connecté",
@@ -1490,6 +1651,213 @@
                     }
                 ]
             }
+        },
+        "/api/v1/user/actions": {
+            "get": {
+                "tags": [
+                    "User Actions"
+                ],
+                "summary": "Lister les actions suivies par l'utilisateur authentifié",
+                "description": "Récupère toutes les actions suivies par l'utilisateur authentifié",
+                "operationId": "getFollowedActions",
+                "responses": {
+                    "200": {
+                        "description": "Liste récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UserActionResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user/action/follow": {
+            "post": {
+                "tags": [
+                    "User Actions"
+                ],
+                "summary": "Suivre une action",
+                "description": "Permet à l'utilisateur de suivre une action avec des valeurs optionnelles de stop_loss et take_profit",
+                "operationId": "followAction",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FollowActionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Action suivie avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserActionResource"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "409": {
+                        "description": "Action déjà suivie"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user/action/{actionId}/unfollow": {
+            "delete": {
+                "tags": [
+                    "User Actions"
+                ],
+                "summary": "Ne plus suivre une action",
+                "description": "Permet de ne plus suivre une action précédemment suivie",
+                "operationId": "unfollowAction",
+                "parameters": [
+                    {
+                        "name": "actionId",
+                        "in": "path",
+                        "description": "ID de l'action à unfollow",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Action retirée avec succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Action non trouvée ou non suivie"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user/action/{actionId}": {
+            "patch": {
+                "tags": [
+                    "User Actions"
+                ],
+                "summary": "Mettre à jour les paramètres de suivi",
+                "description": "Permet à l'utilisateur de mettre à jour les valeurs stop_loss et take_profit d'une action déjà suivie",
+                "operationId": "updateFollowParameters",
+                "parameters": [
+                    {
+                        "name": "actionId",
+                        "in": "path",
+                        "description": "ID de l'action suivie",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 8
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserActionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Paramètres mis à jour avec succès"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Action non suivie"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user/dashboard": {
+            "get": {
+                "tags": [
+                    "UserDashboard"
+                ],
+                "summary": "Récupérer le tableau de bord de l'utilisateur connecté",
+                "description": "Retourne les informations du user connecté, 5 actions suivies aléatoires et sa liste complète d'actions suivies.",
+                "operationId": "getUserDashboard",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard utilisateur récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/UserDashboardResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -1576,6 +1944,33 @@
                 },
                 "type": "object"
             },
+            "FollowActionRequest": {
+                "required": [
+                    "action_id"
+                ],
+                "properties": {
+                    "action_id": {
+                        "description": "ID de l'action à suivre",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "stop_loss": {
+                        "description": "Valeur optionnelle de stop loss",
+                        "type": "number",
+                        "format": "float",
+                        "example": 950.5,
+                        "nullable": true
+                    },
+                    "take_profit": {
+                        "description": "Valeur optionnelle de take profit",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1200,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "StoreSaleRequest": {
                 "title": "Requête de création de vente",
                 "description": "Données nécessaires pour créer une vente",
@@ -1611,6 +2006,25 @@
                         "type": "string",
                         "maxLength": 1000,
                         "example": "Vente partielle pour ajustement de portefeuille"
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateUserActionRequest": {
+                "properties": {
+                    "stop_loss": {
+                        "description": "Nouvelle valeur de stop loss",
+                        "type": "number",
+                        "format": "float",
+                        "example": 980,
+                        "nullable": true
+                    },
+                    "take_profit": {
+                        "description": "Nouvelle valeur de take profit",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1250,
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1693,105 +2107,6 @@
                 },
                 "type": "object"
             },
-            "SaleResource": {
-                "title": "Ressource Vente",
-                "description": "Représentation d'une vente d'actions",
-                "properties": {
-                    "id": {
-                        "description": "Identifiant unique de la vente",
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "key": {
-                        "description": "Clé unique de la vente",
-                        "type": "string",
-                        "example": "SLE-98237AHS"
-                    },
-                    "wallet": {
-                        "description": "Informations du portefeuille associé",
-                        "properties": {
-                            "id": {
-                                "description": "Identifiant du portefeuille",
-                                "type": "integer",
-                                "example": 5
-                            },
-                            "key": {
-                                "description": "Clé unique du portefeuille",
-                                "type": "string",
-                                "example": "WALLET-5489XYZ"
-                            }
-                        },
-                        "type": "object"
-                    },
-                    "user": {
-                        "description": "Informations de l'utilisateur ayant effectué la vente",
-                        "properties": {
-                            "id": {
-                                "description": "Identifiant de l'utilisateur",
-                                "type": "integer",
-                                "example": 10
-                            },
-                            "nom": {
-                                "description": "Nom de l'utilisateur",
-                                "type": "string",
-                                "example": "Doe"
-                            },
-                            "prenoms": {
-                                "description": "Prénoms de l'utilisateur",
-                                "type": "string",
-                                "example": "John"
-                            },
-                            "email": {
-                                "description": "Adresse e-mail de l'utilisateur",
-                                "type": "string",
-                                "example": "john.doe@example.com"
-                            }
-                        },
-                        "type": "object"
-                    },
-                    "quantite": {
-                        "description": "Quantité d'actions vendues",
-                        "type": "integer",
-                        "example": 50
-                    },
-                    "prix_par_action": {
-                        "description": "Prix unitaire de chaque action",
-                        "type": "number",
-                        "format": "float",
-                        "example": 1500.25
-                    },
-                    "montant_vente": {
-                        "description": "Montant total de la vente",
-                        "type": "number",
-                        "format": "float",
-                        "example": 75012.5
-                    },
-                    "montant_vente_formatted": {
-                        "description": "Montant formaté pour affichage",
-                        "type": "string",
-                        "example": "75 012,50 F CFA"
-                    },
-                    "comment": {
-                        "description": "Commentaire optionnel sur la vente",
-                        "type": "string",
-                        "example": "Vente partielle du portefeuille",
-                        "nullable": true
-                    },
-                    "created_at": {
-                        "description": "Date de création de la vente",
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2025-10-18T09:45:00Z"
-                    },
-                    "updated_at": {
-                        "description": "Date de dernière mise à jour",
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2025-10-18T09:46:00Z"
-                    }
-                },
-                "type": "object"
-            },
             "StepOneAuthResource": {
                 "title": "Utilisateur En Première Étape d'inscription",
                 "description": "Représente un utilisateur ayant complété la première étape de l'inscription",
@@ -1829,11 +2144,232 @@
                     }
                 },
                 "type": "object"
+            },
+            "UserActionResource": {
+                "title": "User Action Resource",
+                "description": "Relation entre un utilisateur et une action suivie, incluant les paramètres stop_loss et take_profit",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "action_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "stop_loss": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 980,
+                        "nullable": true
+                    },
+                    "take_profit": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1250,
+                        "nullable": true
+                    },
+                    "action": {
+                        "description": "Informations sur l'action suivie",
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "symbole": {
+                                "type": "string",
+                                "example": "ABJC"
+                            },
+                            "nom": {
+                                "type": "string",
+                                "example": "SERVAIR ABIDJAN COTE D'IVOIRE"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "user": {
+                        "description": "Informations sur l'utilisateur qui suit cette action",
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 3
+                            },
+                            "nom": {
+                                "type": "string",
+                                "example": "Kouassi"
+                            },
+                            "prenom": {
+                                "type": "string",
+                                "example": "Eren"
+                            },
+                            "email": {
+                                "type": "string",
+                                "example": "eren@example.com"
+                            },
+                            "numero": {
+                                "type": "string",
+                                "example": "+2250700000000"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-21T12:34:56Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-21T13:10:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "UserDashboardResource": {
+                "title": "Ressource du tableau de bord utilisateur",
+                "description": "Structure de données renvoyée par l'API /api/v1/user/dashboard",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Doe"
+                    },
+                    "prenom": {
+                        "type": "string",
+                        "example": "John"
+                    },
+                    "email": {
+                        "type": "string",
+                        "example": "john.doe@example.com"
+                    },
+                    "numero": {
+                        "type": "string",
+                        "example": "+2250102030405"
+                    },
+                    "actions_suivis": {
+                        "description": "5 actions suivies aléatoirement",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "example": "ABJC"
+                                },
+                                "symbole": {
+                                    "type": "string",
+                                    "example": "SERVAIR ABIDJAN CÔTE D’IVOIRE"
+                                },
+                                "nom": {
+                                    "type": "string",
+                                    "example": "SERVAIR ABIDJAN CÔTE D’IVOIRE"
+                                },
+                                "volume": {
+                                    "type": "number",
+                                    "example": 5759
+                                },
+                                "cours_veille": {
+                                    "type": "number",
+                                    "example": 980
+                                },
+                                "cours_ouverture": {
+                                    "type": "number",
+                                    "example": 985
+                                },
+                                "cours_cloture": {
+                                    "type": "number",
+                                    "example": 1005.5
+                                },
+                                "variation": {
+                                    "type": "number",
+                                    "example": 2.4
+                                },
+                                "couleur_variation": {
+                                    "type": "string",
+                                    "example": "green"
+                                },
+                                "stop_loss": {
+                                    "type": "number",
+                                    "example": 950,
+                                    "nullable": true
+                                },
+                                "take_profit": {
+                                    "type": "number",
+                                    "example": 1250,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "ma_liste": {
+                        "description": "Liste complète de toutes les actions suivies",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "example": "BOAC"
+                                },
+                                "symbole": {
+                                    "type": "string",
+                                    "example": "BANK OF AFRICA CÔTE D’IVOIRE"
+                                },
+                                "nom": {
+                                    "type": "string",
+                                    "example": "BANK OF AFRICA CÔTE D’IVOIRE"
+                                },
+                                "volume": {
+                                    "type": "number",
+                                    "example": 4562
+                                },
+                                "cours_veille": {
+                                    "type": "number",
+                                    "example": 900
+                                },
+                                "cours_ouverture": {
+                                    "type": "number",
+                                    "example": 920
+                                },
+                                "cours_cloture": {
+                                    "type": "number",
+                                    "example": 910
+                                },
+                                "variation": {
+                                    "type": "number",
+                                    "example": -1.1
+                                },
+                                "stop_loss": {
+                                    "type": "number",
+                                    "example": 850,
+                                    "nullable": true
+                                },
+                                "take_profit": {
+                                    "type": "number",
+                                    "example": 1150,
+                                    "nullable": true
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
-            "bearerAuth": {
+            "sanctum": {
                 "type": "http",
+                "description": "Entrez votre token Bearer obtenu via l'authentification Sanctum (ex: 'Bearer {token}')",
                 "bearerFormat": "JWT",
                 "scheme": "bearer"
             }
@@ -1843,6 +2379,10 @@
         {
             "name": "Authentification",
             "description": "Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
+        },
+        {
+            "name": "UserDashboard",
+            "description": "Endpoints qui regroupe tous les elements du tableau de bord utilisateur"
         },
         {
             "name": "Actions Boursières",
@@ -1863,6 +2403,10 @@
         {
             "name": "Tops",
             "description": "Tops"
+        },
+        {
+            "name": "User Actions",
+            "description": "User Actions"
         }
     ]
 }
