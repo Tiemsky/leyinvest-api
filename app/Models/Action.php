@@ -12,11 +12,4 @@ class Action extends Model
     /** @use HasFactory<\Database\Factories\ActionFactory> */
     use HasFactory, HasKey;
     protected $guarded = [];
-
-    public function followers(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'action_user')
-                    ->withPivot(['stop_loss', 'take_profit'])
-                    ->withTimestamps();
-    }
 }
