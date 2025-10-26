@@ -3,55 +3,74 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\FlopResource;
-use App\Models\Flop;
-use Illuminate\Http\Request;
+use App\Http\Resources\TopFlopResource;
+use App\Services\TopFlopService;
+use Illuminate\Http\JsonResponse;
 
+/**
+ * @OA\Tag(
+ *     name="Flops",
+ *     description="Endpoints relatifs aux actions ayant les plus fortes baisses sur le marché."
+ * )
+ */
 class FlopController extends Controller
 {
+    /**
+     * Service utilisé pour récupérer les données des flops.
+     *
+     * @var TopFlopService
+     */
+    protected TopFlopService $topFlopService;
+
+    /**
+     * Injection du service dans le contrôleur.
+     *
+     * @param TopFlopService $topFlopService
+     */
+    public function __construct(TopFlopService $topFlopService)
+    {
+        $this->topFlopService = $topFlopService;
+    }
+
     /**
      * @OA\Get(
      *     path="/api/v1/flops",
      *     operationId="getFlopsList",
      *     tags={"Flops"},
-     *     summary="Liste des flops",
-     *     description="Retourne la liste des actions avec les plus fortes baisses",
+     *     summary="Récupérer la liste des actions en baisse",
+     *     description="Retourne les 5 actions ayant les plus fortes baisses enregistrées pour la journée en cours.",
      *     @OA\Response(
      *         response=200,
-     *         description="Opération réussie",
+     *         description="Liste récupérée avec succès.",
      *         @OA\JsonContent(
+     *             type="object",
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
-     *                 @OA\Items(
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="key", type="string", example="SICC_CI"),
-     *                     @OA\Property(property="symbole", type="string", example="SICC"),
-     *                     @OA\Property(property="cours", type="string", example="3 600"),
-     *                     @OA\Property(property="variation", type="number", format="float", example=-7.46),
-     *                     @OA\Property(property="created_at", type="string", format="datetime", example="2024-01-15 10:30:00"),
-     *                     @OA\Property(property="updated_at", type="string", format="datetime", example="2024-01-15 16:45:00")
-     *                 )
+     *                 @OA\Items(ref="#/components/schemas/TopFlop")
      *             )
      *         )
      *     ),
      *     @OA\Response(
      *         response=401,
-     *         description="Non authentifié",
+     *         description="Utilisateur non authentifié.",
      *         @OA\JsonContent(
      *             @OA\Property(property="message", type="string", example="Non authentifié.")
      *         )
      *     ),
-     *     security={{"sanctum":{}}}
+     *     security={{"sanctum": {}}}
      * )
+     *
+     * @return JsonResponse
      */
+    public function index(): JsonResponse
+    {
+        $flops = $this->topFlopService->getFlop(5);
 
-    public function index(){
-        $flops = Flop::query()->get();
         return response()->json([
             'success' => true,
-            'data' => FlopResource::collection($flops),
-             ]);
+            'data' => TopFlopResource::collection($flops),
+        ]);
     }
 }
