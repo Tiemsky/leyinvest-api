@@ -751,4 +751,65 @@ public function updateProfile(Request $request): JsonResponse{
         return;
     }
 }
+
+
+
+
+/**
+ * @OA\Delete(
+ *     path="/api/v1/auth/delete-user",
+ *     operationId="deleteUserAccount",
+ *     tags={"Authentication"},
+ *     summary="Supprimer le compte utilisateur authentifié",
+ *     description="Cette route permet à un utilisateur connecté de supprimer définitivement son compte et toutes les données associées. L’utilisateur doit être authentifié via un token Bearer.",
+ *     security={{"sanctum": {}}},
+ *
+ *     @OA\Response(
+ *         response=200,
+ *         description="Compte utilisateur supprimé avec succès",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="Compte utilisateur supprimé avec succès.")
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=401,
+ *         description="Non autorisé — Token manquant ou invalide",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="error", type="string", example="unauthorized"),
+ *             @OA\Property(property="message", type="string", example="Non autorisé.")
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=500,
+ *         description="Erreur interne du serveur",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             @OA\Property(property="error", type="string", example="server_error"),
+ *             @OA\Property(property="message", type="string", example="Une erreur est survenue lors de la suppression du compte.")
+ *         )
+ *     )
+ * )
+ */
+public function deleteUser(Request $request): JsonResponse
+{
+    $user = $request->user();
+    $this->authService->deleteUser($user);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Compte utilisateur supprimé avec succès.',
+    ]);
 }
+
+
+
+
+}
+
+
+

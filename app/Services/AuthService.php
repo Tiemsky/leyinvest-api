@@ -359,4 +359,36 @@ class AuthService
     {
         $this->refreshTokenService->revokeAllUserTokens($user);
     }
+
+    public function deleteUser(User $user)
+    {
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'token' => ['Veuille verifier votre token.'],
+            ]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Supprimer les tokens
+            $this->refreshTokenService->revokeAllUserTokens($user);
+
+
+            // Supprimer l'avatar s'il existe
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            // Supprimer l'utilisateur
+            $user->delete();
+
+            DB::commit();
+            Log::info("User {$user->email} deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error deleting user {$user->email}: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }

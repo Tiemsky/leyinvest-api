@@ -26,7 +26,7 @@
                     "Actions"
                 ],
                 "summary": "Lister toutes les actions avec statut de suivi",
-                "description": "Retourne toutes les actions et indique si l'utilisateur authentifié les suit",
+                "description": "Retourne toutes les actions et indique si l'utilisateur authentifié les suit. Cette route nécessite une authentification.",
                 "operationId": "getAllActions",
                 "responses": {
                     "200": {
@@ -995,6 +995,83 @@
                 }
             }
         },
+        "/api/v1/auth/delete-user": {
+            "delete": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Supprimer le compte utilisateur authentifié",
+                "description": "Cette route permet à un utilisateur connecté de supprimer définitivement son compte et toutes les données associées. L’utilisateur doit être authentifié via un token Bearer.",
+                "operationId": "deleteUserAccount",
+                "responses": {
+                    "200": {
+                        "description": "Compte utilisateur supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte utilisateur supprimé avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non autorisé — Token manquant ou invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Non autorisé."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "server_error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Une erreur est survenue lors de la suppression du compte."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/countries": {
             "get": {
                 "tags": [
@@ -1073,12 +1150,12 @@
                 "tags": [
                     "Flops"
                 ],
-                "summary": "Liste des flops",
-                "description": "Retourne la liste des actions avec les plus fortes baisses",
+                "summary": "Récupérer la liste des actions en baisse",
+                "description": "Retourne les 5 actions ayant les plus fortes baisses enregistrées pour la journée en cours.",
                 "operationId": "getFlopsList",
                 "responses": {
                     "200": {
-                        "description": "Opération réussie",
+                        "description": "Liste récupérée avec succès.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1090,40 +1167,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer",
-                                                        "example": 1
-                                                    },
-                                                    "key": {
-                                                        "type": "string",
-                                                        "example": "SICC_CI"
-                                                    },
-                                                    "symbole": {
-                                                        "type": "string",
-                                                        "example": "SICC"
-                                                    },
-                                                    "cours": {
-                                                        "type": "string",
-                                                        "example": "3 600"
-                                                    },
-                                                    "variation": {
-                                                        "type": "number",
-                                                        "format": "float",
-                                                        "example": -7.46
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string",
-                                                        "format": "datetime",
-                                                        "example": "2024-01-15 10:30:00"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string",
-                                                        "format": "datetime",
-                                                        "example": "2024-01-15 16:45:00"
-                                                    }
-                                                },
-                                                "type": "object"
+                                                "$ref": "#/components/schemas/TopFlop"
                                             }
                                         }
                                     },
@@ -1133,7 +1177,7 @@
                         }
                     },
                     "401": {
-                        "description": "Non authentifié",
+                        "description": "Utilisateur non authentifié.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1479,12 +1523,12 @@
                 "tags": [
                     "Tops"
                 ],
-                "summary": "Liste des tops",
-                "description": "Retourne la liste des actions avec les plus fortes hausses (Top 5 des meilleures performances)",
+                "summary": "Récupérer la liste des meilleures actions (Tops)",
+                "description": "Retourne les 5 actions ayant les plus fortes hausses enregistrées sur le marché pour la journée en cours.",
                 "operationId": "getTopsList",
                 "responses": {
                     "200": {
-                        "description": "Opération réussie",
+                        "description": "Liste récupérée avec succès.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1496,40 +1540,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer",
-                                                        "example": 1
-                                                    },
-                                                    "key": {
-                                                        "type": "string",
-                                                        "example": "SICC_CI"
-                                                    },
-                                                    "symbole": {
-                                                        "type": "string",
-                                                        "example": "SICC"
-                                                    },
-                                                    "cours": {
-                                                        "type": "string",
-                                                        "example": "6 007"
-                                                    },
-                                                    "variation": {
-                                                        "type": "number",
-                                                        "format": "float",
-                                                        "example": 7.46
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string",
-                                                        "format": "datetime",
-                                                        "example": "2024-01-15 10:30:00"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string",
-                                                        "format": "datetime",
-                                                        "example": "2024-01-15 16:45:00"
-                                                    }
-                                                },
-                                                "type": "object"
+                                                "$ref": "#/components/schemas/TopFlop"
                                             }
                                         }
                                     },
@@ -1539,7 +1550,7 @@
                         }
                     },
                     "401": {
-                        "description": "Non authentifié",
+                        "description": "Utilisateur non authentifié.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1881,45 +1892,6 @@
                 },
                 "type": "object"
             },
-            "StoreSaleRequest": {
-                "title": "Requête de création de vente",
-                "description": "Données nécessaires pour créer une vente",
-                "required": [
-                    "action_id",
-                    "quantite",
-                    "prix_par_action"
-                ],
-                "properties": {
-                    "action_id": {
-                        "description": "Identifiant de l'action que l'utilisateur souhaite vendre",
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "quantite": {
-                        "description": "Quantité d'actions à vendre",
-                        "type": "integer",
-                        "example": 10
-                    },
-                    "prix_par_action": {
-                        "description": "Prix unitaire de l'action",
-                        "type": "number",
-                        "format": "float",
-                        "example": 2500.75
-                    },
-                    "montant_vente": {
-                        "description": "Montant total de la vente",
-                        "type": "number",
-                        "format": "float",
-                        "example": 25007.5
-                    },
-                    "comment": {
-                        "type": "string",
-                        "maxLength": 1000,
-                        "example": "Vente partielle pour ajustement de portefeuille"
-                    }
-                },
-                "type": "object"
-            },
             "UpdateUserActionRequest": {
                 "properties": {
                     "stop_loss": {
@@ -2100,6 +2072,69 @@
                         "type": "string",
                         "format": "date-time",
                         "example": "2025-10-18T12:45:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "TopFlop": {
+                "title": "Top/Flop Resource",
+                "description": "Représente une action en forte hausse ou forte baisse sur le marché.",
+                "properties": {
+                    "key": {
+                        "description": "Clé unique de l’action.",
+                        "type": "string",
+                        "example": "SICC_CI"
+                    },
+                    "symbole": {
+                        "description": "Symbole de l’action.",
+                        "type": "string",
+                        "example": "SICC"
+                    },
+                    "nom": {
+                        "description": "Nom complet de l’entreprise.",
+                        "type": "string",
+                        "example": "Société Ivoirienne de Ciment et de Construction"
+                    },
+                    "volume": {
+                        "description": "Volume total échangé.",
+                        "type": "integer",
+                        "example": 24000
+                    },
+                    "cours_veille": {
+                        "description": "Cours de clôture de la veille.",
+                        "type": "number",
+                        "format": "float",
+                        "example": 3500
+                    },
+                    "cours_ouverture": {
+                        "description": "Cours d’ouverture du jour.",
+                        "type": "number",
+                        "format": "float",
+                        "example": 3600
+                    },
+                    "cours_cloture": {
+                        "description": "Cours de clôture du jour.",
+                        "type": "number",
+                        "format": "float",
+                        "example": 3400
+                    },
+                    "variation": {
+                        "description": "Variation en pourcentage du cours.",
+                        "type": "number",
+                        "format": "float",
+                        "example": -7.46
+                    },
+                    "created_at": {
+                        "description": "Date de création de l’enregistrement.",
+                        "type": "string",
+                        "format": "datetime",
+                        "example": "2025-01-15 10:30:00"
+                    },
+                    "updated_at": {
+                        "description": "Date de dernière mise à jour.",
+                        "type": "string",
+                        "format": "datetime",
+                        "example": "2025-01-15 16:45:00"
                     }
                 },
                 "type": "object"
@@ -2340,6 +2375,14 @@
             "description": "Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
         },
         {
+            "name": "Flops",
+            "description": "Endpoints relatifs aux actions ayant les plus fortes baisses sur le marché."
+        },
+        {
+            "name": "Tops",
+            "description": "Endpoints relatifs aux actions ayant les plus fortes hausses sur le marché."
+        },
+        {
             "name": "UserDashboard",
             "description": "Endpoints qui regroupe tous les elements du tableau de bord utilisateur"
         },
@@ -2348,20 +2391,16 @@
             "description": "Actions"
         },
         {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
             "name": "Pays de l'UEMOA",
             "description": "Pays de l'UEMOA"
         },
         {
-            "name": "Flops",
-            "description": "Flops"
-        },
-        {
             "name": "Google Authentication",
             "description": "Google Authentication"
-        },
-        {
-            "name": "Tops",
-            "description": "Tops"
         },
         {
             "name": "User Actions",

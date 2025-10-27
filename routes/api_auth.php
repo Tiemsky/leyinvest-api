@@ -77,5 +77,7 @@ Route::post('/google/token', [GoogleAuthController::class, 'tokenLogin'])
         // Déconnexion
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('logout-all', [AuthController::class, 'logoutAll']);
+
+        Route::delete('delete-user', [AuthController::class, 'deleteUser']);
     });
 });
