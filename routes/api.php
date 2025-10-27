@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BocIndicator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TopController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Api\V1\FlopController;
 use App\Http\Controllers\Api\V1\ActionController;
 use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\UserActionController;
+use App\Http\Controllers\Api\V1\BocIndicatorController;
 use App\Http\Controllers\Api\V1\UserDashboardController;
 
 
@@ -52,6 +54,7 @@ Route::prefix('v1')->group(function(){
         });
 
         Route::get('/actions', [ActionController::class, 'index']);
+        Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
 
 

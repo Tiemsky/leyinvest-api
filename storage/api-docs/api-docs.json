@@ -924,81 +924,10 @@
                         "sanctum": []
                     }
                 ]
-            }
-        },
-        "/api/v1/auth/change-password": {
-            "post": {
-                "tags": [
-                    "Authentification"
-                ],
-                "summary": "Changer le mot de passe",
-                "description": "L'utilisateur peut changer son mot de passe en fournissant l'ancien et le nouveau",
-                "operationId": "f83da601e5c46325635cedf21eb6be3d",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChangePasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Mot de passe modifié avec succès",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Le mot de passe a été modifié avec succès."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Erreur de validation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "errors": {
-                                            "properties": {
-                                                "current_password": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string",
-                                                        "example": "Le mot de passe actuel est incorrect."
-                                                    }
-                                                },
-                                                "new_password": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string",
-                                                        "example": "Le nouveau mot de passe doit être différent de l'ancien."
-                                                    }
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/delete-user": {
+            },
             "delete": {
                 "tags": [
-                    "Authentication"
+                    "Authentification"
                 ],
                 "summary": "Supprimer le compte utilisateur authentifié",
                 "description": "Cette route permet à un utilisateur connecté de supprimer définitivement son compte et toutes les données associées. L’utilisateur doit être authentifié via un token Bearer.",
@@ -1070,6 +999,129 @@
                         "sanctum": []
                     }
                 ]
+            }
+        },
+        "/api/v1/auth/change-password": {
+            "post": {
+                "tags": [
+                    "Authentification"
+                ],
+                "summary": "Changer le mot de passe",
+                "description": "L'utilisateur peut changer son mot de passe en fournissant l'ancien et le nouveau",
+                "operationId": "f83da601e5c46325635cedf21eb6be3d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Mot de passe modifié avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le mot de passe a été modifié avec succès."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "errors": {
+                                            "properties": {
+                                                "current_password": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le mot de passe actuel est incorrect."
+                                                    }
+                                                },
+                                                "new_password": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "Le nouveau mot de passe doit être différent de l'ancien."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/indicators": {
+            "get": {
+                "tags": [
+                    "Indicators"
+                ],
+                "summary": "Lister tous les indicateurs financiers",
+                "description": "Retourne la liste complète des indicateurs disponibles dans le système.",
+                "operationId": "getIndicator",
+                "responses": {
+                    "200": {
+                        "description": "Liste des indicateurs récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BocIndicatorResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur interne du serveur."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/countries": {
@@ -2038,6 +2090,51 @@
                 },
                 "type": "object"
             },
+            "BocIndicatorResource": {
+                "title": "Rapport des indicateurs via la ressource BocIndicatorResource",
+                "description": "Structure d’un rapport d'indicateur financier renvoyé par l’API",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "date_rapport": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-10-24"
+                    },
+                    "taux_rendement_moyen": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 7.29
+                    },
+                    "per_moyen": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 13.14
+                    },
+                    "taux_rentabilite_moyen": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 9.07
+                    },
+                    "prime_risque_marche": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1.86
+                    },
+                    "source_pdf": {
+                        "type": "string",
+                        "example": "https://www.brvm.org/sites/default/files/boc_20251024_2.pdf"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-27 10:19:38"
+                    }
+                },
+                "type": "object"
+            },
             "StepOneAuthResource": {
                 "title": "Utilisateur En Première Étape d'inscription",
                 "description": "Représente un utilisateur ayant complété la première étape de l'inscription",
@@ -2391,8 +2488,8 @@
             "description": "Actions"
         },
         {
-            "name": "Authentication",
-            "description": "Authentication"
+            "name": "Indicators",
+            "description": "Indicators"
         },
         {
             "name": "Pays de l'UEMOA",
