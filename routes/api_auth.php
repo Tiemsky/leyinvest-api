@@ -64,6 +64,8 @@ Route::post('/google/token', [GoogleAuthController::class, 'tokenLogin'])
         // Informations utilisateur
         Route::get('user/me', [AuthController::class, 'user']);
 
+        Route::delete('user/me', [AuthController::class, 'deleteUser']);
+
         // Mise à jour du profil
         Route::post('update-profile', [AuthController::class, 'updateProfile']);
         Route::put('update-profile', [AuthController::class, 'updateProfile']); // Alternative REST
@@ -78,6 +80,6 @@ Route::post('/google/token', [GoogleAuthController::class, 'tokenLogin'])
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('logout-all', [AuthController::class, 'logoutAll']);
 
-        Route::delete('delete-user', [AuthController::class, 'deleteUser']);
+
     });
 });

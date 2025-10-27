@@ -757,9 +757,9 @@ public function updateProfile(Request $request): JsonResponse{
 
 /**
  * @OA\Delete(
- *     path="/api/v1/auth/delete-user",
+ *     path="/api/v1/auth/user/me",
  *     operationId="deleteUserAccount",
- *     tags={"Authentication"},
+ *     tags={"Authentification"},
  *     summary="Supprimer le compte utilisateur authentifié",
  *     description="Cette route permet à un utilisateur connecté de supprimer définitivement son compte et toutes les données associées. L’utilisateur doit être authentifié via un token Bearer.",
  *     security={{"sanctum": {}}},
