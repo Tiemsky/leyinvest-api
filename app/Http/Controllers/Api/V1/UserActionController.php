@@ -147,19 +147,19 @@ class UserActionController extends Controller
         }
     }
 
-
-
-    /**
+/**
  * Ne plus suivre plusieurs actions
  */
-/**
+
+ /**
  * @OA\Post(
  *     path="/api/v1/user/actions/unfollow",
  *     operationId="unfollowMultipleActions",
  *     tags={"User Actions"},
  *     summary="Ne plus suivre plusieurs actions",
- *     description="Permet de ne plus suivre une ou plusieurs actions en une seule requête",
+ *     description="Permet à un utilisateur authentifié de ne plus suivre une ou plusieurs actions en une seule requête.",
  *     security={{"sanctum": {}}},
+ *
  *     @OA\RequestBody(
  *         required=true,
  *         @OA\JsonContent(
@@ -167,28 +167,54 @@ class UserActionController extends Controller
  *             @OA\Property(
  *                 property="action_ids",
  *                 type="array",
- *                 description="Liste des IDs d'actions à unfollow",
- *                 @OA\Items(type="integer"),
- *                 example=[10, 15, 23]
+ *                 description="Liste des IDs des actions à ne plus suivre.",
+ *                 @OA\Items(type="integer", example=10),
+ *                 example={10, 15, 23}
  *             )
  *         )
  *     ),
+ *
  *     @OA\Response(
  *         response=200,
  *         description="Actions retirées avec succès",
  *         @OA\JsonContent(
  *             @OA\Property(property="success", type="boolean", example=true),
  *             @OA\Property(property="message", type="string", example="3 action(s) retirée(s) avec succès"),
+ *             @OA\Property(property="unfollowed_count", type="integer", example=3),
  *             @OA\Property(
  *                 property="not_found_ids",
  *                 type="array",
+ *                 description="Liste des IDs non trouvés (si certains IDs ne correspondent pas à des actions suivies).",
  *                 @OA\Items(type="integer"),
  *                 example={}
  *             )
  *         )
  *     ),
- *     @OA\Response(response=401, description="Non authentifié"),
- *     @OA\Response(response=422, description="Données de validation invalides")
+ *
+ *     @OA\Response(
+ *         response=401,
+ *         description="Non authentifié — jeton d'accès manquant ou invalide.",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="message", type="string", example="Unauthenticated.")
+ *         )
+ *     ),
+ *
+ *     @OA\Response(
+ *         response=422,
+ *         description="Données de validation invalides.",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+ *             @OA\Property(
+ *                 property="errors",
+ *                 type="object",
+ *                 @OA\Property(
+ *                     property="action_ids",
+ *                     type="array",
+ *                     @OA\Items(type="string", example="The action_ids field is required.")
+ *                 )
+ *             )
+ *         )
+ *     )
  * )
  */
 public function unfollowMultiple(Request $request): JsonResponse

@@ -1070,6 +1070,103 @@
                 }
             }
         },
+        "/api/profile/update": {
+            "patch": {
+                "tags": [
+                    "Profil"
+                ],
+                "summary": "Mettre à jour le profil de l'utilisateur",
+                "description": "Permet à un utilisateur authentifié de mettre à jour les informations de son profil.",
+                "operationId": "333d328c8fcf8a16c70f795c947d6d76",
+                "requestBody": {
+                    "description": "Champs facultatifs du profil utilisateur",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Kouadio"
+                                    },
+                                    "prenom": {
+                                        "type": "string",
+                                        "example": "Jean"
+                                    },
+                                    "country_id": {
+                                        "type": "integer",
+                                        "example": 225
+                                    },
+                                    "numero": {
+                                        "type": "string",
+                                        "example": "+22507000000"
+                                    },
+                                    "whatsaap": {
+                                        "type": "string",
+                                        "example": "+22507000000"
+                                    },
+                                    "age": {
+                                        "type": "integer",
+                                        "example": 29
+                                    },
+                                    "situation_professionnelle": {
+                                        "type": "string",
+                                        "example": "Développeur Laravel"
+                                    },
+                                    "avatar": {
+                                        "description": "Image du profil (max 2MB)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profil mis à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profil mis à jour avec succès."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/AuthUserResource"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Utilisateur non authentifié ou token invalide"
+                    },
+                    "422": {
+                        "description": "Erreur de validation des champs"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/indicators": {
             "get": {
                 "tags": [
@@ -1742,6 +1839,127 @@
                 ]
             }
         },
+        "/api/v1/user/actions/unfollow": {
+            "post": {
+                "tags": [
+                    "User Actions"
+                ],
+                "summary": "Ne plus suivre plusieurs actions",
+                "description": "Permet à un utilisateur authentifié de ne plus suivre une ou plusieurs actions en une seule requête.",
+                "operationId": "unfollowMultipleActions",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "action_ids"
+                                ],
+                                "properties": {
+                                    "action_ids": {
+                                        "description": "Liste des IDs des actions à ne plus suivre.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "example": [
+                                            10,
+                                            15,
+                                            23
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Actions retirées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "3 action(s) retirée(s) avec succès"
+                                        },
+                                        "unfollowed_count": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "not_found_ids": {
+                                            "description": "Liste des IDs non trouvés (si certains IDs ne correspondent pas à des actions suivies).",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "integer"
+                                            },
+                                            "example": []
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié — jeton d'accès manquant ou invalide.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Données de validation invalides.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "action_ids": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The action_ids field is required."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/user/action/{actionId}": {
             "patch": {
                 "tags": [
@@ -2135,6 +2353,57 @@
                 },
                 "type": "object"
             },
+            "FinancialNewsResource": {
+                "title": "Financial News Resource",
+                "description": "Représentation d'une actualité financière provenant de la BRVM ou de RichBourse.",
+                "properties": {
+                    "id": {
+                        "description": "Identifiant unique de l'actualité",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "company": {
+                        "description": "Nom de la société concernée par l'actualité",
+                        "type": "string",
+                        "example": "ECOBANK CI"
+                    },
+                    "title": {
+                        "description": "Titre de l'actualité financière",
+                        "type": "string",
+                        "example": "ECOBANK CÔTE D'IVOIRE : Notation Financière"
+                    },
+                    "pdf_url": {
+                        "description": "Lien direct vers le document PDF de la publication",
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://www.brvm.org/files/boc_20251028.pdf"
+                    },
+                    "source": {
+                        "description": "Source de l'information (brvm_notations, richbourse_etats_financiers, etc.)",
+                        "type": "string",
+                        "example": "brvm_notations"
+                    },
+                    "published_at": {
+                        "description": "Date de publication officielle de l'actualité",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-10-28"
+                    },
+                    "created_at": {
+                        "description": "Date et heure d'enregistrement dans la base de données",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-29T10:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Dernière date de mise à jour de l'enregistrement",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-10-29T10:05:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
             "StepOneAuthResource": {
                 "title": "Utilisateur En Première Étape d'inscription",
                 "description": "Représente un utilisateur ayant complété la première étape de l'inscription",
@@ -2486,6 +2755,10 @@
         {
             "name": "Actions",
             "description": "Actions"
+        },
+        {
+            "name": "Profil",
+            "description": "Profil"
         },
         {
             "name": "Indicators",
