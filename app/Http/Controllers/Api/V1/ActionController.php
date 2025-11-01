@@ -44,6 +44,7 @@ class ActionController extends Controller
         // Récupère toutes les actions
         $actions = Action::all();
 
+
         // Transforme chaque ressource en lui injectant les actions suivies
         $data = $actions->map(function ($action) use ($followedIds) {
             return (new ActionResource($action))->withFollowedIds($followedIds);

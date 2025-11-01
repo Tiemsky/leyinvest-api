@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\FollowActionRequest;
-use App\Http\Requests\UpdateUserActionRequest;
-use App\Http\Resources\UserActionResource;
-use App\Services\UserActionService;
-use App\Exceptions\AlreadyFollowingException;
-use App\Exceptions\NotFollowingException;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Services\UserActionService;
+use App\Http\Controllers\Controller;
+use App\Exceptions\NotFollowingException;
+use App\Http\Requests\FollowActionRequest;
+use App\Http\Resources\UserActionResource;
+use App\Exceptions\AlreadyFollowingException;
+use App\Http\Requests\UpdateUserActionRequest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -145,6 +146,69 @@ class UserActionController extends Controller
             ], 404);
         }
     }
+
+
+
+    /**
+ * Ne plus suivre plusieurs actions
+ */
+/**
+ * @OA\Post(
+ *     path="/api/v1/user/actions/unfollow",
+ *     operationId="unfollowMultipleActions",
+ *     tags={"User Actions"},
+ *     summary="Ne plus suivre plusieurs actions",
+ *     description="Permet de ne plus suivre une ou plusieurs actions en une seule requête",
+ *     security={{"sanctum": {}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"action_ids"},
+ *             @OA\Property(
+ *                 property="action_ids",
+ *                 type="array",
+ *                 description="Liste des IDs d'actions à unfollow",
+ *                 @OA\Items(type="integer"),
+ *                 example=[10, 15, 23]
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Actions retirées avec succès",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean", example=true),
+ *             @OA\Property(property="message", type="string", example="3 action(s) retirée(s) avec succès"),
+ *             @OA\Property(
+ *                 property="not_found_ids",
+ *                 type="array",
+ *                 @OA\Items(type="integer"),
+ *                 example={}
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(response=401, description="Non authentifié"),
+ *     @OA\Response(response=422, description="Données de validation invalides")
+ * )
+ */
+public function unfollowMultiple(Request $request): JsonResponse
+{
+    $validated = $request->validate([
+        'action_ids' => 'required|array|min:1',
+        'action_ids.*' => 'required|integer|exists:actions,id'
+    ]);
+
+    $result = $this->userActionService->unfollowMultiple(
+        auth()->id(),
+        $validated['action_ids']
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => "{$result['unfollowed_count']} action(s) retirée(s) avec succès",
+        'unfollowed_count' => $result['unfollowed_count'],
+    ], 200);
+}
 
     /**
      * Mettre à jour les paramètres (stop_loss, take_profit)

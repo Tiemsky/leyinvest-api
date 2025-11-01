@@ -48,6 +48,29 @@ class UserActionService
         return $userAction->delete();
     }
 
+
+    public function unfollowMultiple(int $userId, array $actionIds): array
+{
+    // Récupérer toutes les actions suivies par l'utilisateur parmi celles demandées
+    $userActions = UserAction::where('user_id', $userId)
+        ->whereIn('action_id', $actionIds)
+        ->get();
+
+    $foundActionIds = $userActions->pluck('action_id')->toArray();
+    $notFoundActionIds = array_diff($actionIds, $foundActionIds);
+
+    // Supprimer toutes les actions trouvées
+    $unfollowedCount = UserAction::where('user_id', $userId)
+        ->whereIn('action_id', $foundActionIds)
+        ->delete();
+
+    return [
+        'unfollowed_count' => $unfollowedCount,
+        'not_found_count' => count($notFoundActionIds),
+        'not_found_ids' => array_values($notFoundActionIds)
+    ];
+}
+
     /**
      * Mettre à jour les valeurs stop_loss et take_profit
      */
