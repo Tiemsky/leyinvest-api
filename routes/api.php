@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\ActionController;
 use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\UserActionController;
 use App\Http\Controllers\Api\V1\BocIndicatorController;
+use App\Http\Controllers\Api\V1\FinancialNewsController;
 use App\Http\Controllers\Api\V1\UserDashboardController;
 
 
@@ -31,6 +32,9 @@ Route::prefix('v1')->group(function(){
             // Ne plus suivre une action
             Route::delete('/action/{actionId}/unfollow', [UserActionController::class, 'unfollow'])
                 ->name('unfollow');
+
+            // Route pour unfollow plusieurs actions
+            Route::post('/actions/unfollow', [UserActionController::class, 'unfollowMultiple']);
 
             // Mettre à jour les paramètres d'une action suivie
             Route::patch('/action/{actionId}', [UserActionController::class, 'update'])
@@ -55,6 +59,7 @@ Route::prefix('v1')->group(function(){
 
         Route::get('/actions', [ActionController::class, 'index']);
         Route::get('/indicators', [BocIndicatorController::class, 'index']);
+        Route::get('/financial-news', [FinancialNewsController::class, 'index'])->name('financial-news.index');
 
 
 
