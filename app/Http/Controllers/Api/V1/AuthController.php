@@ -713,14 +713,65 @@ public function resetPassword(ResetPasswordRequest $request): JsonResponse
      */
 
 
+/**
+     * @OA\Patch(
+     *     path="/api/profile/update",
+     *     summary="Mettre à jour le profil de l'utilisateur",
+     *     description="Permet à un utilisateur authentifié de mettre à jour les informations de son profil.",
+     *     tags={"Profil"},
+     *     security={{"sanctum": {}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Champs facultatifs du profil utilisateur",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 @OA\Property(property="nom", type="string", example="Kouadio"),
+     *                 @OA\Property(property="prenom", type="string", example="Jean"),
+     *                 @OA\Property(property="country_id", type="integer", example=225),
+     *                 @OA\Property(property="numero", type="string", example="+22507000000"),
+     *                 @OA\Property(property="whatsaap", type="string", example="+22507000000"),
+     *                 @OA\Property(property="age", type="integer", example=29),
+     *                 @OA\Property(property="situation_professionnelle", type="string", example="Développeur Laravel"),
+     *                 @OA\Property(property="avatar", type="string", format="binary", description="Image du profil (max 2MB)")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profil mis à jour avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Profil mis à jour avec succès."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 @OA\Property(property="user", ref="#/components/schemas/AuthUserResource")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=401,
+     *         description="Utilisateur non authentifié ou token invalide"
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Erreur de validation des champs"
+     *     )
+     * )
+     */
 public function updateProfile(Request $request): JsonResponse{
     $request->validate([
-        'nom' => ['sometimes', 'string', 'max:255'],
-        'prenoms' => ['sometimes', 'string', 'max:255'],
-        'country_id' => ['sometimes', 'integer', 'max:100'],
-        'numero' => ['sometimes', 'string', 'max:20'],
-        'whatsaap' => ['sometimes', 'string', 'max:20'],
-        'age' => ['sometimes', 'integer', 'max:100'],
+        'nom'           => ['sometimes', 'string', 'max:255'],
+        'prenom'        => ['sometimes', 'string', 'max:255'],
+        'country_id'    => ['sometimes', 'integer', 'max:100'],
+        'numero'        => ['sometimes', 'string', 'max:20'],
+        'whatsaap'      => ['sometimes', 'string', 'max:20'],
+        'age'           => ['sometimes', 'integer', 'max:100'],
         'situation_professionnelle' => ['sometimes', 'string', 'max:100'],
         'avatar' => ['sometimes', 'image', 'max:2048'], // Max 2MB
     ]);
@@ -729,10 +780,10 @@ public function updateProfile(Request $request): JsonResponse{
     // Update Profile
     $this->authService->updateProfile($user, $request->only(['nom', 'prenomss', 'phone', 'country']));
 
-    // Update Avatar
-    if ($request->hasFile('avatar')) {
-        $this->authService->updateAvatar($user, $request->file('avatar'));
-    }
+    // // Update Avatar
+    // if ($request->hasFile('avatar')) {
+    //     $this->authService->updateAvatar($user, $request->file('avatar'));
+    // }
 
     return response()->json([
         'success' => true,
@@ -742,6 +793,8 @@ public function updateProfile(Request $request): JsonResponse{
         ],
     ]);
 }
+
+
 /**  * Mettre à jour ou supprimer l'avatar de l'utilisateur
   */public function manageAvatar(Request $request): void {
     $user = $request->user();
