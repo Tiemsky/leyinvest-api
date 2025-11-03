@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\BrvmSector;
+use App\Models\ClassifiedSector;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,6 +16,8 @@ return new class extends Migration
         Schema::create('actions', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
+            $table->ForeignIdFor(BrvmSector::class)->constrained('brvm_sectors')->onDelete('cascade');
+            $table->ForeignIdFor(ClassifiedSector::class)->constrained('classified_sectors')->onDelete('cascade');
             $table->string('symbole', 10)->unique();
             $table->string('nom');
             $table->string('volume');
@@ -21,7 +25,6 @@ return new class extends Migration
             $table->decimal('cours_ouverture')->default(0);
             $table->decimal('cours_cloture')->default(0);
             $table->decimal('variation')->default(0);
-            $table->string('categorie')->nullable();
             $table->timestamps();
         });
     }

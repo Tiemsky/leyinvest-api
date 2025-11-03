@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CountrySeeder::class,
             RoleSeeder::class,
+            BrvmSectorSeeder::class,
+            ClassifiedSectorSeeder::class,
             ActionSeeder::class,
             TopSeeder::class,
             FlopSeeder::class,

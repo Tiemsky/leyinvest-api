@@ -42,7 +42,7 @@ class ActionController extends Controller
         $followedIds = UserAction::where('user_id', $user->id)->pluck('action_id')->toArray();
 
         // Récupère toutes les actions
-        $actions = Action::all();
+        $actions = Action::query()->with(['brvmSector', 'classifiedSector'])->latest()->get();
 
 
         // Transforme chaque ressource en lui injectant les actions suivies
