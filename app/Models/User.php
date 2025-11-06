@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Concerns\HasKey;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;

@@ -3,40 +3,59 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\Wallet;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Notifications\SendOtpNotification;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\UploadedFile;
 
 class AuthService
 {
-    protected RefreshTokenService $refreshTokenService;
+    public function __construct(protected RefreshTokenService $refreshTokenService) {}
 
-    public function __construct(RefreshTokenService $refreshTokenService)
-    {
-        $this->refreshTokenService = $refreshTokenService;
-    }
     /**
-     * Étape 1 : Enregistrer les informations de base et envoyer l'OTP
+     * Étape 1 : Enregistrer ou reprendre une inscription incomplète et envoyer l'OTP
      */
-    public function registerStepOne(array $data): User
+    public function registerStepOne(array $data): array
     {
+        $email = $data['email'];
+
+        // Vérifie si une inscription incomplète existe
+        $user = User::where('email', $email)
+            ->where('registration_completed', false)
+            ->first();
+
+        if ($user) {
+            // Réutiliser l'utilisateur existant → régénérer OTP
+            $otp = $user->generateOtpCode();
+            $user->notify(new SendOtpNotification($otp, 'verification'));
+            Log::info("OTP resent for incomplete registration to {$user->email}: {$otp}");
+
+            return [
+                'user' => $user,
+                'message' => 'Vous avez déjà commencé une inscription. Un nouveau code OTP a été envoyé.',
+            ];
+        }
+
+        // Sinon, créer un nouvel utilisateur
         $user = User::create([
             'nom' => $data['nom'],
             'prenom' => $data['prenom'],
-            'email' => $data['email'],
+            'email' => $email,
             'email_verified' => false,
             'registration_completed' => false,
         ]);
 
         $otp = $user->generateOtpCode();
         $user->notify(new SendOtpNotification($otp, 'verification'));
-        Log::info("OTP for registration sent to {$user->email}: {$otp}");
-        return $user;
+        Log::info("New OTP for registration sent to {$user->email}: {$otp}");
+
+        return [
+            'user' => $user,
+            'message' => 'Code OTP envoyé. Veuillez vérifier votre email.',
+        ];
     }
 
     /**
@@ -44,11 +63,19 @@ class AuthService
      */
     public function verifyRegistrationOtp(string $email, string $otp): User
     {
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $email)
+            ->where('registration_completed', false)
+            ->first();
+
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['Aucune inscription en cours trouvée pour cet email.'],
+            ]);
+        }
 
         if ($user->email_verified) {
             throw ValidationException::withMessages([
-                'otp' => ['Cet email est déjà vérifié. Veuillez veuillez complétez votre inscription.'],
+                'otp' => ['Cet email est déjà vérifié. Veuillez compléter votre inscription.'],
             ]);
         }
 
@@ -64,32 +91,29 @@ class AuthService
             ]);
         }
 
-        return $user;
+        // Marquer email comme vérifié
+        $user->update(['email_verified' => true]);
+        return $user->fresh();
     }
 
     /**
-     * Étape 2 : Compléter l'inscription avec mot de passe et informations complémentaires
+     * Étape 2 : Compléter l'inscription
      */
     public function registerStepTwo(array $data): User
     {
-        $user = User::where('email', $data['email'])->firstOrFail();
+        $user = User::where('email', $data['email'])
+            ->where('email_verified', true)
+            ->where('registration_completed', false)
+            ->first();
 
-        if (!$user->email_verified) {
+        if (!$user) {
             throw ValidationException::withMessages([
-                'email' => ['Veuillez d\'abord vérifier votre email avec le code OTP.'],
-            ]);
-        }
-
-        if ($user->registration_completed) {
-            throw ValidationException::withMessages([
-                'email' => ['L\'inscription pour ce compte est déjà complétée.'],
+                'email' => ['Aucune inscription en attente de complétion pour cet email.'],
             ]);
         }
 
         DB::beginTransaction();
-
         try {
-            // Compléter l'inscription
             $user->completeRegistration([
                 'password' => $data['password'],
                 'country_id' => $data['country_id'],
@@ -100,11 +124,8 @@ class AuthService
                 'situation_professionnelle' => $data['situation_professionnelle'] ?? null,
             ]);
 
-
             DB::commit();
-
             return $user->fresh();
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -112,31 +133,24 @@ class AuthService
     }
 
     /**
-     * Connexion utilisateur avec refresh token
+     * Connexion
      */
     public function login(array $credentials, string $deviceName = 'api'): array
     {
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (
+            !$user ||
+            !$user->registration_completed ||
+            !$user->email_verified ||
+            !Hash::check($credentials['password'], $user->password)
+        ) {
+            // Uniformiser le message pour éviter fuite d'info
             throw ValidationException::withMessages([
                 'email' => ['Ces informations d\'identification ne correspondent pas à nos enregistrements.'],
             ]);
         }
 
-        if (!$user->email_verified) {
-            throw ValidationException::withMessages([
-                'email' => ['Veuillez vérifier votre email avant de vous connecter.'],
-            ]);
-        }
-
-        if (!$user->hasCompletedRegistration()) {
-            throw ValidationException::withMessages([
-                'email' => ['Veuillez compléter votre inscription.'],
-            ]);
-        }
-
-        // Créer les tokens (access + refresh)
         $tokens = $this->refreshTokenService->createTokens($user, $deviceName);
 
         return [
@@ -149,16 +163,15 @@ class AuthService
         ];
     }
 
-        /**
-     * Rafraîchir l'access token
-     */
     public function refreshToken(string $refreshToken): array
     {
         $tokens = $this->refreshTokenService->refreshToken($refreshToken);
-
-        // Récupérer l'utilisateur pour l'inclure dans la réponse
-        $tokenInfo = $this->refreshTokenService->getTokenInfo($tokens['refresh_token']);
+        $tokenInfo = $this->refreshTokenService->getTokenInfo($refreshToken);
         $user = User::find($tokenInfo['user_id']);
+
+        if (!$user) {
+            throw ValidationException::withMessages(['token' => ['Utilisateur introuvable.']]);
+        }
 
         return [
             'user' => $user,
@@ -170,88 +183,80 @@ class AuthService
         ];
     }
 
-    /**
-     * Renvoyer le code OTP
-     */
     public function resendOtp(string $email): void
     {
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $email)
+            ->where('registration_completed', false)
+            ->first();
+
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['Aucune inscription en cours trouvée pour cet email.'],
+            ]);
+        }
 
         if ($user->email_verified && $user->registration_completed) {
             throw ValidationException::withMessages([
-                'email' => ['Ce compte est déjà vérifié et complété.'],
+                'email' => ['Ce compte est déjà actif.'],
             ]);
         }
-
         $otp = $user->generateOtpCode();
         $user->notify(new SendOtpNotification($otp, 'verification'));
+        Log::info("OTP resent to {$user->email}");
     }
 
-    /**
-     * Demander la réinitialisation du mot de passe
-     */
     public function forgotPassword(string $email): void
     {
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $email)
+            ->where('registration_completed', true)
+            ->where('email_verified', true)
+            ->first();
 
-        if (!$user->hasCompletedRegistration()) {
-            throw ValidationException::withMessages([
-                'email' => ['Ce compte n\'a pas encore été complété. Veuillez terminer votre inscription.'],
-            ]);
+        if (!$user) {
+            // Ne pas révéler si l'email existe ou non → sécurité
+            return;
         }
-
         $otp = $user->generateOtpCode();
         $user->notify(new SendOtpNotification($otp, 'reset'));
     }
 
     public function verifyResetOtp(string $email, string $otp): User
     {
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $email)
+            ->where('registration_completed', true)
+            ->where('email_verified', true)
+            ->first();
 
-        if ($user->isOtpExpired()) {
+        if (!$user || $user->isOtpExpired() || !$user->verifyOtpCode($otp)) {
             throw ValidationException::withMessages([
-                'otp' => ['Le code OTP a expiré. Veuillez demander un nouveau code.'],
+                'otp' => ['Le code OTP est invalide ou a expiré.'],
             ]);
         }
+        // Nettoyer OTP après vérification réussie
+        $user->update(['otp_code' => null, 'otp_expires_at' => null]);
 
-        if ($user->otp_code !== $otp) {
-            throw ValidationException::withMessages([
-                'otp' => ['Le code OTP est invalide.'],
-            ]);
-        }
-
-        $user->update([
-            'otp_code' => null,
-            'otp_expires_at' => null,
-        ]);
         return $user;
     }
 
-    /**
-     * Réinitialiser le mot de passe
-     */
     public function resetPassword(string $email, string $password, string $passwordConfirmation): User
     {
-        $user = User::where('email', $email)->firstOrFail();
         if ($password !== $passwordConfirmation) {
             throw ValidationException::withMessages([
-                'password_confirmation' => ['Les mot de passe ne sont pas identiques.'],
+                'password_confirmation' => ['Les mots de passe ne correspondent pas.'],
             ]);
         }
 
-        $user->update([
-            'password' => Hash::make($password),
-        ]);
-
-        // Révoquer tous les tokens existants
-        $user->tokens()->delete();
-
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['Utilisateur non trouvé.'],
+            ]);
+        }
+        $user->update(['password' => Hash::make($password)]);
+        $user->tokens()->delete(); // Révoquer tous les tokens
         return $user;
     }
 
-    /**
-     * Changer le mot de passe (utilisateur connecté)
-     */
     public function changePassword(User $user, string $currentPassword, string $newPassword): User
     {
         if (!Hash::check($currentPassword, $user->password)) {
@@ -266,65 +271,37 @@ class AuthService
             ]);
         }
 
-        $user->update([
-            'password' => Hash::make($newPassword),
-        ]);
-
-        Log::info("Password changed for user {$user->email}");
-
+        $user->update(['password' => Hash::make($newPassword)]);
         return $user->fresh();
     }
 
-    /**
-     * Mettre à jour les informations du profil
-     */
     public function updateProfile(User $user, array $data): User
     {
-        $allowedFields = ['nom', 'prenom', 'numero', 'country_id', 'whatsapp', 'age', 'situation_professionnelle'];
-        $updateData = [];
+        $allowed = ['nom', 'prenom', 'numero', 'country_id', 'whatsapp', 'age', 'situation_professionnelle'];
+        $update = array_intersect_key($data, array_flip($allowed));
 
-        foreach ($allowedFields as $field) {
-            if (isset($data[$field])) {
-                $updateData[$field] = $data[$field];
-            }
-        }
-
-        if (empty($updateData)) {
+        if (empty($update)) {
             throw ValidationException::withMessages([
                 'data' => ['Aucune donnée valide à mettre à jour.'],
             ]);
         }
 
-        $user->update($updateData);
-        Log::info("Profile updated for user {$user->email}", $updateData);
+        $user->update($update);
         return $user->fresh();
     }
 
-    /**
-     * Mettre à jour l'avatar de l'utilisateur
-     */
     public function updateAvatar(User $user, UploadedFile $avatar): User
     {
-        // Supprimer l'ancien avatar s'il existe
         if ($user->avatar) {
             Storage::disk('public')->delete($user->avatar);
         }
 
-        // Stocker le nouvel avatar
         $path = $avatar->store('avatars', 'public');
-
-        $user->update([
-            'avatar' => $path,
-        ]);
-
-        Log::info("Avatar updated for user {$user->email}");
-
+        $user->update(['avatar' => $path]);
+        Log::info("Avatar updated for {$user->email}");
         return $user->fresh();
     }
 
-    /**
-     * Supprimer l'avatar de l'utilisateur
-     */
     public function deleteAvatar(User $user): User
     {
         if (!$user->avatar) {
@@ -334,60 +311,37 @@ class AuthService
         }
 
         Storage::disk('public')->delete($user->avatar);
-
-        $user->update([
-            'avatar' => null,
-        ]);
-
-        Log::info("Avatar deleted for user {$user->email}");
-
+        $user->update(['avatar' => null]);
+        Log::info("Avatar deleted for {$user->email}");
         return $user->fresh();
     }
 
-      /**
-     * Déconnexion
-     */
     public function logout(User $user): void
     {
-        $user->currentAccessToken()->delete();
+        $user->currentAccessToken()?->delete();
     }
 
-    /**
-     * Déconnexion de tous les appareils
-     */
     public function logoutAll(User $user): void
     {
         $this->refreshTokenService->revokeAllUserTokens($user);
     }
 
-    public function deleteUser(User $user)
+    public function deleteUser(User $user): void
     {
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'token' => ['Veuille verifier votre token.'],
-            ]);
-        }
-
         DB::beginTransaction();
-
         try {
-            // Supprimer les tokens
             $this->refreshTokenService->revokeAllUserTokens($user);
 
-
-            // Supprimer l'avatar s'il existe
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
 
-            // Supprimer l'utilisateur
             $user->delete();
-
             DB::commit();
-            Log::info("User {$user->email} deleted successfully.");
+            Log::info("User {$user->email} deleted.");
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error deleting user {$user->email}: " . $e->getMessage());
+            Log::error("Failed to delete user {$user->email}: " . $e->getMessage());
             throw $e;
         }
     }
