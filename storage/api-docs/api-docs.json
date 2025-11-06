@@ -62,6 +62,147 @@
                 ]
             }
         },
+        "/api/v1/admin/maintenance/cleanup-incomplete-registrations": {
+            "post": {
+                "tags": [
+                    "Admin - Maintenance"
+                ],
+                "summary": "Nettoyage des inscriptions incomplètes",
+                "description": "Cette route permet à un administrateur d'exécuter ou de simuler (dry-run) le nettoyage des inscriptions incomplètes via l'appel de la commande Artisan `registrations:cleanup`.",
+                "operationId": "cleanupIncompleteRegistrations",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "dry_run": {
+                                        "description": "Exécute la commande en mode simulation sans supprimer de données.",
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "hours": {
+                                        "description": "Âge maximal (en heures) des inscriptions incomplètes à nettoyer. Par défaut : 24 heures.",
+                                        "type": "integer",
+                                        "maximum": 168,
+                                        "minimum": 1,
+                                        "example": 48
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Nettoyage exécuté ou simulé avec succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "dry_run": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "hours_threshold": {
+                                            "type": "integer",
+                                            "example": 48
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Simulation du nettoyage terminée. Aucune donnée n’a été supprimée."
+                                        },
+                                        "artisan_output": {
+                                            "type": "string",
+                                            "example": "✔️ 3 inscriptions incomplètes détectées (mode simulation)"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Requête invalide (erreur de validation).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "hours": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The hours field must be between 1 and 168."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié — jeton Sanctum manquant ou invalide.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur ou problème lors de l'exécution de la commande Artisan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur lors de l’exécution de la commande."
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Command not found: registrations:cleanup"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -2189,43 +2330,53 @@
                     },
                     "key": {
                         "type": "string",
-                        "example": "ABJC"
+                        "example": "act_abc123def"
                     },
                     "symbole": {
                         "type": "string",
-                        "example": "SERVAIR ABIDJAN CÔTE D’IVOIRE"
+                        "example": "ABJC"
                     },
                     "nom": {
                         "type": "string",
                         "example": "SERVAIR ABIDJAN CÔTE D’IVOIRE"
                     },
                     "volume": {
-                        "type": "number",
-                        "example": 5759
+                        "type": "integer",
+                        "example": 2711
                     },
                     "cours_veille": {
                         "type": "number",
-                        "example": 980.5
+                        "format": "float",
+                        "example": 2130
                     },
                     "cours_ouverture": {
                         "type": "number",
-                        "example": 985
+                        "format": "float",
+                        "example": 2155
                     },
                     "cours_cloture": {
                         "type": "number",
-                        "example": 1005.5
+                        "format": "float",
+                        "example": 2130
                     },
                     "variation": {
                         "type": "number",
-                        "example": 2.4
+                        "format": "float",
+                        "example": -7.39
                     },
                     "couleur_variation": {
                         "type": "string",
-                        "example": "green"
+                        "example": "red"
                     },
                     "isAuthUserFollow": {
                         "type": "boolean",
-                        "example": true
+                        "example": false
+                    },
+                    "brvm_sector": {
+                        "$ref": "#/components/schemas/BrvmSectorResource"
+                    },
+                    "classified_sector": {
+                        "$ref": "#/components/schemas/ClassifiedSectorResource"
                     }
                 },
                 "type": "object"
@@ -2349,6 +2500,48 @@
                         "type": "string",
                         "format": "date-time",
                         "example": "2025-10-27 10:19:38"
+                    }
+                },
+                "type": "object"
+            },
+            "BrvmSectorResource": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Consommation de base"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "consommation-de-base"
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "brv_xyz123ab"
+                    }
+                },
+                "type": "object"
+            },
+            "ClassifiedSectorResource": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Consommation de base"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "consommation-de-base"
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "brv_xyz123ab"
                     }
                 },
                 "type": "object"
@@ -2755,6 +2948,10 @@
         {
             "name": "Actions",
             "description": "Actions"
+        },
+        {
+            "name": "Admin - Maintenance",
+            "description": "Admin - Maintenance"
         },
         {
             "name": "Profil",

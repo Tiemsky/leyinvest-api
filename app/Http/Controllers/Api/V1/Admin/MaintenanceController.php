@@ -108,7 +108,7 @@ class MaintenanceController extends Controller
         // Validation manuelle légère (Artisan gère le cast, mais on sécurise l'input)
         $validator = Validator::make($request->all(), [
             'dry_run' => 'sometimes|boolean',
-            'hours'   => 'sometimes|integer|min=1|max=168', // 1h à 7 jours
+            'hours'   => 'sometimes|integer|min:1|max:168', // 1h à 7 jours
         ]);
 
         if ($validator->fails()) {
