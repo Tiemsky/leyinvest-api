@@ -10,8 +10,22 @@ class EnsureUserIsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || auth()->user()->role !== 'admin') {
-            abort(403, 'Accès refusé');
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'success' => 'false',
+                'message' => 'Utilisateur non authentifié.',
+                'code' => 401
+            ], 401);
+        }
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => 'false',
+                'message' => 'Accès refusé. Rôle insuffisant.',
+                'code' => 403
+            ], 403);
         }
 
         return $next($request);
