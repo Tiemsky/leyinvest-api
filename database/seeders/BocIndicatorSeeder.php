@@ -23,7 +23,7 @@ class BocIndicatorSeeder extends Seeder
             'taux_rentabilite_moyen' => 9.94,
             'prime_risque_marche' => 2.77,
             'source_pdf' => 'https://www.brvm.org/sites/default/files/boc_20251107_2.pdf',
-            'created_at' => '2025-01-01 06:19:38',
+            'created_at' => '2025-01-07 06:19:38',
             'updated_at' => now(),
         ]);
     }
