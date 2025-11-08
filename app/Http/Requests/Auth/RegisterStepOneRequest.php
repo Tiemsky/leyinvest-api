@@ -40,13 +40,25 @@ class RegisterStepOneRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $email = $this->input('email');
 
-            // Si un utilisateur COMPLET existe → bloquer
-            if (User::where('email', $email)->where('registration_completed', true)->exists()) {
-                $validator->errors()->add('email', 'Cet email est déjà utilisé.');
-            }
+            $user = User::where('email', $email)->first();
 
-            // Si inscription incomplète → autoriser (le contrôleur gérera le réenvoi OTP)
-            // Aucun message ici : on ne bloque pas
+            if ($user) {
+                // Cas 1 : Inscription complète → Bloquer
+                if ($user->registration_completed) {
+                    $validator->errors()->add(
+                        'email',
+                        'Cet email est déjà utilisé. Veuillez vous connecter.'
+                    );
+                }
+                // Cas 2 : Inscription incomplète → Informer l'utilisateur
+                else {
+                    $validator->errors()->add(
+                        'email',
+                        'Une inscription avec cet email est en cours. Veuillez terminer votre inscription en vérifiant votre email.'
+                    );
+                }
+            }
+            // Cas 3 : Email libre → Aucune erreur, validation OK
         });
     }
 }
