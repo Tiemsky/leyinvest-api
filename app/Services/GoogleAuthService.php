@@ -1,15 +1,17 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class GoogleAuthService
 {
     /**
      * Générer l'URL d'authentification Google
+     *
+     * @return string URL de redirection Google
      */
     public function getAuthUrl(): string
     {
@@ -21,6 +23,9 @@ class GoogleAuthService
 
     /**
      * Récupérer l'utilisateur Google depuis le callback
+     *
+     * @throws \Laravel\Socialite\Two\InvalidStateException
+     * @throws \GuzzleHttp\Exception\ClientException
      */
     public function getGoogleUser()
     {
@@ -31,29 +36,47 @@ class GoogleAuthService
 
     /**
      * Créer ou récupérer un utilisateur depuis les données Google
+     * Utilise une transaction pour garantir l'intégrité des données
+     *
+     * @param mixed $googleUser Objet utilisateur retourné par Google
+     * @return User
+     * @throws \Exception
      */
     public function getOrCreateUser($googleUser): User
     {
         $email = $googleUser->getEmail();
         $googleId = $googleUser->getId();
 
-        // Chercher par email OU google_id
-        $user = User::where('email', $email)
-            ->orWhere('google_id', $googleId)
-            ->first();
-
-        if ($user) {
-            // Utilisateur existant - mise à jour
-            $this->updateExistingUser($user, $googleUser, $googleId);
-            return $user->fresh();
+        // Validation des données essentielles
+        if (empty($email) || empty($googleId)) {
+            throw new \Exception('Email ou Google ID manquant');
         }
 
-        // Créer un nouvel utilisateur
-        return $this->createNewUser($googleUser, $googleId);
+        return DB::transaction(function () use ($email, $googleId, $googleUser) {
+            // Chercher par email OU google_id avec verrouillage
+            $user = User::where('email', $email)
+                ->orWhere('google_id', $googleId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($user) {
+                // Utilisateur existant - mise à jour
+                $this->updateExistingUser($user, $googleUser, $googleId);
+                return $user->fresh();
+            }
+
+            // Créer un nouvel utilisateur
+            return $this->createNewUser($googleUser, $googleId);
+        });
     }
 
     /**
      * Mettre à jour un utilisateur existant
+     *
+     * @param User $user
+     * @param mixed $googleUser
+     * @param string $googleId
+     * @return void
      */
     private function updateExistingUser(User $user, $googleUser, string $googleId): void
     {
@@ -83,6 +106,11 @@ class GoogleAuthService
             $updates['avatar'] = $googleUser->getAvatar();
         }
 
+        // Mettre à jour le provider si nécessaire
+        if (empty($user->auth_provider)) {
+            $updates['auth_provider'] = 'google';
+        }
+
         if (!empty($updates)) {
             $user->update($updates);
         }
@@ -90,6 +118,10 @@ class GoogleAuthService
 
     /**
      * Créer un nouvel utilisateur
+     *
+     * @param mixed $googleUser
+     * @param string $googleId
+     * @return User
      */
     private function createNewUser($googleUser, string $googleId): User
     {
@@ -105,14 +137,14 @@ class GoogleAuthService
             'role' => 'user',
         ]);
 
-        // Créer le portefeuille par défaut
-        $this->createDefaultPortfolio($user);
-
         return $user;
     }
 
     /**
      * Vérifier si le profil est complet
+     *
+     * @param mixed $googleUser
+     * @return bool
      */
     private function checkProfileComplete($googleUser): bool
     {
@@ -120,16 +152,47 @@ class GoogleAuthService
             && !empty($googleUser->user['given_name']);
     }
 
+
+
     /**
-     * Créer un portefeuille par défaut pour l'utilisateur
+     * Générer un token d'authentification pour l'utilisateur
+     * Compatible avec React/SPA
+     *
+     * @param User $user
+     * @param string $tokenName
+     * @return string
      */
-    private function createDefaultPortfolio(User $user): void
+    public function generateAuthToken(User $user, string $tokenName = 'auth_token'): string
     {
-        try {
-            // Implémenter votre logique de création de portefeuille ici
-            // Exemple: Portfolio::create(['user_id' => $user->id, ...]);
-        } catch (\Exception $e) {
-            \Log::error('Erreur création portefeuille: ' . $e->getMessage());
-        }
+        // Révoquer les anciens tokens si nécessaire
+        // $user->tokens()->delete();
+
+        return $user->createToken($tokenName)->plainTextToken;
+    }
+
+    /**
+     * Préparer la réponse pour le frontend React
+     *
+     * @param User $user
+     * @param string $token
+     * @return array
+     */
+    public function prepareAuthResponse(User $user, string $token): array
+    {
+        return [
+            'success' => true,
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'nom' => $user->nom,
+                'prenom' => $user->prenom,
+                'avatar' => $user->avatar,
+                'role' => $user->role,
+                'registration_completed' => $user->registration_completed,
+                'email_verified' => $user->email_verified,
+            ],
+        ];
     }
 }
