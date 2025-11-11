@@ -133,7 +133,7 @@ class GoogleAuthService
             'avatar' => $googleUser->getAvatar(),
             'auth_provider' => 'google',
             'email_verified' => true,
-            'registration_completed' => $this->checkProfileComplete($googleUser),
+            'registration_completed' => false,
             'role' => 'user',
         ]);
 
