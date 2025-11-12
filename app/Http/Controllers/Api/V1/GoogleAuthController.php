@@ -47,6 +47,7 @@ class GoogleAuthController extends Controller
             $authUrl = $this->googleAuthService->getAuthUrl();
 
             return response()->json([
+                'success' => true,
                 'url' => $authUrl,
                 'message' => 'Redirect to this URL for Google authentication'
             ], 200);
@@ -54,6 +55,7 @@ class GoogleAuthController extends Controller
             Log::error('Google Login Error: ' . $e->getMessage());
 
             return response()->json([
+                'success' => false,
                 'error' => 'google_login_failed',
                 'message' => 'Impossible de générer l\'URL d\'authentification Google'
             ], 500);
