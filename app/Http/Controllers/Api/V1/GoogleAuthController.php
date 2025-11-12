@@ -12,9 +12,12 @@ use Illuminate\Http\RedirectResponse;
 
 class GoogleAuthController extends Controller
 {
+    protected string $frontendUrl;
     public function __construct(
         private GoogleAuthService $googleAuthService
-    ) {}
+    ) {
+        $this->frontendUrl = env('FRONTEND_URL', 'http://localhost:8080');
+    }
 
     /**
      * @OA\Get(
@@ -119,66 +122,60 @@ class GoogleAuthController extends Controller
      */
     public function callback(Request $request): JsonResponse|RedirectResponse
     {
+
+        // Préparer l'URL de base pour les redirections d'erreur côté frontend
+        $baseErrorUrl = $this->frontendUrl . '/auth/login?error=';
+
         try {
+            // 1. Vérification du code d'autorisation (si manquant, cela peut être une annulation)
             if (!$request->has('code')) {
-                return response()->json(['error' => 'missing_code', 'message' => 'Code manquant'], 400);
+                // Redirection vers le frontend avec un paramètre d'erreur (cancel)
+                return redirect()->away($baseErrorUrl . 'cancelled_auth');
             }
 
+            // 2. Récupérer et créer/mettre à jour l'utilisateur via le service
             $googleUser = $this->googleAuthService->getGoogleUser();
             $user = $this->googleAuthService->getOrCreateUser($googleUser);
 
-            $token = $user->createToken('google_auth_token')->plainTextToken;
+            // 3. Génération du jeton Sanctum
+            $token = $this->googleAuthService->generateAuthToken($user);
 
-            // 🔥 Détecter dynamiquement l'URL frontend
+            // 4. Sécurité: Vérification de l'Origine (ajustez cette logique si l'en-tête Origin est indisponible)
             $origin = $request->headers->get('Origin') ?: rtrim(config('app.frontend_url'), '/');
             $allowed = config('app.allowed_frontend_urls', []);
 
             if (!empty($allowed) && !in_array($origin, $allowed)) {
-                Log::warning("Unauthorized origin: {$origin}");
-                return response()->json(['error' => 'unauthorized_origin'], 403);
+                Log::warning("Unauthorized origin detected: {$origin}");
+                // Redirection d'erreur vers le frontend
+                return redirect()->away($baseErrorUrl . 'unauthorized_origin');
             }
 
-            // Construire l'URL de redirection
-            $redirectPath = $user->registration_completed ? '/user/dashboard' : '/auth/complete-profile';
-            $queryParams = $user->registration_completed
-                ? "token={$token}"
-                : "token={$token}&email=" . urlencode($user->email);
+            // 5. Construction de l'URL de Redirection Finale
 
-            $redirectUrl = "{$origin}{$redirectPath}?{$queryParams}";
+            // Le chemin côté React où le token sera lu
+            $redirectPath = '/auth/callback';
 
+            // Paramètres : toujours envoyer le token
+            $queryParams = "token={$token}";
 
+            // Ajouter un flag pour la complétion du profil si nécessaire
+            if (!$user->registration_completed) {
+                $queryParams .= "&registration_completion=false";
+            }
+
+            $redirectUrl = $this->frontendUrl . $redirectPath . '?' . $queryParams;
+
+            // 6. Succès : Redirection HTTP (302) vers le Frontend (CRITIQUE)
             return redirect()->away($redirectUrl);
 
-            // return response()->json([
-            //     'success'   => true,
-            //     'access_token' => $token,
-            //     'token_type' => 'Bearer',
-            //     'redirect_url' => $redirectUrl,
-            //     'user' => [
-            //         'id' => $user->id,
-            //         'email' => $user->email,
-            //         'nom' => $user->nom,
-            //         'prenom' => $user->prenom,
-            //         'email_verified' => $user->email_verified,
-            //         'avatar' => $user->avatar,
-            //         'role' => $user->role,
-            //         'registration_completed' => $user->registration_completed,
-            //     ],
-            // ]);
         } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
-            Log::error('Invalid state', ['exception' => $e]);
-            return response()->json([
-                'success' => false,
-                'error' => 'invalid_state',
-                'message' => 'Session expirée'],
-                400);
+            // Erreur souvent liée à l'expiration de session (protection CSRF)
+            Log::error('Invalid state (CSRF Protection failed)', ['exception' => $e]);
+            return redirect()->away($baseErrorUrl . 'session_expired');
         } catch (\Exception $e) {
-            Log::error('Google callback error', ['exception' => $e]);
-            return response()->json([
-                'success' => false,
-                'error' => 'google_auth_failed',
-                'message' => 'Erreur interne'
-            ], 500);
+            // Gestion des erreurs internes (ex: DB, Service, Guzzle, etc.)
+            Log::error('Google callback internal error', ['exception' => $e]);
+            return redirect()->away($baseErrorUrl . 'internal_error');
         }
     }
 
