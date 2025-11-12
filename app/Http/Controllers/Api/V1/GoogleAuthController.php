@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
-use App\Services\GoogleAuthService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Services\GoogleAuthService;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 
 class GoogleAuthController extends Controller
 {
@@ -116,7 +117,7 @@ class GoogleAuthController extends Controller
      *     )
      * )
      */
-    public function callback(Request $request): JsonResponse
+    public function callback(Request $request): JsonResponse|RedirectResponse
     {
         try {
             if (!$request->has('code')) {
@@ -145,22 +146,25 @@ class GoogleAuthController extends Controller
 
             $redirectUrl = "{$origin}{$redirectPath}?{$queryParams}";
 
-            return response()->json([
-                'success'   => true,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'redirect_url' => $redirectUrl,
-                'user' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'nom' => $user->nom,
-                    'prenom' => $user->prenom,
-                    'email_verified' => $user->email_verified,
-                    'avatar' => $user->avatar,
-                    'role' => $user->role,
-                    'registration_completed' => $user->registration_completed,
-                ],
-            ]);
+
+            return redirect()->away($redirectUrl);
+
+            // return response()->json([
+            //     'success'   => true,
+            //     'access_token' => $token,
+            //     'token_type' => 'Bearer',
+            //     'redirect_url' => $redirectUrl,
+            //     'user' => [
+            //         'id' => $user->id,
+            //         'email' => $user->email,
+            //         'nom' => $user->nom,
+            //         'prenom' => $user->prenom,
+            //         'email_verified' => $user->email_verified,
+            //         'avatar' => $user->avatar,
+            //         'role' => $user->role,
+            //         'registration_completed' => $user->registration_completed,
+            //     ],
+            // ]);
         } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
             Log::error('Invalid state', ['exception' => $e]);
             return response()->json([
