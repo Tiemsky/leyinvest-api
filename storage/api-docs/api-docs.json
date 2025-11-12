@@ -1435,6 +1435,271 @@
                 ]
             }
         },
+        "/api/v1/financial-news": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Lister les actualités financières",
+                "description": "Récupère une liste paginée d'actualités financières avec filtres, tri et recherche globale.",
+                "operationId": "ba81563efa0230b1c899d1bcf6c76d17",
+                "parameters": [
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "description": "Filtrer par source (ex: BRVM, AMF, ECOBANK)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "BRVM"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "query",
+                        "description": "Filtrer par nom de société (recherche partielle)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "SONATEL"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Date minimale de publication (format: YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-01-01"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "Date maximale de publication (format: YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-12-31"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Recherche globale dans le titre ou le nom de société",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "dividende"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Champ utilisé pour le tri des résultats",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "published_at",
+                                "created_at",
+                                "title",
+                                "company"
+                            ],
+                            "example": "published_at"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Ordre du tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ],
+                            "example": "desc"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page (défaut: 20, max: 100)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "example": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/FinancialNews"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 10
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 20
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 200
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "links": {
+                                            "properties": {
+                                                "first": {
+                                                    "type": "string",
+                                                    "example": "https://api.leyinvest.ci/api/v1/financial-news?page=1"
+                                                },
+                                                "last": {
+                                                    "type": "string",
+                                                    "example": "https://api.leyinvest.ci/api/v1/financial-news?page=10"
+                                                },
+                                                "prev": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "next": {
+                                                    "type": "string",
+                                                    "example": "https://api.leyinvest.ci/api/v1/financial-news?page=2",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Paramètres de requête invalides"
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur"
+                    }
+                }
+            }
+        },
+        "/api/v1/financial-news/{financialNews}": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Détails d'une actualité financière via key",
+                "description": "Récupère les détails d'une actualité spécifique via la key",
+                "operationId": "6ee0f58e96ee20523aeefda16143ad17",
+                "parameters": [
+                    {
+                        "name": "financialNews",
+                        "in": "path",
+                        "description": "key de l'actualité",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Actualité récupérée avec succès"
+                    },
+                    "404": {
+                        "description": "Actualité non trouvée"
+                    }
+                }
+            }
+        },
+        "/api/v1/financial-news/recent": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Actualités récentes",
+                "description": "Récupère les actualités des X derniers jours. Paramètres de requête : days (int, défaut 7), per_page.",
+                "operationId": "da9c66bb327897c94b11e98a040f70ef",
+                "responses": {
+                    "200": {
+                        "description": "Actualités récentes récupérées avec succès"
+                    }
+                }
+            }
+        },
+        "/api/v1/financial-news/sources": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Liste des sources",
+                "description": "Récupère la liste de toutes les sources d'actualités uniques",
+                "operationId": "b454811d9bec7e81277961327611d4eb",
+                "responses": {
+                    "200": {
+                        "description": "Sources récupérées avec succès"
+                    }
+                }
+            }
+        },
+        "/api/v1/financial-news/companies": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Liste des sociétés (actions)",
+                "description": "Récupère la liste de toutes les sociétés ayant des actualités (pour autocomplétion)",
+                "operationId": "e9324090142a76be9cec05782ee82dca",
+                "responses": {
+                    "200": {
+                        "description": "Sociétés récupérées avec succès"
+                    }
+                }
+            }
+        },
+        "/api/v1/financial-news/statistics": {
+            "get": {
+                "tags": [
+                    "Financial News"
+                ],
+                "summary": "Statistiques du flux",
+                "description": "Récupère des statistiques agrégées (totaux, par source, récentes) pour les dashboards.",
+                "operationId": "7c84d150b645f7a06137ce4d976b37b6",
+                "responses": {
+                    "200": {
+                        "description": "Statistiques récupérées avec succès"
+                    }
+                }
+            }
+        },
         "/api/v1/flops": {
             "get": {
                 "tags": [
@@ -2546,53 +2811,50 @@
                 },
                 "type": "object"
             },
-            "FinancialNewsResource": {
-                "title": "Financial News Resource",
-                "description": "Représentation d'une actualité financière provenant de la BRVM ou de RichBourse.",
+            "FinancialNews": {
+                "title": "Financial News",
+                "description": "Modèle d'actualité financière",
                 "properties": {
                     "id": {
-                        "description": "Identifiant unique de l'actualité",
                         "type": "integer",
                         "example": 1
                     },
-                    "company": {
-                        "description": "Nom de la société concernée par l'actualité",
+                    "key": {
                         "type": "string",
-                        "example": "ECOBANK CI"
+                        "example": "BRVM_2024_001"
+                    },
+                    "company": {
+                        "type": "string",
+                        "example": "SONATEL"
                     },
                     "title": {
-                        "description": "Titre de l'actualité financière",
                         "type": "string",
-                        "example": "ECOBANK CÔTE D'IVOIRE : Notation Financière"
+                        "example": "Résultats annuels 2024"
                     },
                     "pdf_url": {
-                        "description": "Lien direct vers le document PDF de la publication",
                         "type": "string",
-                        "format": "uri",
-                        "example": "https://www.brvm.org/files/boc_20251028.pdf"
+                        "example": "https://example.com/document.pdf"
                     },
                     "source": {
-                        "description": "Source de l'information (brvm_notations, richbourse_etats_financiers, etc.)",
                         "type": "string",
-                        "example": "brvm_notations"
+                        "example": "BRVM"
                     },
                     "published_at": {
-                        "description": "Date de publication officielle de l'actualité",
                         "type": "string",
                         "format": "date",
-                        "example": "2025-10-28"
+                        "example": "2024-12-01"
+                    },
+                    "published_at_human": {
+                        "type": "string",
+                        "example": "il y a 2 jours"
                     },
                     "created_at": {
-                        "description": "Date et heure d'enregistrement dans la base de données",
                         "type": "string",
-                        "format": "date-time",
-                        "example": "2025-10-29T10:00:00.000000Z"
+                        "format": "date-time"
                     },
                     "updated_at": {
-                        "description": "Dernière date de mise à jour de l'enregistrement",
                         "type": "string",
-                        "format": "date-time",
-                        "example": "2025-10-29T10:05:00.000000Z"
+                        "format": "date-time"
                     }
                 },
                 "type": "object"
@@ -2932,6 +3194,10 @@
         {
             "name": "Authentification",
             "description": "Endpoints de gestion de l'inscription, connexion, OTP, mot de passe et profil utilisateur"
+        },
+        {
+            "name": "Financial News",
+            "description": "Endpoints pour la gestion et la consultation des actualités financières"
         },
         {
             "name": "Flops",

@@ -13,13 +13,17 @@ return new class extends Migration
     {
         Schema::create('financial_news', function (Blueprint $table) {
             $table->id();
-            $table->string('key')->unique();
-            $table->string('company')->nullable(); // ← ajout
+            $table->string('key')->unique()->index();
+            $table->string('company')->nullable()->index();
             $table->string('title');
-            $table->string('pdf_url')->unique();
-            $table->string('source');
-            $table->date('published_at')->nullable();
+            $table->text('pdf_url'); // IMPORTANT: nullable() enlevé
+            $table->date('published_at')->index();
+            $table->string('source')->index();
             $table->timestamps();
+
+            // Index composé pour recherches fréquentes
+            $table->index(['source', 'published_at']);
+            $table->index(['company', 'published_at']);
         });
     }
 

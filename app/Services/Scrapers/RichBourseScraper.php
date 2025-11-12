@@ -1,11 +1,9 @@
 <?php
 
-namespace App\Modules\FinancialNews\Scrapers;
+namespace App\Services\Scrapers;
 
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use App\Services\Scrapers\BaseScraper;
 use Symfony\Component\DomCrawler\Crawler;
+use Illuminate\Support\Str;
 
 class RichBourseScraper extends BaseScraper
 {
@@ -16,50 +14,67 @@ class RichBourseScraper extends BaseScraper
         $listUrl = $baseUrl . '/common/actualite-categorie/index/etats-financiers';
 
         $crawler = $this->fetchCrawler($listUrl);
-        if (!$crawler) return [];
 
-        $items = $crawler->filter('.ligne_impaire, .ligne_paire');
-        foreach ($items as $item) {
-            $itemCrawler = new Crawler($item, $listUrl);
-
-            $dateNode = $itemCrawler->filter('.col-xs-4');
-            $linkNode = $itemCrawler->filter('a');
-
-            if (!$dateNode->count() || !$linkNode->count()) continue;
-
-            $dateStr = trim($dateNode->text());
-            $date = $this->parseDate($dateStr);
-            if (!$date || !$this->isWithinWindow($date, 14)) continue;
-
-            $detailPath = $linkNode->attr('href');
-            if (!$detailPath) continue;
-
-            $detailUrl = $baseUrl . $detailPath;
-            $fullTitle = trim($linkNode->text());
-
-            [$company, $cleanTitle] = $this->extractCompanyAndTitle($fullTitle);
-
-            // Scraping de la page détail
-            $detailCrawler = $this->fetchCrawler($detailUrl);
-            if (!$detailCrawler) continue;
-
-            $pdfLink = $detailCrawler->filter('a[href*=".pdf"]')->first();
-            if (!$pdfLink) continue;
-
-            $pdfUrl = $pdfLink->attr('href');
-            if (!Str::startsWith($pdfUrl, ['http://', 'https://'])) {
-                $pdfUrl = rtrim($baseUrl, '/') . '/' . ltrim($pdfUrl, '/');
-            }
-
-            $results[] = [
-                'company'      => $company,
-                'title'        => $cleanTitle,
-                'pdf_url'      => trim($pdfUrl),
-                'published_at' => $date->toDateString(),
-                'source'       => 'richbourse_etats_financiers',
-            ];
+        if (!$crawler) {
+            \Log::warning('❌ RichBourse: Failed to fetch main page');
+            return $results;
         }
 
+        // Cibler les lignes impaires/paires contenant les annonces
+        $items = $crawler->filter('.ligne_impaire, .ligne_paire');
+        \Log::info("🔍 RichBourse: Found {$items->count()} potential items");
+
+        $itemCount = 0;
+        foreach ($items as $item) {
+            try {
+                $itemCrawler = new Crawler($item, $listUrl);
+
+                // Date dans la première colonne
+                $dateNode = $itemCrawler->filter('.col-xs-4, .col-md-3, .col-lg-2');
+                if (!$dateNode->count()) continue;
+
+                $dateStr = trim($dateNode->first()->text());
+                $date = $this->parseDate($dateStr);
+                if (!$date || !$this->isWithinWindow($date, 14)) continue;
+
+                // Lien vers la page de détail
+                $linkNode = $itemCrawler->filter('a');
+                if (!$linkNode->count()) continue;
+
+                $link = $linkNode->first();
+                $detailPath = $link->attr('href');
+                if (!$detailPath || !str_starts_with($detailPath, '/common/actualite/details/')) {
+                    continue;
+                }
+
+                $fullTitle = trim($link->text());
+                [$company, $cleanTitle] = $this->extractCompanyAndTitle($fullTitle);
+
+                // 🔑 Générer l'URL PDF à partir du slug
+                $pdfPath = str_replace('/details/', '/afficher-fichier/', $detailPath);
+                $pdfUrl = $baseUrl . $pdfPath;
+
+                $results[] = [
+                    'company'      => $company,
+                    'title'        => $cleanTitle,
+                    'pdf_url'      => $pdfUrl,
+                    'published_at' => $date->toDateString(),
+                    'source'       => 'richbourse_etats_financiers',
+                ];
+
+                $itemCount++;
+                \Log::info("✅ Added: {$company} - {$cleanTitle}");
+
+            } catch (\Exception $e) {
+                \Log::error('❌ Error processing RichBourse item', [
+                    'exception' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                ]);
+                continue;
+            }
+        }
+
+        \Log::info("✅ RichBourseScraper completed. Found {$itemCount} items within 14-day window");
         return $results;
     }
 

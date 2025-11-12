@@ -2,6 +2,7 @@
 
 use App\Models\BocIndicator;
 use Illuminate\Http\Request;
+use App\Jobs\ScrapeFinancialNewsJob;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TopController;
 use App\Http\Controllers\Api\V1\FlopController;
@@ -15,7 +16,7 @@ use App\Http\Controllers\Api\V1\UserDashboardController;
 
 Route::prefix('v1')->group(function(){
 
-    Route::middleware(['auth:sanctum'])->group(function(){
+    Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function(){
         Route:: get('/user/dashboard', [UserDashboardController::class, 'index']);
 
            // Routes pour les actions suivies
@@ -59,15 +60,49 @@ Route::prefix('v1')->group(function(){
 
         Route::get('/actions', [ActionController::class, 'index']);
         Route::get('/indicators', [BocIndicatorController::class, 'index']);
-        Route::get('/financial-news', [FinancialNewsController::class, 'index'])->name('financial-news.index');
 
 
+
+
+    // ============================================
+    // ROUTES PROTÉGÉES - VOIR TOUTES LES ACTUALITÉS
+    // ============================================
+       Route::group(['prefix' => 'financial-news'], function () {
+
+        Route::get('companies', [FinancialNewsController::class, 'companies']);
+
+        Route::get('sources', [FinancialNewsController::class, 'sources']);
+
+        Route::get('statistics', [FinancialNewsController::class, 'statistics']);
+
+        Route::get('recent/{days?}', [FinancialNewsController::class, 'recent']);
+
+        Route::get('/', [FinancialNewsController::class, 'index']);
+
+        Route::get('{financialNews}', [FinancialNewsController::class, 'show']);
+    });
 
     });
 
     Route::get('/flops', [FlopController::class, 'index']);
     Route::get('/tops', [TopController::class, 'index']);
     Route::get('/countries', [CountryController::class, 'index']);
+
+
+
+
+
+
+
+
+
+
+    if (app()->environment('local')) {
+        Route::get('/test-scrape', function () {
+            dispatch(new ScrapeFinancialNewsJob());
+            return '✅ Scraping started (check logs or DB).';
+        });
+    }
 });
 
 require __DIR__.'/api_auth.php';
