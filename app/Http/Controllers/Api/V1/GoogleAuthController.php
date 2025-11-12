@@ -144,6 +144,7 @@ class GoogleAuthController extends Controller
             $redirectUrl = "{$origin}{$redirectPath}?{$queryParams}";
 
             return response()->json([
+                'success'   => true,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'redirect_url' => $redirectUrl,
@@ -160,10 +161,18 @@ class GoogleAuthController extends Controller
             ]);
         } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
             Log::error('Invalid state', ['exception' => $e]);
-            return response()->json(['error' => 'invalid_state', 'message' => 'Session expirée'], 400);
+            return response()->json([
+                'success' => false,
+                'error' => 'invalid_state',
+                'message' => 'Session expirée'],
+                400);
         } catch (\Exception $e) {
             Log::error('Google callback error', ['exception' => $e]);
-            return response()->json(['error' => 'google_auth_failed', 'message' => 'Erreur interne'], 500);
+            return response()->json([
+                'success' => false,
+                'error' => 'google_auth_failed',
+                'message' => 'Erreur interne'
+            ], 500);
         }
     }
 
@@ -243,6 +252,7 @@ class GoogleAuthController extends Controller
 
             if (!$payload) {
                 return response()->json([
+                    'success'   => false,
                     'error' => 'invalid_token',
                     'message' => 'Token Google invalide'
                 ], 401);
@@ -262,6 +272,7 @@ class GoogleAuthController extends Controller
             $authToken = $user->createToken('google_token_auth')->plainTextToken;
 
             return response()->json([
+                'success'   => true,
                 'access_token' => $authToken,
                 'token_type' => 'bearer',
                 'user' => [
@@ -276,12 +287,14 @@ class GoogleAuthController extends Controller
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'success'   => false,
                 'error' => 'validation_error',
                 'message' => $e->getMessage()
             ], 422);
         } catch (\Exception $e) {
             Log::error('Google Token Login Error: ' . $e->getMessage());
             return response()->json([
+                'success'   => false,
                 'error' => 'google_auth_failed',
                 'message' => 'Erreur lors de l\'authentification Google'
             ], 500);
