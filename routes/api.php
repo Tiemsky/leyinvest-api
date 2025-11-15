@@ -77,6 +77,8 @@ Route::prefix('v1')->group(function(){
 
         Route::get('recent/{days?}', [FinancialNewsController::class, 'recent']);
 
+        Route::get('source/{source}', [FinancialNewsController::class, 'getFinancialNewBySource']);
+
         Route::get('/', [FinancialNewsController::class, 'index']);
 
         Route::get('{financialNews}', [FinancialNewsController::class, 'show']);

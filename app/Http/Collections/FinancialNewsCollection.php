@@ -1,12 +1,19 @@
 <?php
 
 namespace App\Http\Collections;
-
 use Illuminate\Http\Request;
+use App\Http\Resources\FinancialNewsResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class FinancialNewsCollection extends ResourceCollection
 {
+    /**
+     * The resource that this collection collects.
+     *
+     * @var string
+     */
+    public $collects = FinancialNewsResource::class;
+
     /**
      * Transform the resource collection into an array.
      *
@@ -15,19 +22,19 @@ class FinancialNewsCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'data' => $this->collection,
+            'data' => $this->collection, // Now each item is a FinancialNewsResource
             'meta' => [
-                'total' => $this->total(),
-                'count' => $this->count(),
-                'per_page' => $this->perPage(),
-                'current_page' => $this->currentPage(),
-                'total_pages' => $this->lastPage(),
+                'total' => $this->resource->total(),
+                'count' => $this->resource->count(),
+                'per_page' => $this->resource->perPage(),
+                'current_page' => $this->resource->currentPage(),
+                'total_pages' => $this->resource->lastPage(),
             ],
             'links' => [
-                'first' => $this->url(1),
-                'last' => $this->url($this->lastPage()),
-                'prev' => $this->previousPageUrl(),
-                'next' => $this->nextPageUrl(),
+                'first' => $this->resource->url(1),
+                'last' => $this->resource->url($this->resource->lastPage()),
+                'prev' => $this->resource->previousPageUrl(),
+                'next' => $this->resource->nextPageUrl(),
             ],
         ];
     }
@@ -40,7 +47,7 @@ class FinancialNewsCollection extends ResourceCollection
     public function with(Request $request): array
     {
         return [
-            'success' => 'true',
+            'success' => true,
             'message' => 'Actualités financières récupérées avec succès',
         ];
     }

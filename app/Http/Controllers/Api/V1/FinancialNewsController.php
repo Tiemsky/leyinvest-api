@@ -172,7 +172,6 @@ class FinancialNewsController extends Controller
                 $perPage = $request->input('per_page', 20);
                 return $query->paginate($perPage);
             });
-
             return (new FinancialNewsCollection($news))->response()->setStatusCode(200);
 
         } catch (\Exception $e) {
@@ -290,6 +289,9 @@ class FinancialNewsController extends Controller
         return $this->getCachedList('source', 'financial_news:sources', false);
     }
 
+
+
+
     /**
      * @OA\Get(
      * path="/api/v1/financial-news/companies",
@@ -339,4 +341,35 @@ class FinancialNewsController extends Controller
             return $this->internalErrorResponse();
         }
     }
+
+
+public function getFinancialNewBySource(string $source): JsonResponse
+{
+    try {
+        $cacheKey = "financial_news:by_source:{$source}"; // Consider adding page if paginated
+
+        // Since we're paginating, include page in cache key
+        $page = request('page', 1);
+        $perPage = (int) request('per_page', 20);
+        $cacheKey = "financial_news:by_source:{$source}:page_{$page}:per_{$perPage}";
+
+        $news = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($source, $perPage) {
+            $query = FinancialNews::query();
+
+            if ($source === 'richbourse_etats_financiers') {
+                $query->where('source', $source);
+            } else {
+                $query->where('source', '!=', 'richbourse_etats_financiers');
+            }
+
+            return $query->orderBy('published_at', 'desc')->paginate($perPage);
+        });
+
+        return (new FinancialNewsCollection($news))->response()->setStatusCode(200);
+
+    } catch (\Exception $e) {
+        Log::error('Erreur lors de la récupération des actualités financières par source: ' . $e->getMessage(), ['source' => $source]);
+        return $this->internalErrorResponse();
+    }
+}
 }
