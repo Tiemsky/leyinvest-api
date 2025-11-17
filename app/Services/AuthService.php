@@ -168,15 +168,16 @@ class AuthService
      */
     public function login(array $credentials, string $deviceName = 'api'): array
     {
+        $genericError = ['Ces informations d\'identification ne correspondent pas à nos enregistrements.'];
+
         $user = User::where('email', $credentials['email'])->first();
 
-        // Vérifications détaillées avec messages spécifiques
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'email' => ['Ces informations d\'identification ne correspondent pas à nos enregistrements.'],
-            ]);
+        // 1. Vérification de l'existence de l'utilisateur ou du mot de passe (Sécurité: message générique)
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            throw ValidationException::withMessages(['email' => $genericError]);
         }
 
+        // 2. Vérifications spécifiques (ces erreurs ne sont affichées QUE si les credentials sont corrects)
         if (!$user->registration_completed) {
             throw ValidationException::withMessages([
                 'email' => ['Votre inscription n\'est pas terminée. Veuillez compléter votre inscription.'],
@@ -189,12 +190,7 @@ class AuthService
             ]);
         }
 
-        if (!Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'password' => ['Le mot de passe est incorrect.'],
-            ]);
-        }
-
+        // 3. Création des tokens
         $tokens = $this->refreshTokenService->createTokens($user, $deviceName);
         Log::info("User {$user->email} logged in successfully.");
 
@@ -208,31 +204,45 @@ class AuthService
         ];
     }
 
-    /**
-     * Rafraîchir le token d'accès.
-     */
-    public function refreshToken(string $refreshToken): array
-    {
-        $tokens = $this->refreshTokenService->refreshToken($refreshToken);
-        $tokenInfo = $this->refreshTokenService->getTokenInfo($refreshToken);
-        $user = User::find($tokenInfo['user_id']);
+/**
+ * Rafraîchir le token d'accès.
+ */
+public function refreshToken(string $refreshToken): array
+{
+    // FIX: Appeler directement le service. Si le token est invalide/expiré,
+    // le service lèvera déjà la ValidationException (voir le RefreshTokenService corrigé).
+    $tokens = $this->refreshTokenService->refreshToken($refreshToken);
 
-        if (!$user) {
-            throw ValidationException::withMessages(['token' => ['Utilisateur introuvable.']]);
-        }
+    // Après un succès du rafraîchissement, on récupère les infos de l'utilisateur
+    // via le nouveau token (méthode de secours si le service ne retourne pas l'user).
+    // Une approche plus propre consiste à récupérer l'info via un appel distinct si nécessaire.
+    // Dans ce scénario, nous allons chercher l'utilisateur via un appel au service.
 
-        Log::info("Token refreshed for user {$user->email}");
+    $tokenInfo = $this->refreshTokenService->getTokenInfo($tokens['refresh_token']);
 
-        return [
-            'user' => $user,
-            'access_token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
-            'token_type' => $tokens['token_type'],
-            'expires_in' => $tokens['expires_in'],
-            'refresh_expires_in' => $tokens['refresh_expires_in'],
-        ];
+    if (empty($tokenInfo['user_id'])) {
+         // Si le service ne donne aucune info sur l'utilisateur, lever une erreur générique
+         throw ValidationException::withMessages(['token' => ['Informations utilisateur introuvables.']]);
     }
 
+    $user = User::find($tokenInfo['user_id']);
+
+    if (!$user) {
+        // Le service aurait déjà dû gérer ce cas en révoquant le token, mais on le sécurise ici.
+        throw ValidationException::withMessages(['token' => ['Utilisateur introuvable.']]);
+    }
+
+    Log::info("Token refreshed for user {$user->email}");
+
+    return [
+        'user' => $user,
+        'access_token' => $tokens['access_token'],
+        'refresh_token' => $tokens['refresh_token'],
+        'token_type' => $tokens['token_type'],
+        'expires_in' => $tokens['expires_in'],
+        'refresh_expires_in' => $tokens['refresh_expires_in'],
+    ];
+}
     /**
      * Renvoyer un OTP pour une inscription incomplète.
      */
