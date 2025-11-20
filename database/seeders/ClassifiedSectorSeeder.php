@@ -16,17 +16,17 @@ class ClassifiedSectorSeeder extends Seeder
     public function run(): void
     {
         $sectors = collect([
-            ['nom' => 'Services Financiers', 'slug' => "Services Financiers"],
-            ['nom' => 'Télécommunications', 'slug' => "Télécommunications"],
-            ['nom' => 'Services publics', 'slug' => "Services publics"],
-            ['nom' => 'Pétrole et Energie', 'slug' => "Pétrole et Energie"],
-            ['nom' => 'Biens de consommation', 'slug' => "Biens de consommation"],
-            ['nom' => 'Agro Industrie', 'slug' => "Agro Industrie"],
-            ['nom' => 'Industrie', 'slug' => "Industrie"],
-            ['nom' => 'Logistique', 'slug' => "Logistique"],
-            ['nom' => 'BTP', 'slug' => "BTP"],
-            ['nom' => 'Automobile ', 'slug' => "Automobile "],
-            ['nom' => 'Consommation discrétionnaire ', 'slug' => "Consommation discrétionnaire "],
+            ['nom' => 'Services Financiers', 'slug' =>Str::slug("Services Financiers") ],
+            ['nom' => 'Télécommunications', 'slug' => Str::slug("Télécommunications")],
+            ['nom' => 'Services publics', 'slug' => Str::slug("Services publics")],
+            ['nom' => 'Pétrole et Energie', 'slug' => Str::slug("Pétrole et Energie")],
+            ['nom' => 'Biens de consommation', 'slug' => Str::slug("Biens de consommation")],
+            ['nom' => 'Agro Industrie', 'slug' => Str::slug("Agro Industrie")],
+            ['nom' => 'Industrie', 'slug' => Str::slug("Industrie")],
+            ['nom' => 'Logistique', 'slug' => Str::slug("Logistique")],
+            ['nom' => 'BTP', 'slug' => Str::slug("BTP")],
+            ['nom' => 'Automobile ', 'slug' => Str::slug("Automobile")],
+            ['nom' => 'Consommation discrétionnaire ', 'slug' => Str::slug("Consommation discrétionnaire")],
         ]);
 
             // On vide la table avant d’insérer les nouvelles données

@@ -2,11 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 use App\Models\Action;
 use App\Models\BrvmSector;
+use Illuminate\Support\Str;
+use Illuminate\Database\Seeder;
 use App\Models\ClassifiedSector;
+use Illuminate\Support\Facades\DB;
 
 class ActionSeeder extends Seeder
 {
@@ -72,7 +73,7 @@ class ActionSeeder extends Seeder
     public function run(): void
     {
         // On vide la table
-        Action::truncate();
+        DB::table('actions')->delete();
 
         // Récupérer tous les secteurs avec leurs noms → ID
         $brvmSectors = BrvmSector::pluck('id', 'nom')->toArray();

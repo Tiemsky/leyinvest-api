@@ -25,7 +25,7 @@ class FlopSeeder extends Seeder
         Flop::truncate();
         foreach($flops as $flop){
             Flop::create(array_merge($flop, [
-                'key' => 'flop-' . strtolower(Str::random(8)),
+                'key' => 'flop_' . strtolower(Str::random(8)),
             ]));
         }
     }

@@ -29,7 +29,7 @@ class CountrySeeder extends Seeder
         Country::truncate();
         foreach($countries as $country){
             Country::create(array_merge($country, [
-                'key' => 'count-' . strtolower(Str::random(8)),
+                'key' => 'cou_' . strtolower(Str::random(8)),
             ]));
         }
     }

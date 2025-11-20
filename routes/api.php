@@ -59,6 +59,9 @@ Route::prefix('v1')->group(function(){
         });
 
         Route::get('/actions', [ActionController::class, 'index']);
+        Route::get('/actions/analyze', [ActionController::class, 'analyze']);
+        Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
+        Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
         Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
 

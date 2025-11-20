@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PlanEnum;
 use App\Enums\RoleEnum;
 use App\Models\Country;
 use Illuminate\Database\Migrations\Migration;
@@ -15,8 +16,8 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('google_id')->nullable()->unique();
             $table->string('key')->unique();
+            $table->string('google_id')->nullable()->unique();
             $table->foreignIdFor(Country::class)->nullable();
             $table->string('role')->default(RoleEnum::USER->value);
             $table->string('nom');
@@ -34,6 +35,7 @@ return new class extends Migration
             $table->boolean('registration_completed')->default(false);
             $table->string('avatar')->nullable();
             $table->string('auth_provider')->default('email');
+            $table->foreignId('plan_id')->default(1)->constrained('plans')->OnDelete(1);
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

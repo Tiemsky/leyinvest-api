@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CountrySeeder::class,
             RoleSeeder::class,
+            PositionSeeder::class,
+            PlanSeeder::class,
             BrvmSectorSeeder::class,
             ClassifiedSectorSeeder::class,
             ActionSeeder::class,
@@ -26,6 +28,6 @@ class DatabaseSeeder extends Seeder
             FlopSeeder::class,
             BocIndicatorSeeder::class,
         ]);
-         User::factory(50)->create();
+         User::factory(5)->create();
     }
 }

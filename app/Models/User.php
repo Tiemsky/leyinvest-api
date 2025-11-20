@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -55,7 +56,6 @@ class User extends Authenticatable
     public function followedActions(): HasMany{
         return $this->hasMany(UserAction::class, 'user_id');
     }
-
 
     /**
      * Générer un code OTP
@@ -122,10 +122,81 @@ class User extends Authenticatable
     /**
      * Vérifier si l'inscription est complète
      */
-    public function hasCompletedRegistration(): bool
-    {
+    public function hasCompletedRegistration(): bool{
         return $this->registration_completed && $this->password !== null;
     }
+
+       // Relations
+       public function subscriptions(){
+           return $this->hasMany(Subscription::class);
+       }
+
+       public function activeSubscription(){
+           return $this->hasOne(Subscription::class)
+               ->active()
+               ->with('plan')
+               ->latest();
+       }
+
+       public function currentPlan(): BelongsTo{
+           return $this->belongsTo(Plan::class, 'current_plan_id');
+       }
+
+       // Méthodes de vérification
+       public function hasActiveSubscription(){
+           return $this->activeSubscription()->exists();
+       }
+
+       public function onPlan($planSlug): bool
+       {
+           $subscription = $this->activeSubscription;
+           return $subscription && $subscription->plan->slug === $planSlug;
+       }
+
+       public function hasFeature($feature)
+       {
+           $subscription = $this->activeSubscription;
+
+           if (!$subscription) {
+               // Plan gratuit par défaut
+               $freePlan = Plan::free()->first();
+               return $freePlan ? $freePlan->hasFeature($feature) : false;
+           }
+
+           return $subscription->plan->hasFeature($feature);
+       }
+
+       // Méthodes de gestion d'abonnement
+       public function subscribeTo(Plan $plan, array $options = [])
+       {
+           // Annuler l'abonnement actif
+           if ($current = $this->activeSubscription) {
+               $current->cancel();
+           }
+
+           // Créer nouvelle souscription
+           $subscription = $this->subscriptions()->create([
+               'plan_id' => $plan->id,
+               'status' => $options['trial'] ?? false ? 'trialing' : 'active',
+               'trial_ends_at' => $options['trial_ends_at'] ?? null,
+               'starts_at' => $options['starts_at'] ?? now(),
+               'ends_at' => $options['ends_at'] ?? null,
+           ]);
+
+           // Mettre à jour le plan actuel
+           $this->update(['current_plan_id' => $plan->id]);
+
+           return $subscription;
+       }
+
+       public function cancelSubscription()
+       {
+           if ($subscription = $this->activeSubscription) {
+               $subscription->cancel();
+               return true;
+           }
+           return false;
+       }
 
 
 }

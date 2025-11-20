@@ -62,6 +62,169 @@
                 ]
             }
         },
+        "/api/v1/actions/analyze": {
+            "get": {
+                "tags": [
+                    "Actions"
+                ],
+                "summary": "Analyser les actions par secteur",
+                "description": "Retourne la liste des secteurs ainsi que leurs actions associées.",
+                "operationId": "analyzeActions",
+                "responses": {
+                    "200": {
+                        "description": "Listes des actions par secteur récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Listes des actions par secteur récupérée avec succes"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SectorWithActionsResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/actions/analyze/{actionKey}": {
+            "get": {
+                "tags": [
+                    "Actions"
+                ],
+                "summary": "Afficher les détails d'une action",
+                "description": "Retourne les détails complets d’une action : secteurs, employés, actionnaires, etc.",
+                "operationId": "showAction",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "description": "Key de l'action",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "act_abc123def"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails de l'action récupérés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Détails de l'action récupérés avec succès"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ShowSingleActionResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Action introuvable"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/actions/historique/{actionKey}": {
+            "get": {
+                "tags": [
+                    "Actions"
+                ],
+                "summary": "Historique des cours d'une action",
+                "description": "Retourne l’évolution historique des cours d’une action. À intégrer avec les données réelles de ton provider.",
+                "operationId": "historiqueAction",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "description": "key de l'action",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "act_abc123def"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Historique récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Historique des cours récupéré avec succès"
+                                        },
+                                        "data": {
+                                            "type": "string",
+                                            "example": "historique des cours pour l'action BOA"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Action introuvable"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/admin/maintenance/cleanup-incomplete-registrations": {
             "post": {
                 "tags": [
@@ -2811,6 +2974,51 @@
                 },
                 "type": "object"
             },
+            "EasyActionResource": {
+                "description": "Informations essentielles d'une action",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "boa-ci"
+                    },
+                    "symbole": {
+                        "type": "string",
+                        "example": "BOA"
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "BOA Côte d'Ivoire"
+                    },
+                    "volume": {
+                        "type": "integer",
+                        "example": 15000
+                    },
+                    "cours_veille": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 78.5
+                    },
+                    "cours_ouverture": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 79
+                    },
+                    "cours_cloture": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 80
+                    },
+                    "variation": {
+                        "type": "string",
+                        "example": "+1.27%"
+                    }
+                },
+                "type": "object"
+            },
             "FinancialNews": {
                 "title": "Financial News",
                 "description": "Modèle d'actualité financière",
@@ -2855,6 +3063,124 @@
                     "updated_at": {
                         "type": "string",
                         "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "SectorWithActionsResource": {
+                "description": "Secteur avec liste de ses actions",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "Finance"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "finance"
+                    },
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EasyActionResource"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "ShowSingleActionResource": {
+                "description": "Informations complètes d'une action",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "act_abc123def"
+                    },
+                    "symbole": {
+                        "type": "string",
+                        "example": "BOA"
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "BOA Côte d'Ivoire"
+                    },
+                    "volume": {
+                        "type": "integer",
+                        "example": 15000
+                    },
+                    "cours_veille": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 78.5
+                    },
+                    "cours_ouverture": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 79
+                    },
+                    "cours_cloture": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 80
+                    },
+                    "variation": {
+                        "type": "string",
+                        "example": "+1.27%"
+                    },
+                    "secteur_brvm": {
+                        "$ref": "#/components/schemas/BrvmSectorResource"
+                    },
+                    "secteur_reclassifie": {
+                        "$ref": "#/components/schemas/ClassifiedSectorResource"
+                    },
+                    "actionnaires": {
+                        "description": "Liste des actionnaires",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "nom": {
+                                    "type": "string",
+                                    "example": "Fonds souverain CI"
+                                },
+                                "pourcentage": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 12.5
+                                },
+                                "rang": {
+                                    "type": "integer",
+                                    "example": 1
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "employees": {
+                        "description": "Liste des employés liés à l'action",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "position": {
+                                    "type": "string",
+                                    "example": "DIRECTEUR FINANCIER"
+                                },
+                                "nom": {
+                                    "type": "string",
+                                    "example": "Jean Kouadio"
+                                }
+                            },
+                            "type": "object"
+                        }
                     }
                 },
                 "type": "object"

@@ -34,21 +34,26 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class ActionResource extends JsonResource
 {
-    protected ?array $followedIds = null;
-
-    public function withFollowedIds(array $followedIds): static
-    {
-        $this->followedIds = $followedIds;
-        return $this;
-    }
-
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
-        // Détermine la couleur en fonction de la variation
         $variation = (float) $this->variation;
-        $couleur = $variation > 0 ? 'green' : ($variation < 0 ? 'red' : 'gray');
+        $couleur = match (true) {
+            $variation > 0 => 'green',
+            $variation < 0 => 'red',
+            default => 'gray',
+        };
 
-        $userFollows = $this->followedIds ?? [];
+        // Récupère les IDs suivis (si fournis via `with()` dans le contrôleur)
+        $userFollows = $this->resource->whenLoaded('followers')
+            ? $this->resource->followers->pluck('id')->all()
+            : ($this->followedIds ?? []);
+
+        $isAuthUserFollow = in_array($this->id, $userFollows);
 
         return [
             'id' => $this->id,
@@ -60,25 +65,48 @@ class ActionResource extends JsonResource
             'cours_ouverture' => (float) $this->cours_ouverture,
             'cours_cloture' => (float) $this->cours_cloture,
             'variation' => $variation,
+            'variation_formatted' => $variation >= 0
+                ? '+' . number_format($variation, 2) . '%'
+                : number_format($variation, 2) . '%',
             'couleur_variation' => $couleur,
-            'isAuthUserFollow' => in_array($this->id, $userFollows),
+            'isAuthUserFollow' => $isAuthUserFollow,
 
-            // Relations vers les secteurs
-            'secteur_brvm' => $this->whenLoaded('brvmSector')
-                ? BrvmSectorResource::make($this->brvmSector)
-                : [
-                    'id' => $this->brvm_sector_id,
-                    'nom' => optional($this->brvmSector)->nom,
-                    'slug' => optional($this->brvmSector)->slug,
-                ],
+            // Relations conditionnelles
+            'secteur_brvm' => $this->whenLoaded('brvmSector', function () {
+                return [
+                    'id' => $this->brvmSector->id,
+                    'nom' => $this->brvmSector->nom,
+                    'slug' => $this->brvmSector->slug,
+                ];
+            }),
 
-            'secteur_reclassifie' => $this->whenLoaded('classifiedSector')
-                ? ClassifiedSectorResource::make($this->classifiedSector)
-                : [
-                    'id' => $this->classified_sector_id,
-                    'nom' => optional($this->classifiedSector)->nom,
-                    'slug' => optional($this->classifiedSector)->slug,
-                ],
+            'secteur_reclassifie' => $this->whenLoaded('classifiedSector', function () {
+                return [
+                    'id' => $this->classifiedSector->id,
+                    'nom' => $this->classifiedSector->nom,
+                    'slug' => $this->classifiedSector->slug,
+                ];
+            }),
+
+            'actionnaires' => $this->whenLoaded('shareholders', function () {
+                return $this->shareholders->map(function ($shareholder) {
+                    return [
+                        'id' => $shareholder->id ?? null,
+                        'nom' => $shareholder->nom ?? '',
+                        'pourcentage' => (float) ($shareholder->percentage ?? 0),
+                        'rang' => $shareholder->rang ?? null,
+                    ];
+                })->values()->all(); // `values()` pour réindexer en 0,1,2...
+            }),
+
+            'employees' => $this->whenLoaded('employees', function () {
+                return $this->employees->map(function ($employee) {
+                    return [
+                        'position' => $employee->position ? strtoupper($employee->position->nom) : '',
+                        'nom' => $employee->nom ?? '',
+                    ];
+                })->values()->all();
+            }),
         ];
     }
 }

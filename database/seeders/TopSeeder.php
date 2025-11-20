@@ -25,7 +25,7 @@ class TopSeeder extends Seeder
         Top::truncate();
         foreach($tops as $top){
             Top::create(array_merge($top, [
-                'key' => 'count-' . strtolower(Str::random(8)),
+                'key' => 'top_' . strtolower(Str::random(8)),
             ]));
         }
 

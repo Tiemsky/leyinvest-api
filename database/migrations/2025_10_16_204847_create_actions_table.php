@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('key')->unique();
             $table->ForeignIdFor(BrvmSector::class)->constrained('brvm_sectors')->onDelete('cascade');
             $table->ForeignIdFor(ClassifiedSector::class)->constrained('classified_sectors')->onDelete('cascade');
+            $table->text('description')->nullable(); // présentation de l'action
             $table->string('symbole', 10)->unique();
             $table->string('nom');
             $table->string('volume');
@@ -26,6 +27,12 @@ return new class extends Migration
             $table->decimal('cours_cloture')->default(0);
             $table->decimal('variation')->default(0);
             $table->timestamps();
+            $table->softDeletes();
+
+
+
+            $table->index('key');
+            $table->index('symbole');
         });
     }
 
