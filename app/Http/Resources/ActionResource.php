@@ -34,36 +34,36 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class ActionResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(Request $request): array
+    public function __construct(
+        $resource,
+        protected ?array $followedActionIds = null,
+    ) {
+        parent::__construct($resource);
+    }
+
+    public function toArray($request): array
     {
-        $variation = (float) $this->variation;
+        $variation = (float) $this->resource->variation;
         $couleur = match (true) {
             $variation > 0 => 'green',
             $variation < 0 => 'red',
             default => 'gray',
         };
 
-        // Récupère les IDs suivis (si fournis via `with()` dans le contrôleur)
-        $userFollows = $this->resource->whenLoaded('followers')
-            ? $this->resource->followers->pluck('id')->all()
-            : ($this->followedIds ?? []);
-
-        $isAuthUserFollow = in_array($this->id, $userFollows);
+        // ✅ Utilisation du contexte injecté
+        $isAuthUserFollow = $this->followedActionIds !== null
+            ? in_array($this->resource->id, $this->followedActionIds, true)
+            : false;
 
         return [
-            'id' => $this->id,
-            'key' => $this->key,
-            'symbole' => $this->symbole,
-            'nom' => $this->nom,
-            'volume' => $this->volume,
-            'cours_veille' => (float) $this->cours_veille,
-            'cours_ouverture' => (float) $this->cours_ouverture,
-            'cours_cloture' => (float) $this->cours_cloture,
+            'id' => $this->resource->id,
+            'key' => $this->resource->key,
+            'symbole' => $this->resource->symbole,
+            'nom' => $this->resource->nom,
+            'volume' => $this->resource->volume,
+            'cours_veille' => (float) $this->resource->cours_veille,
+            'cours_ouverture' => (float) $this->resource->cours_ouverture,
+            'cours_cloture' => (float) $this->resource->cours_cloture,
             'variation' => $variation,
             'variation_formatted' => $variation >= 0
                 ? '+' . number_format($variation, 2) . '%'
@@ -72,41 +72,33 @@ class ActionResource extends JsonResource
             'isAuthUserFollow' => $isAuthUserFollow,
 
             // Relations conditionnelles
-            'secteur_brvm' => $this->whenLoaded('brvmSector', function () {
-                return [
-                    'id' => $this->brvmSector->id,
-                    'nom' => $this->brvmSector->nom,
-                    'slug' => $this->brvmSector->slug,
-                ];
-            }),
+            'secteur_brvm' => $this->whenLoaded('brvmSector', fn () => [
+                'id' => $this->brvmSector->id,
+                'nom' => $this->brvmSector->nom,
+                'slug' => $this->brvmSector->slug,
+            ]),
 
-            'secteur_reclassifie' => $this->whenLoaded('classifiedSector', function () {
-                return [
-                    'id' => $this->classifiedSector->id,
-                    'nom' => $this->classifiedSector->nom,
-                    'slug' => $this->classifiedSector->slug,
-                ];
-            }),
+            'secteur_reclassifie' => $this->whenLoaded('classifiedSector', fn () => [
+                'id' => $this->classifiedSector->id,
+                'nom' => $this->classifiedSector->nom,
+                'slug' => $this->classifiedSector->slug,
+            ]),
 
-            'actionnaires' => $this->whenLoaded('shareholders', function () {
-                return $this->shareholders->map(function ($shareholder) {
-                    return [
-                        'id' => $shareholder->id ?? null,
-                        'nom' => $shareholder->nom ?? '',
-                        'pourcentage' => (float) ($shareholder->percentage ?? 0),
-                        'rang' => $shareholder->rang ?? null,
-                    ];
-                })->values()->all(); // `values()` pour réindexer en 0,1,2...
-            }),
+            'actionnaires' => $this->whenLoaded('shareholders', fn () =>
+                $this->shareholders->map(fn ($shareholder) => [
+                    'id' => $shareholder->id ?? null,
+                    'nom' => $shareholder->nom ?? '',
+                    'pourcentage' => (float) ($shareholder->percentage ?? 0),
+                    'rang' => $shareholder->rang ?? null,
+                ])->values()->all()
+            ),
 
-            'employees' => $this->whenLoaded('employees', function () {
-                return $this->employees->map(function ($employee) {
-                    return [
-                        'position' => $employee->position ? strtoupper($employee->position->nom) : '',
-                        'nom' => $employee->nom ?? '',
-                    ];
-                })->values()->all();
-            }),
+            'employees' => $this->whenLoaded('employees', fn () =>
+                $this->employees->map(fn ($employee) => [
+                    'position' => $employee->position ? strtoupper($employee->position->nom) : '',
+                    'nom' => $employee->nom ?? '',
+                ])->values()->all()
+            ),
         ];
     }
 }

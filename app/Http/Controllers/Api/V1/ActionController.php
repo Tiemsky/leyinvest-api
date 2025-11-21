@@ -42,21 +42,29 @@ class ActionController extends Controller
     {
         $user = $request->user();
 
-        // Récupère tous les IDs d'actions suivies par l'utilisateur
-        $followedIds = UserAction::where('user_id', $user->id)->pluck('action_id')->toArray();
-        // Récupère toutes les actions
-        $actions = Action::query()->with(['brvmSector', 'classifiedSector','shareholders','employees.position'])->latest()->get();
+        // ✅ Optimisé : une seule requête
+        $followedActionIds = UserAction::where('user_id', $user->id)
+            ->pluck('action_id')
+            ->all(); // all() au lieu de toArray() → plus propre
 
-        // Transforme chaque ressource en lui injectant les actions suivies
-        $data = $actions->map(function ($action) use ($followedIds) {
-            return (new ActionResource($action))->withFollowedIds($followedIds);
-        });
+        // ✅ Charge les relations nécessaires (évite N+1)
+        $actions = Action::with([
+            'brvmSector',
+            'classifiedSector',
+            'shareholders',
+            'employees.position'
+        ])->latest()->get();
+
+        // ✅ Crée la resource avec le contexte
+        $data = $actions->map(fn ($action) =>
+            new ActionResource($action, $followedActionIds)
+        );
 
         return response()->json([
             'success' => true,
-            'message' => '',
+            'message' => 'Liste des actions récupérée avec succès',
             'data' => $data,
-        ], 200);
+        ]);
     }
 
     /**
