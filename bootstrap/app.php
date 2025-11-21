@@ -109,7 +109,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Route non trouvée. Vérifiez l\'URL et la méthode HTTP.',
                     'requested_url' => $request->fullUrl(),
                     'code' => 404,
@@ -124,7 +124,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Méthode HTTP non autorisée pour cette route.',
                     'allowed_methods' => $e->getHeaders()['Allow'] ?? 'N/A',
                     'code' => 405,
@@ -140,7 +140,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Non authentifié. Veuillez vous connecter pour accéder à cette ressource.',
                     'code' => 401,
                     'timestamp' => now(),
@@ -157,7 +157,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Accès interdit. Vous n\'avez pas les permissions nécessaires.',
                     'code' => 403,
                     'timestamp' => now(),
@@ -171,7 +171,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Erreur de validation des données.',
                     'errors' => $e->errors(),
                     'code' => 422,
@@ -186,7 +186,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => 'Trop de requêtes. Veuillez patienter avant de réessayer.',
                     'retry_after' => $e->getHeaders()['Retry-After'] ?? 60,
                     'code' => 429,
@@ -201,7 +201,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'success' => 'false',
+                    'success' => false,
                     'message' => $e->getMessage() ?: 'Erreur HTTP détectée.',
                     'code' => $e->getStatusCode(),
                     'timestamp' => now(),
