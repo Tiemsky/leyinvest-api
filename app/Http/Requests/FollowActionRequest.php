@@ -25,7 +25,7 @@ class FollowActionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action_id' => ['required', 'integer', 'exists:users,id'],
+            'action_id' => ['required', 'integer', 'exists:action,id'],
             'stop_loss' => ['nullable', 'numeric', 'min:0'],
             'take_profit' => ['nullable', 'numeric', 'min:0'],
         ];
