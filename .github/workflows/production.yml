@@ -64,18 +64,19 @@ jobs:
           coverage: xdebug
 
       - name: Install Dependencies
-        # Crée le dossier 'vendor' essentiel pour 'php artisan'
         run: composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
 
+      # ✅ AJOUTÉ/VÉRIFIÉ: Cette étape doit créer le fichier .env
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.testing', '.env');"
 
+      # ✅ Maintenant, le fichier .env existe, la commande peut lire et écrire.
       - name: Generate key
         run: php artisan key:generate
 
       - name: Directory Permissions
-        # Assure les droits d'écriture pour l'utilisateur runner
         run: chmod -R 777 storage bootstrap/cache
+
 
       - name: Run Tests
         env:
