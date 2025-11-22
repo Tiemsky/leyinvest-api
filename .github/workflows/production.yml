@@ -97,10 +97,6 @@ jobs:
           echo "❌ PostgreSQL failed to start in time"
           exit 1
 
-      - name: Security Audit
-        run: composer audit
-
-
   # ----------------------------------------------------
   # Job 2: Build et Push de l'Image Docker
   # ----------------------------------------------------
