@@ -64,39 +64,24 @@ jobs:
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
 
-      # ✅ Générer .env de façon fiable
-      - name: Create .env for testing
-        run: |
-          cat > .env <<EOF
-          APP_NAME=Laravel
-          APP_ENV=testing
-          APP_KEY=
-          APP_DEBUG=true
-          APP_URL=http://localhost
-          DB_CONNECTION=pgsql
-          DB_HOST=127.0.0.1
-          DB_PORT=5432
-          DB_DATABASE=laravel_test
-          DB_USERNAME=laravel
-          DB_PASSWORD=secret
-          REDIS_HOST=127.0.0.1
-          REDIS_PORT=6379
-          CACHE_DRIVER=redis
-          SESSION_DRIVER=redis
-          QUEUE_CONNECTION=sync
-          EOF
+      # ✅ Utiliser .env.ci (commité) → pas de génération fragile
+      - name: Prepare .env for CI
+        run: cp .env.ci .env
 
       - name: Generate application key
         run: php artisan key:generate
 
-      - name: Install PostgreSQL client (for health check)
+      - name: Set permissions (optionnel, souvent inutile en CI)
+        run: chmod -R 755 storage bootstrap/cache
+
+      - name: Install PostgreSQL client (pour pg_isready)
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..30}; do
             pg_isready -h 127.0.0.1 -p 5432 -U laravel -d laravel_test && exit 0
-            echo "Waiting for PostgreSQL..."
+            echo "⏳ Waiting for PostgreSQL..."
             sleep 2
           done
           echo "❌ PostgreSQL failed to start"
@@ -144,7 +129,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=prod-
-            type=raw,value=latest
+            type=raw,value=prod-latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -162,12 +147,13 @@ jobs:
 
 
   # ----------------------------------------------------
-  # Job 3: Déploiement Production
+  # Job 3: Déploiement Production (simplifié pour la lisibilité)
   # ----------------------------------------------------
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment: production
+    if: success()
 
     steps:
       - name: Setup SSH
@@ -175,56 +161,32 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
 
-      - name: Deploy to Production
+      - name: Deploy to server
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_USER: ${{ secrets.PROD_USER }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_ACTOR: ${{ github.actor }}
-          # Passer les secrets directement (plus sûr que eval)
-          PROD_POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
-          PROD_POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
-          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
-          PROD_APP_KEY: ${{ secrets.PROD_APP_KEY }}
-          # Ajoute d'autres secrets si nécessaire
         run: |
           ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
             set -e
-            cd ${HOST_DIR}
+            cd /var/www/production
 
-            echo "🔒 Enabling maintenance mode..."
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan down --retry=60 --secret="${MAINTENANCE_SECRET:-emergency}" || true
+            # Maintenance
+            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan down || true
 
-            echo "📦 Pulling latest images..."
-            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+            # Pull & deploy
             docker-compose -f docker-compose.prod.yml pull laravel_app queue scheduler
-
-            echo "🚀 Deploying new version..."
-            # Passer les variables directement dans la commande (évite eval)
-            PROD_POSTGRES_DB="$PROD_POSTGRES_DB" \
-            PROD_POSTGRES_USER="$PROD_POSTGRES_USER" \
-            PROD_POSTGRES_PASSWORD="$PROD_POSTGRES_PASSWORD" \
-            APP_KEY="$PROD_APP_KEY" \
             docker-compose -f docker-compose.prod.yml up -d --force-recreate laravel_app queue scheduler api_proxy
 
-            echo "⏳ Waiting for services to be healthy..."
             sleep 10
-            timeout=60
-            while [ $timeout -gt 0 ]; do
-              if docker-compose -f docker-compose.prod.yml ps laravel_app | grep -q "Up.*healthy"; then
-                break
-              fi
-              sleep 2
-              timeout=$((timeout - 2))
-            done
 
-            echo "🔄 Running migrations..."
+            # Migrations & cache
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan migrate --force
-
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan optimize:clear
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan optimize
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan queue:restart
 
+            # Fin
+            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up
             echo "✅ Deployment successful!"
           EOF
 
@@ -240,43 +202,3 @@ jobs:
             fi
           done
           echo "✅ All smoke tests passed!"
-
-      - name: Disable Maintenance Mode
-        if: success()
-        run: |
-          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
-            cd ${HOST_DIR}
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up || true
-            echo "🔓 Maintenance mode disabled"
-          EOF
-
-
-  # ----------------------------------------------------
-  # Job 4: Rollback (simplifié et plus fiable)
-  # ----------------------------------------------------
-  rollback:
-    runs-on: ubuntu-latest
-    if: failure() && needs.deploy.result == 'failure'
-    needs: deploy
-
-    steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-
-      - name: Trigger Rollback
-        run: |
-          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
-            set -e
-            cd ${HOST_DIR}
-            echo "🔙 Triggering rollback via docker-compose..."
-            docker-compose -f docker-compose.prod.yml stop laravel_app queue scheduler
-            docker-compose -f docker-compose.prod.yml rm -f laravel_app queue scheduler
-            # Relancer avec l'ancienne image (si taggée) ou utiliser un backup d'image
-            # Dans la plupart des cas, relancer suffit si l'image précédente est encore en cache
-            docker-compose -f docker-compose.prod.yml up -d laravel_app queue scheduler api_proxy
-            sleep 10
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up || true
-            echo "✅ Rollback completed"
-          EOF
