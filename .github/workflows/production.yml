@@ -97,11 +97,6 @@ jobs:
           echo "❌ PostgreSQL failed to start in time"
           exit 1
 
-      # ✅ Passer APP_KEY via env pour garantir sa disponibilité
-      - name: Run Tests
-        env:
-          APP_KEY: ${{ steps.generate_key.outputs.key }}
-
       - name: Security Audit
         run: composer audit
 
