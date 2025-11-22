@@ -74,8 +74,6 @@ jobs:
       - name: Security Audit
         run: composer audit
 
-  ---
-
   ## Job 2: Build et Push de l'Image Docker
   build:
     needs: test
@@ -127,8 +125,6 @@ jobs:
             APP_ENV=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  ---
 
   ## Job 3: Déploiement Production
   deploy:
@@ -274,8 +270,6 @@ jobs:
         run: |
           echo "✅ Production deployment successful!"
           # ... (Notification webhook)
-
-  ---
 
   ## Job 4: Rollback d'urgence
   rollback:
