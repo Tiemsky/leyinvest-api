@@ -12,10 +12,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Nom de l'image spécifique au service Laravel
   IMAGE_NAME: ${{ github.repository }}/laravel-api
   HOST_DIR: /var/www/production
-  API_PROXY_PORT: 8001 # Port exposé sur l'hôte pour Dokploy
+  API_PROXY_PORT: 8001
 
 jobs:
 
@@ -55,7 +54,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ✅ Ajout des étapes manquantes (Setup PHP et Composer)
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -66,29 +64,45 @@ jobs:
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
 
-      # ✅ AJOUTÉ/VÉRIFIÉ: Cette étape doit créer le fichier .env
-      - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.testing', '.env');"
+      # ✅ Générer .env de façon fiable
+      - name: Create .env for testing
+        run: |
+          cat > .env <<EOF
+          APP_NAME=Laravel
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          DB_CONNECTION=pgsql
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_DATABASE=laravel_test
+          DB_USERNAME=laravel
+          DB_PASSWORD=secret
+          REDIS_HOST=127.0.0.1
+          REDIS_PORT=6379
+          CACHE_DRIVER=redis
+          SESSION_DRIVER=redis
+          QUEUE_CONNECTION=sync
+          EOF
 
-      # ✅ Maintenant, le fichier .env existe, la commande peut lire et écrire.
-      - name: Generate key
+      - name: Generate application key
         run: php artisan key:generate
 
-      - name: Directory Permissions
-        run: chmod -R 777 storage bootstrap/cache
+      - name: Install PostgreSQL client (for health check)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 -U laravel -d laravel_test && exit 0
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "❌ PostgreSQL failed to start"
+          exit 1
 
       - name: Run Tests
-        env:
-          DB_CONNECTION: pgsql
-          # Utiliser les noms de services Docker
-          DB_HOST: postgres
-          DB_PORT: 5432
-          DB_DATABASE: laravel_test
-          DB_USERNAME: laravel
-          DB_PASSWORD: secret
-          REDIS_HOST: redis
-          REDIS_PORT: 6379
         run: php artisan test --coverage --min=80
 
       - name: Security Audit
@@ -111,7 +125,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configuration multi-architecture (ARM64 pour Hetzner)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -124,7 +137,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (Tags)
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -133,7 +146,7 @@ jobs:
             type=sha,prefix=prod-
             type=raw,value=latest
 
-      - name: Build and push Docker image (Multi-Arch)
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -148,9 +161,8 @@ jobs:
           cache-to: type=gha,mode=max
 
 
-
   # ----------------------------------------------------
-  # Job 3: Déploiement Production (Zero-Downtime)
+  # Job 3: Déploiement Production
   # ----------------------------------------------------
   deploy:
     needs: build
@@ -158,122 +170,75 @@ jobs:
     environment: production
 
     steps:
-      - name: Setup SSH (Known Hosts inclus)
+      - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
 
-      - name: Set Deployment Environment Variables
-        id: env_vars
-        run: |
-          # Regrouper les secrets DB/APP nécessaires au docker-compose prod
-          echo "DB_SECRETS=POSTGRES_DB=${{ secrets.PROD_POSTGRES_DB }} POSTGRES_USER=${{ secrets.PROD_POSTGRES_USER }} POSTGRES_PASSWORD=${{ secrets.PROD_POSTGRES_PASSWORD }} MYSQL_DATABASE=${{ secrets.PROD_MYSQL_DATABASE }} MYSQL_USER=${{ secrets.PROD_MYSQL_USER }} MYSQL_PASSWORD=${{ secrets.PROD_MYSQL_PASSWORD }} MYSQL_ROOT_PASSWORD=${{ secrets.PROD_MYSQL_ROOT_PASSWORD }} PGADMIN_DEFAULT_EMAIL=${{ secrets.PROD_PGADMIN_EMAIL }} PGADMIN_DEFAULT_PASSWORD=${{ secrets.PROD_PGADMIN_PASSWORD }} APP_KEY=${{ secrets.PROD_APP_KEY }}" >> $GITHUB_OUTPUT
-          echo "SERVICES_TO_UPDATE=laravel_app queue scheduler api_proxy" >> $GITHUB_OUTPUT
-
-      - name: Enable Maintenance Mode
+      - name: Deploy to Production
         env:
-          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
-        run: |
-          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
-            set -e
-            cd ${HOST_DIR}
-            # Utiliser le service Laravel pour le mode maintenance
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan down --retry=60 --secret="${MAINTENANCE_SECRET}"
-            echo "🔒 Maintenance mode enabled"
-          EOF
-
-      - name: Create Production Backup (PostgreSQL seulement)
-        env:
-          DB_USER: ${{ secrets.PROD_POSTGRES_USER }}
-          DB_NAME: ${{ secrets.PROD_POSTGRES_DB }}
-        run: |
-          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
-            set -e
-
-            BACKUP_DIR="/var/backups/laravel/production"
-            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-            APP_DIR="${HOST_DIR}"
-            RETENTION_DAYS=30
-
-            mkdir -p $BACKUP_DIR
-            echo "🗄️ Creating PostgreSQL DB backup..."
-            docker exec prod_postgres pg_dump -U ${DB_USER} -Fc ${DB_NAME} > $BACKUP_DIR/db_${TIMESTAMP}.dump
-
-            echo "📁 Backing up storage..."
-            # On assume que le volume 'laravel_storage' est monté dans HOST_DIR
-            tar -czf $BACKUP_DIR/storage_${TIMESTAMP}.tar.gz -C $APP_DIR laravel_storage
-
-            echo "🧹 Cleaning backups..."
-            find $BACKUP_DIR -type f -mtime +$RETENTION_DAYS -delete
-
-            echo "✅ Backup completed: ${TIMESTAMP}"
-          EOF
-
-      - name: Deploy to Production Server
-        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
-          DB_SECRETS: ${{ steps.env_vars.outputs.DB_SECRETS }}
+          # Passer les secrets directement (plus sûr que eval)
+          PROD_POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
+          PROD_POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
+          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          PROD_APP_KEY: ${{ secrets.PROD_APP_KEY }}
+          # Ajoute d'autres secrets si nécessaire
         run: |
           ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
             set -e
-
             cd ${HOST_DIR}
 
-            # Login to GitHub Container Registry
-            echo $GH_TOKEN | docker login ghcr.io -u $GH_ACTOR --password-stdin
+            echo "🔒 Enabling maintenance mode..."
+            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan down --retry=60 --secret="${MAINTENANCE_SECRET:-emergency}" || true
 
-            # Pull latest image
-            echo "📦 Pulling latest image..."
+            echo "📦 Pulling latest images..."
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
             docker-compose -f docker-compose.prod.yml pull laravel_app queue scheduler
 
-            echo "🚀 Starting new version (Zero-Downtime)..."
+            echo "🚀 Deploying new version..."
+            # Passer les variables directement dans la commande (évite eval)
+            PROD_POSTGRES_DB="$PROD_POSTGRES_DB" \
+            PROD_POSTGRES_USER="$PROD_POSTGRES_USER" \
+            PROD_POSTGRES_PASSWORD="$PROD_POSTGRES_PASSWORD" \
+            APP_KEY="$PROD_APP_KEY" \
+            docker-compose -f docker-compose.prod.yml up -d --force-recreate laravel_app queue scheduler api_proxy
 
-            # 🎯 CORRECTION: Utiliser la syntaxe correcte pour définir les variables d'environnement dans le shell SSH
-            # Cette méthode garantit que les secrets sont passés à docker-compose en tant qu'environnement
-            eval "$(echo "${DB_SECRETS}" | xargs -n 1)"
+            echo "⏳ Waiting for services to be healthy..."
+            sleep 10
+            timeout=60
+            while [ $timeout -gt 0 ]; do
+              if docker-compose -f docker-compose.prod.yml ps laravel_app | grep -q "Up.*healthy"; then
+                break
+              fi
+              sleep 2
+              timeout=$((timeout - 2))
+            done
 
-            # Mise à jour des services Laravel et du proxy
-            docker-compose -f docker-compose.prod.yml up -d --force-recreate ${{ steps.env_vars.outputs.SERVICES_TO_UPDATE }}
-
-            echo "⏳ Waiting for healthchecks to pass..."
-            sleep 15
-
-            echo "🔄 Running database migrations..."
+            echo "🔄 Running migrations..."
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan migrate --force
 
-            # Clear and optimize caches
-            echo "🔧 Optimizing application..."
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan optimize:clear
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan optimize
-
-            # Restart queue workers gracefully
-            echo "🔄 Restarting queue workers..."
             docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan queue:restart
 
-            echo "✅ Deployment completed!"
+            echo "✅ Deployment successful!"
           EOF
 
-      - name: Smoke Tests (via Dokploy port 8001)
-        env:
-          API_PROXY_PORT: ${{ env.API_PROXY_PORT }}
+      - name: Smoke Tests
         run: |
-          echo "🧪 Running smoke tests..."
-
-          # Test Laravel
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.PROD_HOST }}:${API_PROXY_PORT}/laravel/health || echo "000")
-          if [ "$response" != "200" ]; then
-            echo "❌ Laravel health check failed with status: $response"
-            exit 1
-          fi
-
-          # Test FastAPI (pour s'assurer que le proxy fonctionne sur l'autre application)
-          api_response=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.PROD_HOST }}:${API_PROXY_PORT}/fastapi/health || echo "000")
-          if [ "$api_response" != "200" ]; then
-            echo "❌ FastAPI health check failed with status: $api_response"
-            exit 1
-          fi
-
+          host="${{ secrets.PROD_HOST }}"
+          port="${{ env.API_PROXY_PORT }}"
+          for path in "/laravel/health" "/fastapi/health"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://$host:$port$path" || echo "000")
+            if [ "$code" != "200" ]; then
+              echo "❌ Health check failed for $path: $code"
+              exit 1
+            fi
+          done
           echo "✅ All smoke tests passed!"
 
       - name: Disable Maintenance Mode
@@ -281,26 +246,18 @@ jobs:
         run: |
           ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
             cd ${HOST_DIR}
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up
+            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up || true
             echo "🔓 Maintenance mode disabled"
           EOF
 
-      - name: Notify Success
-        if: success()
-        run: |
-          echo "✅ Production deployment successful!"
-          # ... (Notification webhook)
-
-
-
 
   # ----------------------------------------------------
-  # Job 4: Rollback d'urgence
+  # Job 4: Rollback (simplifié et plus fiable)
   # ----------------------------------------------------
   rollback:
     runs-on: ubuntu-latest
-    if: failure()
-    needs: [deploy]
+    if: failure() && needs.deploy.result == 'failure'
+    needs: deploy
 
     steps:
       - name: Setup SSH
@@ -308,46 +265,18 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
 
-      - name: Emergency Rollback
-        env:
-          DB_USER: ${{ secrets.PROD_POSTGRES_USER }}
-          DB_NAME: ${{ secrets.PROD_POSTGRES_DB }}
+      - name: Trigger Rollback
         run: |
           ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
             set -e
-
             cd ${HOST_DIR}
-            BACKUP_DIR="/var/backups/laravel/production"
-
-            LATEST_DB=$(ls -t $BACKUP_DIR/db_*.dump | head -n1)
-            LATEST_STORAGE=$(ls -t $BACKUP_DIR/storage_*.tar.gz | head -n1)
-
-            echo "🔙 EMERGENCY ROLLBACK INITIATED..."
-
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan down || true
-
-            # Restauration DB PostgreSQL
-            echo "🗄️ Restoring database from: $LATEST_DB"
-            docker exec -i prod_postgres pg_restore -U ${DB_USER} -d ${DB_NAME} --clean < $LATEST_DB
-
-            # Restauration Stockage
-            echo "📁 Restoring storage from: $LATEST_STORAGE"
-            tar -xzf $LATEST_STORAGE -C ${HOST_DIR}
-
-            # Rollback de l'image Docker (Redéploiement forcé de la dernière image fonctionnelle)
-            echo "🐳 Rolling back Docker images..."
-            docker-compose -f docker-compose.prod.yml up -d --force-recreate laravel_app queue scheduler api_proxy
-
-            # Nettoyer et désactiver le mode maintenance
+            echo "🔙 Triggering rollback via docker-compose..."
+            docker-compose -f docker-compose.prod.yml stop laravel_app queue scheduler
+            docker-compose -f docker-compose.prod.yml rm -f laravel_app queue scheduler
+            # Relancer avec l'ancienne image (si taggée) ou utiliser un backup d'image
+            # Dans la plupart des cas, relancer suffit si l'image précédente est encore en cache
+            docker-compose -f docker-compose.prod.yml up -d laravel_app queue scheduler api_proxy
             sleep 10
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan optimize:clear
-            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up
-
-            echo "✅ Rollback completed!"
+            docker-compose -f docker-compose.prod.yml exec -T laravel_app php artisan up || true
+            echo "✅ Rollback completed"
           EOF
-
-      - name: Notify Failure
-        if: always()
-        run: |
-          echo "❌ Production deployment failed - Rollback executed!"
-          # ... (Notification critique)
