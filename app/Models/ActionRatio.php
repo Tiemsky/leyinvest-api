@@ -20,7 +20,7 @@ class ActionRatio extends Model
 
     public function financial()
     {
-        return $this->hasOne(StockFinancial::class, 'stock_id', 'stock_id')
+        return $this->hasOne(StockFinancial::class, 'action_id', 'action_id')
             ->where('year', $this->year);
     }
 }

@@ -58,11 +58,11 @@ Route::prefix('v1')->group(function(){
                 ->name('followers');
         });
 
-        Route::get('/actions', [ActionController::class, 'index']);
-        Route::get('/actions/analyze', [ActionController::class, 'analyze']);
-        Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
-        Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
-        Route::get('/indicators', [BocIndicatorController::class, 'index']);
+        // Route::get('/actions', [ActionController::class, 'index']);
+        // Route::get('/actions/analyze', [ActionController::class, 'analyze']);
+        // Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
+        // Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
+        // Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
 
 
@@ -94,6 +94,12 @@ Route::prefix('v1')->group(function(){
     Route::get('/countries', [CountryController::class, 'index']);
 
 
+    //For testing purposes only
+            Route::get('/actions', [ActionController::class, 'index']);
+        Route::get('/actions/analyze', [ActionController::class, 'analyze']);
+        Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
+        Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
+        Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
 
 

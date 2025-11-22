@@ -1,5 +1,4 @@
 <?php
-
 /**
  * ============================================================================
  * SERVICE: FinancialRatiosCalculator
@@ -8,9 +7,9 @@
  */
 namespace App\Services;
 
-use App\Models\ActionRatio;
 use App\Models\Action;
 use App\Models\StockFinancial;
+use App\Models\ActionRatio;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,7 +18,7 @@ class FinancialRatiosCalculator
     /**
      * Calcule tous les ratios pour une action et une année
      */
-    public function calculateForAction(Action $action, int $year): ActionRatio
+    public function calculateForStock(Action $action, int $year): ActionRatio
     {
         // Récupère les données financières de l'année courante
         $currentFinancial = $action->financials()->where('year', $year)->first();
@@ -33,7 +32,7 @@ class FinancialRatiosCalculator
         $threeYearsAgo = $action->financials()->where('year', $year - 3)->first();
 
         $ratios = [
-            'action_id' => $action->id,
+            'stock_id' => $action->id,
             'year' => $year,
             'calculated_at' => now(),
         ];
@@ -59,7 +58,7 @@ class FinancialRatiosCalculator
 
         // Sauvegarde ou met à jour
         return ActionRatio::updateOrCreate(
-            ['action_id' => $action->id, 'year' => $year],
+            ['stock_id' => $action->id, 'year' => $year],
             $ratios
         );
     }
@@ -70,17 +69,17 @@ class FinancialRatiosCalculator
     protected function calculateGrowthMetrics($current, $previous, $threeYears): array
     {
         $metrics = [
-            'pnb_growth' => null,
-            'rn_growth' => null,
-            'ebit_growth' => null,
-            'ebitda_growth' => null,
-            'capex_growth' => null,
-            'avg_growth_3y' => null,
+            'produit_net_bancaire' => null,
+            'resulat_net' => null,
+            'ebit' => null,
+            'ebitda' => null,
+            'capex' => null,
+            'avg_croissance' => null,
         ];
 
         if ($previous) {
             // Croissance PNB
-            $metrics['pnb_growth'] = $this->calculateGrowthRate(
+            $metrics['produit_net_bancaire'] = $this->calculateGrowthRate(
                 $previous->produit_net_bancaire,
                 $current->produit_net_bancaire
             );
@@ -337,13 +336,13 @@ class FinancialRatiosCalculator
             'details' => []
         ];
 
-        $actions = Action::where('is_active', true)
+        $actions = Stock::where('is_active', true)
             ->whereHas('financials', fn($q) => $q->where('year', $year))
             ->get();
 
         foreach ($actions as $action) {
             try {
-                $this->calculateForAction($action, $year);
+                $this->calculateForStock($action, $year);
                 $results['success']++;
                 $results['details'][] = "✓ {$action->code} ({$year})";
             } catch (\Exception $e) {
@@ -361,13 +360,13 @@ class FinancialRatiosCalculator
      */
     public function calculateSectorAverages(int $year): void
     {
-        $sectors = Action::where('is_active', true)
+        $sectors = Stock::where('is_active', true)
             ->whereNotNull('sector')
             ->distinct()
             ->pluck('sector');
 
         foreach ($sectors as $sector) {
-            $ratios = ActionRatio::whereHas('action', fn($q) => $q->where('sector', $sector))
+            $ratios = ActionRatio::whereHas('stock', fn($q) => $q->where('sector', $sector))
                 ->where('year', $year)
                 ->get();
 
@@ -382,7 +381,7 @@ class FinancialRatiosCalculator
                     'avg_debt_ratio' => $ratios->avg('debt_ratio'),
                     'avg_dividend_yield' => $ratios->avg('dividend_yield'),
                     'avg_per' => $ratios->avg('per'),
-                    'actions_count' => $ratios->count(),
+                    'stocks_count' => $ratios->count(),
                 ]
             );
         }

@@ -80,7 +80,6 @@ class ShowSingleActionResource extends JsonResource
             'secteur_brvm' => $this->whenLoaded('brvmSector')
                 ? BrvmSectorResource::make($this->brvmSector)
                 : [
-                    'id' => $this->brvm_sector_id,
                     'nom' => optional($this->brvmSector)->nom,
                     'slug' => optional($this->brvmSector)->slug,
                 ],
@@ -88,14 +87,12 @@ class ShowSingleActionResource extends JsonResource
             'secteur_reclassifie' => $this->whenLoaded('classifiedSector')
                 ? ClassifiedSectorResource::make($this->classifiedSector)
                 : [
-                    'id' => $this->classified_sector_id,
                     'nom' => optional($this->classifiedSector)->nom,
                     'slug' => optional($this->classifiedSector)->slug,
                 ],
 
             'actionnaires' => $this->whenLoaded('shareholders')->map(function ($shareholder) {
                 return [
-                    'id' => $shareholder->id,
                     'nom' => $shareholder->nom,
                     'pourcentage' => (float) $shareholder->percentage,
                     'rang' => $shareholder->rang,
@@ -110,6 +107,39 @@ class ShowSingleActionResource extends JsonResource
                     ];
                 })->toArray();
             }),
+            'test'=> $this->whenLoaded('brvmSector', function($brvmSector){
+                return $brvmSector->slug;
+            }),
+
+            'bilan' => $this->whenLoaded('financials')->map(function ($financial) {
+                return [
+                    'total_immobilisation'  => $financial->total_immobilisation,
+                    'credits_clientele'     =>  $financial->credits_clientele,
+                    'depots_clientele'      =>  $financial->depots_clientele,
+                    'total_actif'           =>  $financial->total_actif,
+                    'dette_totale'          =>  $financial->dette_totale,
+                    'capitaux_propres'      =>  $financial->capitaux_propres,
+                ];
+            })->toArray(),
+            'compte_de_resultat' => $this->whenLoaded('financials')->map(function ($financial) {
+                return [
+                    'produit_net_bancaire' => $financial->produit_net_bancaire,
+                    'ebit'                  =>  $financial->ebit,
+                    'ebitda'                =>  $financial->ebitda,
+                    'resultat_avant_impot'  =>  $financial->resultat_avant_impot,
+                    'resultat_net'          =>  $financial->resultat_net,
+                ];
+            })->toArray(),
+            'indicateur_boursiers' => $this->whenLoaded('financials')->map(function ($financial) {
+                return [
+                    'dividendes_total'      =>  $financial->dividendes_bruts ?? 0,
+                    'nombre_de_titre'       =>  $financial->nombre_titre ?? 0,
+                    'dnpa'                  =>  $financial->dnpa ?? 0,
+                    'bnpa'                  =>  $financial->per? (float)($financial->cours_31_12)/($financial->per) : 0,
+                    'rendement_actuel'      =>  $financial->dnpa ?  (float) $this->cours_cloture / (float) $financial->dnpa : 0,
+                    'cours_cible'           =>  'en_attente',
+                ];
+            })->toArray(),
 
         ];
     }

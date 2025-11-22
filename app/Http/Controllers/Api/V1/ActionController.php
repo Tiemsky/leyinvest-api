@@ -140,7 +140,13 @@ class ActionController extends Controller
         return response()->json([
             'success' => true,
             'message' => "détails de l'action récupérés avec succès",
-            'data' => new ShowSingleActionResource($action->load(['brvmSector', 'classifiedSector','shareholders','employees.position'])),
+            'data' => new ShowSingleActionResource($action->load(
+                [
+                                'brvmSector',
+                                'classifiedSector',
+                                'shareholders',
+                                'financials' => fn($q) => $q->where('year', '>=', now()->year - 1),
+                                'employees.position'])),
         ], 200);
     }
 
