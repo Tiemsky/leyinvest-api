@@ -94,8 +94,6 @@ jobs:
         run: composer audit
 
 
-  ---
-
   # ----------------------------------------------------
   # Job 2: Build et Push de l'Image Docker
   # ----------------------------------------------------
@@ -149,7 +147,6 @@ jobs:
           cache-to: type=gha,mode=max
 
 
-  ---
 
   # ----------------------------------------------------
   # Job 3: Déploiement Production (Zero-Downtime)
@@ -294,7 +291,7 @@ jobs:
           # ... (Notification webhook)
 
 
-  ---
+
 
   # ----------------------------------------------------
   # Job 4: Rollback d'urgence
