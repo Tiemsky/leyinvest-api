@@ -16,16 +16,21 @@ FROM php:8.3-fpm-alpine
 ARG APP_ENV=production
 
 # Dépendances système et extensions PHP nécessaires
-# Ajout de zip, gd, et d'autres outils courants de Laravel
+# Correction des noms de paquets Alpine
 RUN apk update && apk add --no-cache \
-    nginx-dev \
     postgresql-dev \
     libpq \
-    redis-tools \
+    redis \
     curl \
     supervisor \
     libzip-dev \
-    && docker-php-ext-install -j$(nproc) pdo pdo_pgsql bcmath sockets opcache zip \
+    # Paquet de développement pour l'extension GD
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    # Installation des extensions PHP avec GD
+    && docker-php-ext-install -j$(nproc) pdo pdo_pgsql bcmath sockets opcache zip gd \
+    # Nettoyage des paquets de développement pour réduire la taille de l'image
     && apk del --no-cache *-dev \
     && rm -rf /var/cache/apk/*
 
