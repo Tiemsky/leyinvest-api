@@ -1,52 +1,21 @@
-# =================================================================
-# Phase 1: Build (Installation des dépendances Composer)
-# =================================================================
-FROM composer:2.7 AS build
-
-USER root
-WORKDIR /app
-
-# ----------------------------------------------------
-# 1. Dépendances de build (Phase 1)
-# ----------------------------------------------------
-RUN apk update && apk add --no-cache \
-    git \
-    build-base \
-    libzip-dev \
-    postgresql-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    && rm -rf /var/cache/apk/*
-
-# 2. Compiler les extensions nécessaires pour Composer (si besoin)
-RUN docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd
-
-# 3. Nettoyage après compilation (Phase 1)
-RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
-
-# 4. Installer les dépendances PHP (sans dev)
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# =================================================================
-# Phase 2: Production (Image finale)
-# =================================================================
 FROM php:8.3-fpm-alpine
 
 ARG APP_ENV=production
 
 # ----------------------------------------------------
-# 1. Installer les dépendances runtime + outils de compilation
+# 1. Installer dépendances système + outils de compilation
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
+    # Runtime
     libpq \
     redis \
     curl \
     supervisor \
     git \
+    # Build tools
     build-base \
     linux-headers \
+    # Dev deps for PHP extensions
     postgresql-dev \
     libzip-dev \
     libpng-dev \
@@ -55,7 +24,12 @@ RUN apk update && apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
-# 2. Compiler les extensions PHP
+# 2. Installer Composer
+# ----------------------------------------------------
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+# ----------------------------------------------------
+# 3. Compiler les extensions PHP
 # ----------------------------------------------------
 RUN docker-php-ext-install -j$(nproc) \
     pdo \
@@ -69,23 +43,26 @@ RUN docker-php-ext-install -j$(nproc) \
     exif
 
 # ----------------------------------------------------
-# 3. Nettoyage après compilation
+# 4. Nettoyage
 # ----------------------------------------------------
 RUN apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
-# =================================================================
-# Configuration de l'application
-# =================================================================
+# ----------------------------------------------------
+# 5. Configurer l'application
+# ------------------------------------------------
 WORKDIR /var/www
 
-# Copier les dépendances depuis la phase build
-COPY --from=build --chown=www-data:www-data /app/vendor /var/www/vendor
+# Copier composer.json en premier (pour le cache Docker)
+COPY composer.json composer.lock ./
 
-# Copier le code source
-COPY --chown=www-data:www-data . /var/www
+# Installer les dépendances (maintenant que les extensions sont actives)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Configurer OPcache
+# Copier le reste du code
+COPY . .
+
+# OPcache
 RUN { \
         echo '[opcache]'; \
         echo 'opcache.enable=1'; \
@@ -98,15 +75,13 @@ RUN { \
     } > /usr/local/etc/php/conf.d/opcache.ini
 
 # Permissions
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
-    && find /var/www -type d -exec chmod 755 {} \; \
-    && find /var/www -type f -exec chmod 644 {} \;
+RUN chmod -R 775 storage bootstrap/cache \
+    && find . -type d -exec chmod 755 {} \; \
+    && find . -type f -exec chmod 644 {} \; \
+    && chown -R www-data:www-data .
 
-# Sécurité
 USER www-data
 
-# Exposer le port FPM
 EXPOSE 9000
 
-# Démarrer PHP-FPM
 CMD ["php-fpm"]
