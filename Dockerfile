@@ -1,34 +1,32 @@
 # Phase 1: build (Environnement de compilation pour Composer)
-# Utilisation de 'AS build' en minuscules pour respecter la convention StageNameCasing
 FROM composer:2.7 AS build
 
 USER root
 WORKDIR /app
 
 # ----------------------------------------------------
-# 1. Pré-requis pour Composer
-# Installer les dépendances système et extensions PHP nécessaires
+# 1. Préparation des outils de compilation (Phase 1)
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     git \
     build-base \
-    # Dépendances pour la compilation d'extensions
     libzip-dev \
     postgresql-dev \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
-    # Installer les extensions critiques requises par Composer/Laravel
-    && docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd \
-    # Nettoyer les paquets de développement après l'installation des extensions
-    && apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
+# 2. Compilation des extensions PHP pour Composer (Phase 1)
+RUN docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd
+
+# 3. Nettoyage après compilation (Phase 1)
+RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
+
 # ----------------------------------------------------
-# 2. Installation des dépendances PHP
+# 4. Installation des dépendances PHP (Phase 1)
 # ----------------------------------------------------
 COPY composer.json composer.lock ./
-# Exécution de composer install SANS les dépendances de développement pour l'image finale
 RUN composer install --no-dev --optimize-autoloader
 
 # --- Phase 2: Production (Image finale basée sur PHP-FPM Alpine) ---
@@ -37,25 +35,35 @@ FROM php:8.3-fpm-alpine
 # Arguments pour l'environnement de production
 ARG APP_ENV=production
 
-# Dépendances système et extensions PHP finales (pour l'exécution)
+# ----------------------------------------------------
+# 1. Installation des dépendances Runtime et Dev (Phase 2)
+# ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     libpq \
     redis \
     curl \
     supervisor \
     git \
-    # Temporairement installer build-base pour la compilation d'extensions (sockets, etc.)
+    # Outils de compilation temporaires pour les extensions
     build-base \
-    # Paquets de développement nécessaires pour docker-php-ext-install
+    # Dépendances de développement pour les extensions
     postgresql-dev \
     libzip-dev \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
-    # Installation des extensions PHP, y compris opcache et sockets
-    && docker-php-ext-install -j$(nproc) pdo pdo_pgsql bcmath sockets opcache zip gd \
-    # Nettoyage : supprimer build-base et les autres paquets de développement
-    && apk del --no-cache build-base *-dev \
+    && rm -rf /var/cache/apk/*
+
+# ----------------------------------------------------
+# 2. Compilation des extensions PHP (Phase 2)
+# C'est l'étape qui échouait probablement
+# ----------------------------------------------------
+RUN docker-php-ext-install -j$(nproc) pdo pdo_pgsql bcmath sockets opcache zip gd
+
+# ----------------------------------------------------
+# 3. Nettoyage après compilation (Phase 2)
+# ----------------------------------------------------
+RUN apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /var/www
@@ -64,12 +72,9 @@ WORKDIR /var/www
 COPY --from=build /app/vendor /var/www/vendor
 
 # Copier le code source de l'application
-# Le .dockerignore doit exclure les fichiers inutiles (comme node_modules, .git)
 COPY . /var/www
 
 # --- Configuration des Performances (OPcache) ---
-# Injection de la configuration OPcache directement pour éviter les erreurs de fichier manquant
-# opcache.revalidate_freq=0 est essentiel pour la performance en production
 RUN { \
     echo '[opcache]'; \
     echo 'opcache.enable=1'; \
@@ -82,7 +87,6 @@ RUN { \
 } > /usr/local/etc/php/conf.d/opcache.ini
 
 # Nettoyage et permissions
-# Assurer les droits d'écriture pour l'utilisateur www-data sur les répertoires de cache
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
     && find /var/www -type d -exec chmod 755 {} \; \
