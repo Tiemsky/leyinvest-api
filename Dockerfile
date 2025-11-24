@@ -1,12 +1,13 @@
-# Phase 1: build (Environnement de compilation pour Composer)
-# Utiliser une image composer minimale pour des raisons de vitesse
+# =================================================================
+# Phase 1: Build (Installation des dépendances Composer)
+# =================================================================
 FROM composer:2.7 AS build
 
 USER root
 WORKDIR /app
 
 # ----------------------------------------------------
-# 1. Préparation des dépendances de build (Phase 1)
+# 1. Dépendances de build (Phase 1)
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     git \
@@ -18,38 +19,37 @@ RUN apk update && apk add --no-cache \
     freetype-dev \
     && rm -rf /var/cache/apk/*
 
-# 2. Compilation des extensions PHP pour Composer (Phase 1)
+# 2. Compiler les extensions nécessaires pour Composer (si besoin)
 RUN docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd
 
 # 3. Nettoyage après compilation (Phase 1)
 RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
 
-# ----------------------------------------------------
-# 4. Installation des dépendances PHP (Phase 1)
-# ----------------------------------------------------
+# 4. Installer les dépendances PHP (sans dev)
 COPY composer.json composer.lock ./
-# Installation en mode production (sans les dépendances de développement)
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# --- Phase 2: Production (Image finale basée sur PHP-FPM Alpine) ---
+# =================================================================
+# Phase 2: Production (Image finale)
+# =================================================================
 FROM php:8.3-fpm-alpine
 
-# Arguments pour l'environnement de production
 ARG APP_ENV=production
 
 # ----------------------------------------------------
-# 1. Installation des dépendances Runtime et Dev (Phase 2)
+# 1. Installer les dépendances runtime + outils de compilation
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
-    # Runtime packages
+    # Runtime
     libpq \
     redis \
     curl \
     supervisor \
     git \
-    # Outils de compilation temporaires pour les extensions
+    # Outils de compilation (NECESSAIRES pour sockets, pcntl, etc.)
     build-base \
-    # Dépendances de développement pour les extensions
+    linux-headers \          # ← ESSENTIEL pour sockets
+    # Dépendances de développement pour extensions
     postgresql-dev \
     libzip-dev \
     libpng-dev \
@@ -58,54 +58,58 @@ RUN apk update && apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
-# 2. Compilation des extensions PHP (Phase 2)
-# Ajout de pcntl (requis pour les workers/supervisord) et exif
+# 2. Compiler les extensions PHP
 # ----------------------------------------------------
 RUN docker-php-ext-install -j$(nproc) \
-    pdo pdo_pgsql bcmath sockets opcache zip gd \
-    pcntl \
+    pdo \
+    pdo_pgsql \
+    bcmath \
+    sockets \                # ← Maintenant compilable
+    opcache \
+    zip \
+    gd \
+    pcntl \                  # ← Pour queue:work, Octane
     exif
 
 # ----------------------------------------------------
-# 3. Nettoyage après compilation (Phase 2)
+# 3. Nettoyage (SUPPRIMER les outils de build APRÈS compilation)
 # ----------------------------------------------------
 RUN apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
+# =================================================================
+# Configuration de l'application
+# =================================================================
 WORKDIR /var/www
 
-# Copier les dépendances de Composer depuis la phase de build
-# Utilisation de --chown pour définir immédiatement le propriétaire
+# Copier les dépendances depuis la phase build
 COPY --from=build --chown=www-data:www-data /app/vendor /var/www/vendor
 
-# Copier le code source de l'application
-# Utilisation de --chown pour définir immédiatement le propriétaire
+# Copier le code source
 COPY --chown=www-data:www-data . /var/www
 
-# --- Configuration des Performances (OPcache) ---
-# Active OPcache pour accélérer l'exécution du code PHP
+# Configurer OPcache pour la production
 RUN { \
-    echo '[opcache]'; \
-    echo 'opcache.enable=1'; \
-    echo 'opcache.revalidate_freq=0'; \
-    echo 'opcache.use_cwd=1'; \
-    echo 'opcache.max_accelerated_files=10000'; \
-    echo 'opcache.memory_consumption=128'; \
-    echo 'opcache.interned_strings_buffer=8'; \
-    echo 'opcache.fast_shutdown=1'; \
-} > /usr/local/etc/php/conf.d/opcache.ini
+        echo '[opcache]'; \
+        echo 'opcache.enable=1'; \
+        echo 'opcache.revalidate_freq=0'; \
+        echo 'opcache.use_cwd=1'; \
+        echo 'opcache.max_accelerated_files=10000'; \
+        echo 'opcache.memory_consumption=128'; \
+        echo 'opcache.interned_strings_buffer=8'; \
+        echo 'opcache.fast_shutdown=1'; \
+    } > /usr/local/etc/php/conf.d/opcache.ini
 
-# Nettoyage et permissions
-# Rendre les dossiers storage/ et cache/ accessibles en écriture
+# Permissions (storage/bootstrap/cache doivent être en écriture)
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
     && find /var/www -type d -exec chmod 755 {} \; \
     && find /var/www -type f -exec chmod 644 {} \;
 
-# Définir l'utilisateur d'exécution sur www-data pour la sécurité
+# Sécurité : exécuter en tant que www-data
 USER www-data
 
-# Exposer le port FPM (Dokploy le lira automatiquement)
+# Exposer le port FPM (Dokploy le détectera automatiquement)
 EXPOSE 9000
 
-# Commande par défaut : démarrer PHP-FPM
+# Démarrer PHP-FPM
 CMD ["php-fpm"]
