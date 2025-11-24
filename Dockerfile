@@ -6,11 +6,17 @@ USER root
 WORKDIR /app
 
 # ----------------------------------------------------
-# 1. Préparation des dépendances de build (Phase 1)
+# 1. Préparation des dépendances de build et RUNTIME (Phase 1)
+# CORRECTION : Ajout des packages runtime nécessaires pour charger gd.so et pdo_pgsql.so
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     git \
     build-base \
+    # RUNTIME libraries required by compiled extensions for composer install validation
+    libpng \
+    libjpeg-turbo \
+    libpq \
+    freetype \
     # Dev deps for PHP extensions
     libzip-dev \
     postgresql-dev \
@@ -24,11 +30,12 @@ RUN apk update && apk add --no-cache \
 RUN docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd
 
 # 3. Nettoyage après compilation (Phase 1)
+# Les packages runtime (libpng, libpq) ne sont pas supprimés ici.
 RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
 # 4. Installation des dépendances PHP (Phase 1)
-# Cette étape ne générera plus d'erreur GD
+# Cette étape ne générera plus d'erreur GD car les dépendances d'exécution sont présentes.
 # ----------------------------------------------------
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction
