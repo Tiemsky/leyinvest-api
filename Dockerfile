@@ -40,16 +40,13 @@ ARG APP_ENV=production
 # 1. Installer les dépendances runtime + outils de compilation
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
-    # Runtime
     libpq \
     redis \
     curl \
     supervisor \
     git \
-    # Outils de compilation (NECESSAIRES pour sockets, pcntl, etc.)
     build-base \
-    linux-headers \          # ← ESSENTIEL pour sockets
-    # Dépendances de développement pour extensions
+    linux-headers \
     postgresql-dev \
     libzip-dev \
     libpng-dev \
@@ -64,15 +61,15 @@ RUN docker-php-ext-install -j$(nproc) \
     pdo \
     pdo_pgsql \
     bcmath \
-    sockets \                # ← Maintenant compilable
+    sockets \
     opcache \
     zip \
     gd \
-    pcntl \                  # ← Pour queue:work, Octane
+    pcntl \
     exif
 
 # ----------------------------------------------------
-# 3. Nettoyage (SUPPRIMER les outils de build APRÈS compilation)
+# 3. Nettoyage après compilation
 # ----------------------------------------------------
 RUN apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
@@ -88,7 +85,7 @@ COPY --from=build --chown=www-data:www-data /app/vendor /var/www/vendor
 # Copier le code source
 COPY --chown=www-data:www-data . /var/www
 
-# Configurer OPcache pour la production
+# Configurer OPcache
 RUN { \
         echo '[opcache]'; \
         echo 'opcache.enable=1'; \
@@ -100,15 +97,15 @@ RUN { \
         echo 'opcache.fast_shutdown=1'; \
     } > /usr/local/etc/php/conf.d/opcache.ini
 
-# Permissions (storage/bootstrap/cache doivent être en écriture)
+# Permissions
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
     && find /var/www -type d -exec chmod 755 {} \; \
     && find /var/www -type f -exec chmod 644 {} \;
 
-# Sécurité : exécuter en tant que www-data
+# Sécurité
 USER www-data
 
-# Exposer le port FPM (Dokploy le détectera automatiquement)
+# Exposer le port FPM
 EXPOSE 9000
 
 # Démarrer PHP-FPM
