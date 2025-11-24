@@ -48,6 +48,7 @@ ARG APP_ENV=production
 
 # ----------------------------------------------------
 # 1. Installation des dépendances Runtime et Dev (Phase 2)
+# AJOUT DE LINUX-HEADERS ici pour la compilation de sockets
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     # Runtime packages
@@ -58,6 +59,7 @@ RUN apk update && apk add --no-cache \
     git \
     # Outils de compilation temporaires pour les extensions
     build-base \
+    linux-headers \
     # Dépendances de développement pour les extensions
     postgresql-dev \
     libzip-dev \
@@ -75,7 +77,8 @@ RUN docker-php-ext-install -j$(nproc) \
     exif
 
 # 3. Nettoyage après compilation (Phase 2)
-RUN apk del --no-cache build-base *-dev \
+# SUPPRESSION EXPLICITE des headers
+RUN apk del --no-cache build-base linux-headers *-dev \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /var/www
