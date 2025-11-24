@@ -1,6 +1,6 @@
-# Phase 1: BUILD (Environnement de compilation pour Composer)
-# Utiliser AS BUILD en majuscule pour le style et corriger l'avertissement FromAsCasing
-FROM composer:2.7 AS BUILD
+# Phase 1: build (Environnement de compilation pour Composer)
+# Utilisation de 'AS build' en minuscules pour respecter la convention StageNameCasing
+FROM composer:2.7 AS build
 
 USER root
 WORKDIR /app
@@ -8,10 +8,10 @@ WORKDIR /app
 # ----------------------------------------------------
 # 1. Pré-requis pour Composer
 # Installer les dépendances système et extensions PHP nécessaires
-# pour que Composer puisse résoudre et installer toutes les dépendances Laravel.
 # ----------------------------------------------------
 RUN apk update && apk add --no-cache \
     git \
+    build-base \
     # Dépendances pour la compilation d'extensions
     libzip-dev \
     postgresql-dev \
@@ -20,6 +20,8 @@ RUN apk update && apk add --no-cache \
     freetype-dev \
     # Installer les extensions critiques requises par Composer/Laravel
     && docker-php-ext-install -j$(nproc) zip pdo pdo_pgsql gd \
+    # Nettoyer les paquets de développement après l'installation des extensions
+    && apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
@@ -42,22 +44,24 @@ RUN apk update && apk add --no-cache \
     curl \
     supervisor \
     git \
+    # Temporairement installer build-base pour la compilation d'extensions (sockets, etc.)
+    build-base \
     # Paquets de développement nécessaires pour docker-php-ext-install
     postgresql-dev \
     libzip-dev \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
-    # Installation des extensions PHP, y compris opcache pour la performance
+    # Installation des extensions PHP, y compris opcache et sockets
     && docker-php-ext-install -j$(nproc) pdo pdo_pgsql bcmath sockets opcache zip gd \
-    # Nettoyage des paquets de développement pour réduire la taille de l'image
-    && apk del --no-cache *-dev \
+    # Nettoyage : supprimer build-base et les autres paquets de développement
+    && apk del --no-cache build-base *-dev \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /var/www
 
-# Copier les dépendances de Composer depuis la phase de BUILD
-COPY --from=BUILD /app/vendor /var/www/vendor
+# Copier les dépendances de Composer depuis la phase de build
+COPY --from=build /app/vendor /var/www/vendor
 
 # Copier le code source de l'application
 # Le .dockerignore doit exclure les fichiers inutiles (comme node_modules, .git)
