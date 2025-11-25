@@ -115,8 +115,5 @@ RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
 # Définir l'utilisateur d'exécution sur www-data pour la sécurité
 USER www-data
 
-# Exposer le port FPM
-EXPOSE 9000
-
-# Commande par défaut : démarrer PHP-FPM
-CMD ["php-fpm"]
+EXPOSE 8000
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
