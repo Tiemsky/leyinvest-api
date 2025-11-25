@@ -35,10 +35,14 @@ RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
 # 4. Installation des dépendances PHP (Phase 1)
+# CORRECTION: Copie des dossiers bootstrap, app et config pour permettre aux scripts artisan de s'exécuter.
 # ----------------------------------------------------
 COPY composer.json composer.lock ./
-# CORRECTION : Ajout du fichier artisan pour permettre aux scripts Composer de s'exécuter
 COPY artisan ./
+COPY app/ app/
+COPY config/ config/
+COPY bootstrap/ bootstrap/
+
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # --- Phase 2: Production (Image finale basée sur PHP-FPM Alpine) ---
