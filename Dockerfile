@@ -1,7 +1,7 @@
 FROM php:8.3-cli-alpine
 
 RUN apk add --no-cache \
-    libpng libzip libpq \
+    libpng libzip libpq openssl \
     build-base linux-headers \
     postgresql-dev libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev
 
