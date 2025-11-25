@@ -35,9 +35,10 @@ RUN apk del --no-cache build-base *-dev && rm -rf /var/cache/apk/*
 
 # ----------------------------------------------------
 # 4. Installation des dépendances PHP (Phase 1)
-# Cette étape ne générera plus d'erreur GD car les dépendances d'exécution sont présentes.
 # ----------------------------------------------------
 COPY composer.json composer.lock ./
+# CORRECTION : Ajout du fichier artisan pour permettre aux scripts Composer de s'exécuter
+COPY artisan ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # --- Phase 2: Production (Image finale basée sur PHP-FPM Alpine) ---
