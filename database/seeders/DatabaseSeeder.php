@@ -28,6 +28,6 @@ class DatabaseSeeder extends Seeder
             FlopSeeder::class,
             BocIndicatorSeeder::class,
         ]);
-         User::factory(5)->create();
+        //  User::factory(5)->create();
     }
 }
