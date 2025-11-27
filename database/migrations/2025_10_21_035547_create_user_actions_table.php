@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('key')->unique();
 
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('action_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('action_id')->constrained('actions')->onDelete('cascade');
             $table->decimal('stop_loss', 10, 2)->nullable();
             $table->decimal('take_profit', 10, 2)->nullable();
             $table->timestamps();
