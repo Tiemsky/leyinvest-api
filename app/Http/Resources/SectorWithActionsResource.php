@@ -25,10 +25,11 @@ class SectorWithActionsResource extends JsonResource
     public function toArray($request)
     {
         return [
-            'id' => $this->id,
-            'nom' => $this->nom,
-            'slug' => $this->slug,
-            'actions' => EasyActionResource::collection($this->whenLoaded('actions')),
+            'id'        => $this->id,
+            'nom'       => $this->nom,
+            'slug'      => $this->slug,
+            'variation' => (float)$this->variation,
+            'actions'   => EasyActionResource::collection($this->whenLoaded('actions')),
         ];
     }
 }

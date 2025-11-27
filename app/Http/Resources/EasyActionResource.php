@@ -36,11 +36,11 @@ class EasyActionResource extends JsonResource
             'key' => $this->key,
             'symbole' => $this->symbole,
             'nom' => $this->nom,
-            'volume' => $this->volume,
+            'volume' =>(float) $this->volume,
             'cours_veille' => (float) $this->cours_veille,
             'cours_ouverture' => (float) $this->cours_ouverture,
             'cours_cloture' => (float) $this->cours_cloture,
-            'variation' => $this->variation,
+            'variation' => (float) $this->variation,
         ];
     }
 }

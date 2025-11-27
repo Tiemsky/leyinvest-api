@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nom');
             $table->string('slug')->unique();
             $table->string('key')->unique();
+            $table->decimal('variation')->nullable();
             $table->timestamps();
         });
     }

@@ -9,27 +9,45 @@ use Illuminate\Support\Facades\DB;
 
 class BrvmSectorSeeder extends Seeder
 {
-    /**
-     * Exécute le seeder.
-     */
+
     public function run(): void
     {
         $sectors = collect([
-            ['nom' => 'Consommation de base', 'slug' => Str::slug("Consommation de base")],
-            ['nom' => 'Consommation discrétionnaire', 'slug' => Str::slug("Consommation discrétionnaire")],
-            ['nom' => 'Santé', 'slug' => Str::slug("Santé")],
-            ['nom' => 'Technologie de l\'information', 'slug' => Str::slug("Technologie de l'information")],
-            ['nom' => 'Matériaux', 'slug' => Str::slug("Matériaux")],
-            ['nom' => 'Immobilier', 'slug' => Str::slug("Immobilier")],
-            ['nom' => 'Services de communication', 'slug' => Str::slug("Services de communication")],
-            ['nom' => 'Services aux consommateurs', 'slug' => Str::slug("Services aux consommateurs")],
-            ['nom' => 'Transport', 'slug' => Str::slug("Transport")],
-            ['nom' => 'Énergie', 'slug' => Str::slug("Énergie")],
-            ['nom' => 'Services', 'slug' => Str::slug("Services")],
-            ['nom' => 'Industriels', 'slug' => Str::slug("Industriels")],
-            ['nom' => 'Services financiers', 'slug' => Str::slug("Services financiers")],
-            ['nom' => 'Services publics', 'slug' => Str::slug("Services publics")],
-            ['nom' => 'Télécommunications', 'slug' => Str::slug("Télécommunications")],
+            [
+                "nom"       => 'Consommation de base',
+                "slug"      => Str::slug("Consommation de base"),
+                "variation" => -0.54
+            ],
+            [
+                "nom"       => "Consommation discrétionnaire",
+                "slug"      => Str::slug("Consommation discrétionnaire"),
+                "variation" => 4.62
+            ],
+            [
+                "nom"        => "Énergie",
+                "slug"       => Str::slug("Énergie"),
+                "variation"  => 0.38
+            ],
+            [
+                "nom"        => "Industriels",
+                "slug"       => Str::slug("Industriels"),
+                "variation"  => 1.50
+            ],
+            [
+                "nom"       => "Services financiers",
+                "slug"      => Str::slug("Services financiers"),
+                "variation" => -0.16
+            ],
+            [
+                "nom"       => "Services publics",
+                "slug"      => Str::slug("Services publics"),
+                "variation" => -0.09
+            ],
+            [
+                "nom"        => "Télécommunications",
+                "slug"       => Str::slug("Télécommunications"),
+                "variation"  => -0.71
+            ],
         ]);
 
         // Nettoyage avant réinsertion
