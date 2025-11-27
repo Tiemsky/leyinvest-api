@@ -26,6 +26,14 @@ class Action extends Model
         return $this->belongsTo(ClassifiedSector::class, 'classified_sector_id');
     }
 
+       /**
+     * Données financières annuelles (relation 1-N)
+     */
+    public function financials(): HasMany
+    {
+        return $this->hasMany(StockFinancial::class)->orderBy('year', 'desc');
+    }
+
      /**
      * Relation: Snapshots quotidiens (historique 10 jours)
      */
@@ -44,13 +52,7 @@ class Action extends Model
             ->lastDays(5);
     }
 
-        /**
-     * Données financières annuelles (relation 1-N)
-     */
-    public function financials(): HasMany
-    {
-        return $this->hasMany(StockFinancial::class)->orderBy('year', 'desc');
-    }
+
 
        /**
      * Actionnaires (relation 1-N)

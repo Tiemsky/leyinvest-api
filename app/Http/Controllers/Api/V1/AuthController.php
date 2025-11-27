@@ -27,7 +27,8 @@ class AuthController extends Controller
 {
 
     public function __construct(
-        private AuthService $authService
+        private AuthService $authService,
+        private \App\Services\CookieService $cookieService
     ) {}
 
     /**
@@ -208,18 +209,23 @@ class AuthController extends Controller
                 $request->input('device_name', 'api')
             );
 
+            // Créer le cookie HTTP-only sécurisé pour le refresh token
+            $refreshTokenCookie = $this->cookieService->createRefreshTokenCookie(
+                $result['refresh_token']
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Connexion réussie',
                 'data' => [
                     'user' => new AuthUserResource($result['user']),
                     'access_token' => $result['access_token'],
-                    'refresh_token' => $result['refresh_token'],
+                    // ❌ SUPPRIMÉ : 'refresh_token' n'est plus exposé dans le JSON
                     'token_type' => $result['token_type'],
                     'expires_in' => $result['expires_in'],
                     'refresh_expires_in' => $result['refresh_expires_in'],
                 ],
-            ], 200);
+            ], 200)->cookie($refreshTokenCookie);
 
         } catch (ValidationException $e) {
             return response()->json([
@@ -300,20 +306,31 @@ class AuthController extends Controller
      */
     public function refreshToken(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'refresh_token' => 'required|string',
-        ]);
+        // Lire le refresh token depuis le cookie HTTP-only (sécurisé contre XSS)
+        $refreshToken = $request->cookie('refresh_token');
 
-        if ($validator->fails()) {
+        // Fallback: Support temporaire du body JSON pour compatibilité (à supprimer après migration client)
+        if (!$refreshToken && $request->has('refresh_token')) {
+            $refreshToken = $request->input('refresh_token');
+            \Log::warning('Refresh token reçu via JSON body (méthode dépréciée). Utilisez les cookies HTTP-only.');
+        }
+
+        // Validation du refresh token
+        if (!$refreshToken) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors(),
+                'message' => 'Token de rafraîchissement manquant',
+                'errors' => ['refresh_token' => ['Le refresh token est requis dans les cookies.']],
             ], 422);
         }
 
         try {
-            $result = $this->authService->refreshToken($request->input('refresh_token'));
+            $result = $this->authService->refreshToken($refreshToken);
+
+            // Créer un nouveau cookie HTTP-only avec le nouveau refresh token
+            $refreshTokenCookie = $this->cookieService->createRefreshTokenCookie(
+                $result['refresh_token']
+            );
 
             return response()->json([
                 'success' => true,
@@ -321,19 +338,22 @@ class AuthController extends Controller
                 'data' => [
                     'user' => $result['user'],
                     'access_token' => $result['access_token'],
-                    'refresh_token' => $result['refresh_token'],
+                    // ❌ SUPPRIMÉ : 'refresh_token' n'est plus exposé dans le JSON
                     'token_type' => $result['token_type'],
                     'expires_in' => $result['expires_in'],
                     'refresh_expires_in' => $result['refresh_expires_in'],
                 ],
-            ], 200);
+            ], 200)->cookie($refreshTokenCookie);
 
         } catch (ValidationException $e) {
+            // Invalider le cookie en cas d'erreur
+            $expiredCookie = $this->cookieService->createExpiredRefreshTokenCookie();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Échec du rafraîchissement du token',
                 'errors' => $e->errors(),
-            ], 401);
+            ], 401)->cookie($expiredCookie);
         }
     }
 
@@ -585,10 +605,13 @@ public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
         $this->authService->logout($request->user());
 
+        // Invalider le cookie HTTP-only du refresh token
+        $expiredCookie = $this->cookieService->createExpiredRefreshTokenCookie();
+
         return response()->json([
             'success' => true,
             'message' => 'Déconnexion réussie.',
-        ]);
+        ])->cookie($expiredCookie);
     }
 
     /**
@@ -608,10 +631,13 @@ public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
         $this->authService->logoutAll($request->user());
 
+        // Invalider le cookie HTTP-only du refresh token
+        $expiredCookie = $this->cookieService->createExpiredRefreshTokenCookie();
+
         return response()->json([
             'success' => true,
             'message' => 'Déconnexion de tous les appareils réussie.',
-        ]);
+        ])->cookie($expiredCookie);
     }
 
     /**
