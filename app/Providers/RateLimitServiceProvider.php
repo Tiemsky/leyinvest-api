@@ -31,7 +31,7 @@ class RateLimitServiceProvider extends ServiceProvider
                 ->by($request->ip())
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
-                        'status' => 'error',
+                        'status' => false,
                         'message' => 'Trop de tentatives de connexion. Veuillez réessayer dans quelques minutes.',
                         'code' => 429,
                         'retry_after' => $headers['Retry-After'] ?? 60,
@@ -49,7 +49,7 @@ class RateLimitServiceProvider extends ServiceProvider
                 ->by($request->ip())
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
-                        'status' => 'error',
+                        'status' => false,
                         'message' => 'Trop de tentatives de vérification OTP. Réessayez dans 5 minutes.',
                         'code' => 429,
                         'retry_after' => $headers['Retry-After'] ?? 300,

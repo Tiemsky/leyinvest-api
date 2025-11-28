@@ -1,0 +1,249 @@
+### ============================================
+### TESTS DE SÉCURITÉ - HTTP-ONLY COOKIES
+### ============================================
+### Utilisez l'extension REST Client VS Code ou HTTPie
+### ============================================
+
+@baseUrl = http://localhost:8000/api/v1
+@email = test@example.com
+@password = password123
+
+### ============================================
+### 1️⃣ TEST LOGIN - Vérifier le Cookie HTTP-Only
+### ============================================
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK
+### - Response contient : access_token, user, token_type, expires_in
+### - Response NE CONTIENT PAS : refresh_token (dans JSON)
+### - Header Set-Cookie contient : refresh_token=...; HttpOnly; Path=/; SameSite=strict
+
+### Extraire l'access_token de la réponse
+@accessToken = {{login.response.body.$.data.access_token}}
+
+### ============================================
+### 2️⃣ TEST ACCÈS PROTÉGÉ - Avec Access Token
+### ============================================
+GET {{baseUrl}}/auth/user/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK
+### - Response contient les informations de l'utilisateur
+
+### ============================================
+### 3️⃣ TEST REFRESH TOKEN - Lecture depuis Cookie
+### ============================================
+# @name refresh
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+# Note: Le cookie refresh_token est envoyé automatiquement par le client HTTP
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK
+### - Response contient : nouveau access_token
+### - Response NE CONTIENT PAS : refresh_token (dans JSON)
+### - Header Set-Cookie contient : nouveau refresh_token
+
+### Extraire le nouvel access_token
+@newAccessToken = {{refresh.response.body.$.data.access_token}}
+
+### ============================================
+### 4️⃣ TEST ACCÈS AVEC NOUVEAU TOKEN
+### ============================================
+GET {{baseUrl}}/auth/user/me
+Authorization: Bearer {{newAccessToken}}
+Content-Type: application/json
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK
+### - Fonctionne avec le nouveau token
+
+### ============================================
+### 5️⃣ TEST LOGOUT - Invalidation du Cookie
+### ============================================
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{newAccessToken}}
+Content-Type: application/json
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK
+### - Header Set-Cookie contient : refresh_token=; Expires=... (cookie expiré)
+
+### ============================================
+### 6️⃣ TEST REFRESH APRÈS LOGOUT (Doit échouer)
+### ============================================
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+### ❌ Vérifications attendues :
+### - Status: 401 Unauthorized ou 422 Validation Error
+### - Message d'erreur : Token invalide ou manquant
+
+### ============================================
+### 7️⃣ TEST RATE LIMITING - Login (5 tentatives max)
+### ============================================
+# Tentative 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+###
+# Tentative 2
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+###
+# Tentative 3
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+###
+# Tentative 4
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+###
+# Tentative 5
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+###
+# Tentative 6 (Doit être bloquée)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+### ❌ Vérifications attendues :
+### - Status: 429 Too Many Requests
+### - Header: Retry-After: 60
+
+### ============================================
+### 8️⃣ TEST COMPATIBILITÉ - Refresh via JSON Body (Déprécié)
+### ============================================
+# @name loginCompat
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Simuler l'ancien comportement (refresh_token dans le body)
+# Note: Cette méthode est dépréciée et génère un warning
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refresh_token": "token_factice_pour_test"
+}
+
+### ⚠️ Vérifications attendues :
+### - Fonctionne temporairement (compatibilité)
+### - Warning dans les logs Laravel : "Refresh token reçu via JSON body (déprécié)"
+
+### ============================================
+### 9️⃣ TEST CORS - Preflight Request
+### ============================================
+OPTIONS {{baseUrl}}/auth/login
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
+
+### ✅ Vérifications attendues :
+### - Status: 200 OK ou 204 No Content
+### - Header Access-Control-Allow-Origin: http://localhost:3000
+### - Header Access-Control-Allow-Credentials: true
+### - Header Access-Control-Allow-Methods: POST, ...
+
+### ============================================
+### 🔟 TEST SÉCURITÉ - Cookie Attributes
+### ============================================
+# @name securityTest
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### ✅ Vérifier dans le header Set-Cookie :
+### - HttpOnly (présent)
+### - SameSite=strict (présent)
+### - Secure (présent si APP_ENV=production)
+### - Path=/ (présent)
+### - Max-Age ou Expires (présent, ~7 jours)
+
+### ============================================
+### NOTES DE TEST
+### ============================================
+#
+# 🔹 Utilisation avec curl :
+#
+# Login avec sauvegarde du cookie :
+# curl -X POST http://localhost:8000/api/v1/auth/login \
+#   -H "Content-Type: application/json" \
+#   -d '{"email":"test@example.com","password":"password123"}' \
+#   -c cookies.txt -v
+#
+# Refresh avec envoi du cookie :
+# curl -X POST http://localhost:8000/api/v1/auth/refresh-token \
+#   -H "Content-Type: application/json" \
+#   -b cookies.txt -c cookies.txt -v
+#
+# Logout avec invalidation :
+# curl -X POST http://localhost:8000/api/v1/auth/logout \
+#   -H "Authorization: Bearer {access_token}" \
+#   -b cookies.txt -v
+#
+# 🔹 Utilisation avec HTTPie :
+#
+# Login :
+# http POST http://localhost:8000/api/v1/auth/login \
+#   email=test@example.com password=password123 \
+#   --session=./session.json
+#
+# Refresh :
+# http POST http://localhost:8000/api/v1/auth/refresh-token \
+#   --session=./session.json
+#
+### ============================================
