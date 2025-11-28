@@ -13,10 +13,10 @@
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
+        "resend/resend-laravel": "^1.0",
         "symfony/css-selector": "^7.3",
         "symfony/dom-crawler": "^7.3",
         "symfony/http-client": "^7.3"
-
     },
     "require-dev": {
         "laravel/pail": "^1.2.2",
