@@ -1,0 +1,210 @@
+# docker-compose.local.yml
+# Configuration Docker Compose pour Développement Local (WSL2)
+# Architecture: x86_64 (AMD64)
+
+version: '3.8'
+
+services:
+  # ============================================
+  # APPLICATION LARAVEL
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: leyinvest_laravel_local
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      # Application
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=${APP_KEY}
+      - APP_URL=http://localhost:8000
+
+      # Database
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=leyinvest
+      - DB_USERNAME=leyinvest
+      - DB_PASSWORD=secret
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+      # Cache & Session & Queue
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+
+      # Mail (Mailhog pour tests locaux)
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_ENCRYPTION=null
+      - MAIL_FROM_ADDRESS=tiafranck@leyinvestcom.ci
+      - MAIL_FROM_NAME=LeyInvest
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage:delegated
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache:delegated
+    networks:
+      - leyinvest-local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # ============================================
+  # QUEUE WORKER (Local)
+  # ============================================
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: leyinvest_queue_local
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --timeout=90
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=leyinvest
+      - DB_USERNAME=leyinvest
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - leyinvest-local
+    depends_on:
+      - app
+      - redis
+      - postgres
+
+  # ============================================
+  # POSTGRESQL DATABASE
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: leyinvest_postgres_local
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=leyinvest
+      - POSTGRES_USER=leyinvest
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leyinvest-local
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leyinvest -d leyinvest"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # REDIS
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: leyinvest_redis_local
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - leyinvest-local
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================
+  # PGADMIN (Interface Web PostgreSQL)
+  # ============================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: leyinvest_pgadmin
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=tiafranck@leyinvestcom.ci
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - leyinvest-local
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+
+  # ============================================
+  # MAILHOG (Test Emails Locaux)
+  # ============================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: leyinvest_mailhog
+    restart: unless-stopped
+    networks:
+      - leyinvest-local
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+
+  # ============================================
+  # REDIS COMMANDER (Interface Web Redis)
+  # ============================================
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: leyinvest_redis_commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - leyinvest-local
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  leyinvest-local:
+    driver: bridge
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local

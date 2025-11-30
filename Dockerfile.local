@@ -1,0 +1,90 @@
+# Dockerfile.local
+# Image Docker pour développement local (WSL2 x86_64)
+# Optimisé pour Laravel 12.x avec hot-reload
+
+FROM php:8.3-cli-alpine
+
+# Variables d'environnement
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_NO_INTERACTION=1
+
+# Installation des dépendances + outils de développement
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    zip \
+    unzip \
+    libpng \
+    libzip \
+    libpq \
+    openssl \
+    postgresql-libs \
+    redis \
+    netcat-openbsd \
+    # Build dependencies
+    build-base \
+    linux-headers \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    oniguruma-dev
+
+# Mise à jour des certificats
+RUN update-ca-certificates
+
+# Extensions PHP
+RUN docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_pgsql \
+        pgsql \
+        gd \
+        zip \
+        bcmath \
+        sockets \
+        pcntl \
+        exif
+
+# Installation de Redis via PECL
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
+
+# Configuration PHP pour développement
+RUN { \
+    echo 'display_errors=On'; \
+    echo 'error_reporting=E_ALL'; \
+    echo 'memory_limit=512M'; \
+    echo 'upload_max_filesize=50M'; \
+    echo 'post_max_size=50M'; \
+    echo 'max_execution_time=300'; \
+} > /usr/local/etc/php/conf.d/dev.ini
+
+# Nettoyage
+RUN apk del --no-cache \
+    build-base \
+    linux-headers \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev
+
+# Installation de Composer
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+# Répertoire de travail
+WORKDIR /var/www/html
+
+# Exposition du port
+EXPOSE 8000
+
+# Commande de démarrage (artisan serve pour dev)
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
