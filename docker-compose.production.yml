@@ -1,0 +1,225 @@
+# docker-compose.production.yml
+# Configuration Docker Compose pour Production (Dokploy + Traefik)
+# Architecture: ARM64 (aarch64) + AMD64
+# ✅ Optimisé pour Traefik avec HTTPS automatique
+
+version: '3.8'
+
+services:
+  # ============================================
+  # APPLICATION LARAVEL (Nginx + PHP-FPM + Queue Worker)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: leyinvest_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      # Application
+      - APP_NAME=${APP_NAME}
+      - APP_ENV=production
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=false
+      - APP_URL=${APP_URL}
+
+      # Database PostgreSQL
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+
+      # Cache & Session & Queue
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+
+      # Mail (Resend)
+      - MAIL_MAILER=resend
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+
+      # Frontend
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    networks:
+      - leyinvest-network
+      - dokploy-network  # ← Connexion au réseau Traefik
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      # ============================================
+      # LABELS TRAEFIK - Configuration du routing
+      # ============================================
+
+      # Activer Traefik pour ce service
+      - "traefik.enable=true"
+
+      # Spécifier le réseau Traefik
+      - "traefik.docker.network=dokploy-network"
+
+      # ============================================
+      # ROUTER HTTP (Port 80) - Redirection HTTPS
+      # ============================================
+      - "traefik.http.routers.leyinvest-http.rule=Host(`${APP_DOMAIN:-api.leyinvest.com}`)"
+      - "traefik.http.routers.leyinvest-http.entrypoints=web"
+      - "traefik.http.routers.leyinvest-http.middlewares=redirect-to-https"
+
+      # Middleware: Redirection HTTP → HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+      # ============================================
+      # ROUTER HTTPS (Port 443)
+      # ============================================
+      - "traefik.http.routers.leyinvest-https.rule=Host(`${APP_DOMAIN:-api.leyinvest.com}`)"
+      - "traefik.http.routers.leyinvest-https.entrypoints=websecure"
+      - "traefik.http.routers.leyinvest-https.tls=true"
+      - "traefik.http.routers.leyinvest-https.tls.certresolver=letsencrypt"
+
+      # ============================================
+      # SERVICE - Configuration du backend
+      # ============================================
+      - "traefik.http.services.leyinvest.loadbalancer.server.port=80"
+
+      # Health check Traefik (optionnel mais recommandé)
+      - "traefik.http.services.leyinvest.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.leyinvest.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.leyinvest.loadbalancer.healthcheck.timeout=5s"
+
+      # ============================================
+      # MIDDLEWARES SUPPLÉMENTAIRES (Sécurité)
+      # ============================================
+
+      # Headers de sécurité
+      - "traefik.http.middlewares.leyinvest-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.leyinvest-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.leyinvest-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.leyinvest-headers.headers.forceSTSHeader=true"
+
+      # Appliquer les middlewares au router HTTPS
+      - "traefik.http.routers.leyinvest-https.middlewares=leyinvest-headers"
+
+      # ============================================
+      # RATE LIMITING (Optionnel - Protection DDoS)
+      # ============================================
+      # Décommenter si vous voulez limiter le nombre de requêtes
+      # - "traefik.http.middlewares.leyinvest-ratelimit.ratelimit.average=100"
+      # - "traefik.http.middlewares.leyinvest-ratelimit.ratelimit.burst=50"
+      # - "traefik.http.routers.leyinvest-https.middlewares=leyinvest-headers,leyinvest-ratelimit"
+
+  # ============================================
+  # POSTGRESQL DATABASE
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: leyinvest_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leyinvest-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c max_connections=200
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+    labels:
+      # PostgreSQL n'est pas exposé via Traefik (accès interne uniquement)
+      - "traefik.enable=false"
+
+  # ============================================
+  # REDIS CACHE & QUEUE
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: leyinvest_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+    networks:
+      - leyinvest-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    labels:
+      # Redis n'est pas exposé via Traefik (accès interne uniquement)
+      - "traefik.enable=false"
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  # Réseau interne pour communication entre containers
+  leyinvest-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+  # Réseau externe Traefik (géré par Dokploy)
+  dokploy-network:
+    external: true
+
+# ============================================
+# VOLUMES (Persistent Data)
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+
+  redis_data:
+    driver: local

@@ -1,0 +1,176 @@
+# Dockerfile.production
+# Multi-architecture support (ARM64 + AMD64)
+# Optimisé pour Laravel 12.x avec Queue Worker intégré
+
+FROM php:8.3-fpm-alpine
+
+# Metadata
+LABEL maintainer="LeyInvest <contact@leyinvest.com>"
+LABEL description="Laravel 12.x Production - Multi-arch (ARM64 + AMD64)"
+
+# Arguments de build
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# Variables d'environnement
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_NO_INTERACTION=1
+ENV COMPOSER_MEMORY_LIMIT=-1
+
+# Installation des dépendances système + certificats SSL
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    zip \
+    unzip \
+    libpng \
+    libzip \
+    libpq \
+    openssl \
+    postgresql-libs \
+    redis \
+    supervisor \
+    nginx \
+    # Build dependencies
+    build-base \
+    linux-headers \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    oniguruma-dev
+
+# Mise à jour des certificats SSL
+RUN update-ca-certificates
+
+# Installation des extensions PHP nécessaires
+RUN docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_pgsql \
+        pgsql \
+        gd \
+        zip \
+        bcmath \
+        sockets \
+        pcntl \
+        exif \
+        opcache
+
+# Installation de l'extension Redis via PECL
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
+
+# Configuration PHP optimisée pour production
+RUN { \
+    echo 'opcache.enable=1'; \
+    echo 'opcache.memory_consumption=256'; \
+    echo 'opcache.interned_strings_buffer=16'; \
+    echo 'opcache.max_accelerated_files=10000'; \
+    echo 'opcache.revalidate_freq=2'; \
+    echo 'opcache.fast_shutdown=1'; \
+    echo 'opcache.validate_timestamps=0'; \
+    echo 'memory_limit=512M'; \
+    echo 'upload_max_filesize=50M'; \
+    echo 'post_max_size=50M'; \
+    echo 'max_execution_time=300'; \
+} > /usr/local/etc/php/conf.d/opcache.ini
+
+# Nettoyage des dépendances de build
+RUN apk del --no-cache \
+    build-base \
+    linux-headers \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev
+
+# Installation de Composer 2.7
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+# Création des répertoires nécessaires
+RUN mkdir -p /var/www/html /var/log/supervisor /run/nginx
+
+# Copie de la configuration Nginx
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
+
+# Copie de la configuration Supervisor
+COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Définir le répertoire de travail
+WORKDIR /var/www/html
+
+# Copie des fichiers de dépendances en premier (cache Docker)
+COPY composer.json composer.lock ./
+
+# Installation des dépendances PHP (production)
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --no-autoloader \
+    --optimize-autoloader \
+    --prefer-dist \
+    --no-interaction
+
+# Copie du reste de l'application
+COPY . .
+
+# Génération de l'autoloader optimisé
+RUN composer dump-autoload --optimize --classmap-authoritative
+
+# Configuration des permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
+
+# Création du script d'entrée
+RUN echo '#!/bin/sh' > /entrypoint.sh \
+    && echo 'set -e' >> /entrypoint.sh \
+    && echo 'echo "🚀 Starting LeyInvest Laravel Application..."' >> /entrypoint.sh \
+    && echo '' >> /entrypoint.sh \
+    && echo '# Attendre que PostgreSQL soit prêt' >> /entrypoint.sh \
+    && echo 'echo "⏳ Waiting for PostgreSQL..."' >> /entrypoint.sh \
+    && echo 'until nc -z -v -w30 $DB_HOST $DB_PORT; do' >> /entrypoint.sh \
+    && echo '  echo "Waiting for database connection..."' >> /entrypoint.sh \
+    && echo '  sleep 2' >> /entrypoint.sh \
+    && echo 'done' >> /entrypoint.sh \
+    && echo 'echo "✅ PostgreSQL is ready!"' >> /entrypoint.sh \
+    && echo '' >> /entrypoint.sh \
+    && echo '# Attendre que Redis soit prêt' >> /entrypoint.sh \
+    && echo 'echo "⏳ Waiting for Redis..."' >> /entrypoint.sh \
+    && echo 'until nc -z -v -w30 $REDIS_HOST $REDIS_PORT; do' >> /entrypoint.sh \
+    && echo '  echo "Waiting for Redis connection..."' >> /entrypoint.sh \
+    && echo '  sleep 2' >> /entrypoint.sh \
+    && echo 'done' >> /entrypoint.sh \
+    && echo 'echo "✅ Redis is ready!"' >> /entrypoint.sh \
+    && echo '' >> /entrypoint.sh \
+    && echo '# Optimisations Laravel' >> /entrypoint.sh \
+    && echo 'echo "⚙️ Optimizing Laravel..."' >> /entrypoint.sh \
+    && echo 'php artisan config:cache' >> /entrypoint.sh \
+    && echo 'php artisan route:cache' >> /entrypoint.sh \
+    && echo 'php artisan view:cache' >> /entrypoint.sh \
+    && echo 'echo "✅ Laravel optimized!"' >> /entrypoint.sh \
+    && echo '' >> /entrypoint.sh \
+    && echo '# Démarrer Supervisor (gère Nginx + PHP-FPM + Queue Worker)' >> /entrypoint.sh \
+    && echo 'echo "🎯 Starting services via Supervisor..."' >> /entrypoint.sh \
+    && echo 'exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' >> /entrypoint.sh \
+    && chmod +x /entrypoint.sh
+
+# Exposition des ports
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
+
+# Démarrage
+ENTRYPOINT ["/entrypoint.sh"]
