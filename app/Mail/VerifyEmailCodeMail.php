@@ -27,7 +27,7 @@ class VerifyEmailCodeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Verify Email Code Mail',
+            subject: 'Verification de votre OTP Code',
         );
     }
 
