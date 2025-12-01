@@ -27,6 +27,14 @@ return new class extends Migration
             $table->decimal('capitaux_propres', 15, 2)->nullable(); // capitaux_propres = fonds propres/equity
             $table->decimal('dette_totale', 15, 2)->nullable(); // dette_totale = total des dettes
             $table->decimal('total_actif', 15, 2)->nullable(); // total_actif = total de l'actif/assets
+            // Actif Circulant
+            $table->decimal('actif_circulant', 15, 2)->nullable();
+            // Passif Circulant
+            $table->decimal('passif_circulant', 15, 2)->nullable();
+            // Chiffre d'Affaires
+            $table->decimal('chiffre_affaires', 15, 2)->nullable();
+            // Valeur Ajoutée
+            $table->decimal('valeur_ajoutee', 15, 2)->nullable();
 
             // COMPTE DE RÉSULTAT (en millions)
             $table->decimal('produit_net_bancaire', 15, 2)->nullable(); // produit_net_bancaire = PNB/net banking income
@@ -47,9 +55,10 @@ return new class extends Migration
 
             $table->timestamps(); // created_at, updated_at = dates de création/modification
 
-            // Contrainte d'unicité: une seule entrée par action par année
-            $table->unique(['action_id', 'year']);
-            $table->index('year');
+              // ========== METADATA ==========
+
+              $table->index(['action_id', 'year'], 'idx_action_year');
+              $table->index('year', 'idx_year');
         });
     }
 

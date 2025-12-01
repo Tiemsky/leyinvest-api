@@ -74,7 +74,7 @@ class ShowSingleActionResource extends JsonResource
             'cours_veille' => (float) $this->cours_veille,
             'cours_ouverture' => (float) $this->cours_ouverture,
             'cours_cloture' => (float) $this->cours_cloture,
-            'variation' => $this->variation,
+            'variation' =>(float) $this->variation,
 
             // Relations vers les secteurs
             'secteur_brvm' => $this->whenLoaded('brvmSector')
@@ -132,11 +132,11 @@ class ShowSingleActionResource extends JsonResource
             })->toArray(),
             'indicateur_boursiers' => $this->whenLoaded('financials')->map(function ($financial) {
                 return [
-                    'dividendes_total'      =>  $financial->dividendes_bruts ?? 0,
-                    'nombre_de_titre'       =>  $financial->nombre_titre ?? 0,
-                    'dnpa'                  =>  $financial->dnpa ?? 0,
-                    'bnpa'                  =>  $financial->per? (float)($financial->cours_31_12)/($financial->per) : 0,
-                    'rendement_actuel'      =>  $financial->dnpa ?  (float) $this->cours_cloture / (float) $financial->dnpa : 0,
+                    'dividendes_total'      => (float)  $financial->dividendes_bruts ?? 0,
+                    'nombre_de_titre'       =>(float)  $financial->nombre_titre ?? 0,
+                    'dnpa'                  =>(float)  $financial->dnpa ?? 0,
+                    'bnpa'                  =>(float)  $financial->per? (float)($financial->cours_31_12)/($financial->per) : 0,
+                    'rendement_actuel'      =>(float)  $financial->dnpa ?  (float) $this->cours_cloture / (float) $financial->dnpa : 0,
                     'cours_cible'           =>  'en_attente',
                 ];
             })->toArray(),

@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('brvm_sectors', function (Blueprint $table) {
             $table->id();
+            $table->string('key')->unique();
             $table->string('nom');
             $table->string('slug')->unique();
-            $table->string('key')->unique();
             $table->decimal('variation')->nullable();
             $table->timestamps();
         });

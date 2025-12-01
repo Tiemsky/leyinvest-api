@@ -14,7 +14,8 @@ use Illuminate\Http\UploadedFile;
 class AuthService
 {
     public function __construct(
-        protected RefreshTokenService $refreshTokenService
+        protected RefreshTokenService $refreshTokenService,
+        protected CookieService $cookieService
     ) {}
 
     /**

@@ -9,23 +9,31 @@ Route::prefix('v1')->group(function () {
     // ============================================
     // ROUTES PUBLIQUES - AUTHENTIFICATION
     // ============================================
-    Route::prefix('auth')->middleware('throttle:60,1')->group(function () {
-        // Inscription étape 1
-        Route::post('register', [AuthController::class, 'registerStepOne']);
+    Route::prefix('auth')->group(function () {
+        // Inscription étape 1 - Rate limit modéré
+        Route::post('register', [AuthController::class, 'registerStepOne'])
+            ->middleware('throttle:10,1'); // 10 tentatives par minute
 
-        // Inscription étape 2 (compléter le profil)
-        Route::post('complete-profile', [AuthController::class, 'registerStepTwo']);
+        // Inscription étape 2 (compléter le profil) - Rate limit modéré
+        Route::post('complete-profile', [AuthController::class, 'registerStepTwo'])
+            ->middleware('throttle:10,1');
 
-        // Connexion
-        Route::post('login', [AuthController::class, 'login']);
+        // Connexion - Rate limit STRICT pour prévenir brute-force
+        Route::post('login', [AuthController::class, 'login'])
+            ->middleware('throttle:5,1'); // 5 tentatives par minute max
 
-        // Refresh token (route publique car le user n'a plus d'access token valide)
-        Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+        // Refresh token - Rate limit pour prévenir les abus
+        // Route publique car le user n'a plus d'access token valide
+        Route::post('refresh-token', [AuthController::class, 'refreshToken'])
+            ->middleware('throttle:10,1'); // 10 refresh par minute
 
-        // Mot de passe oublié
-        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-        Route::post('verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
-        Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        // Mot de passe oublié - Rate limit STRICT
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
+            ->middleware('throttle:3,1'); // 3 tentatives par minute
+        Route::post('verify-reset-otp', [AuthController::class, 'verifyResetOtp'])
+            ->middleware('throttle:5,1'); // 5 vérifications par minute
+        Route::post('reset-password', [AuthController::class, 'resetPassword'])
+            ->middleware('throttle:3,1'); // 3 reset par minute
 
 
 

@@ -64,7 +64,7 @@ class ActionResource extends JsonResource
             'cours_veille' => (float) $this->resource->cours_veille,
             'cours_ouverture' => (float) $this->resource->cours_ouverture,
             'cours_cloture' => (float) $this->resource->cours_cloture,
-            'variation' => $variation,
+            'variation' =>(float)  $variation,
             'variation_formatted' => $variation >= 0
                 ? '+' . number_format($variation, 2) . '%'
                 : number_format($variation, 2) . '%',

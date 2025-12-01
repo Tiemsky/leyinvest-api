@@ -1,0 +1,15 @@
+# queue-worker.ps1
+# Script PowerShell pour relancer automatiquement le worker de queue Laravel
+
+while ($true) {
+    Write-Host "🔄 Démarrage du worker de queue..." -ForegroundColor Cyan
+    try {
+        # Lance le worker Laravel
+        php artisan queue:work --queue=default --tries=3 --sleep=2 --max-jobs=1000
+    }
+    catch {
+        Write-Host "❌ Erreur : $_" -ForegroundColor Red
+    }
+    Write-Host "⚠️ Worker arrêté. Redémarrage dans 5 secondes..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+}

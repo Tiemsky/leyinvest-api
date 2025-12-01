@@ -119,3 +119,4 @@ Route::prefix('v1')->group(function(){
 require __DIR__.'/api_auth.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/health.php';
+require __DIR__.'/api_financial_indicator.php';
