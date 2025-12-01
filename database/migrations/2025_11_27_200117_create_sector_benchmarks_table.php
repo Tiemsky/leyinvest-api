@@ -91,13 +91,13 @@ return new class extends Migration
         });
 
         // Ajouter contrainte CHECK via raw SQL
-        DB::statement('
+        DB::statement("
             ALTER TABLE sector_benchmarks ADD CONSTRAINT chk_sector_exclusivity CHECK (
-                (type = "secteur_brvm" AND brvm_sector_id IS NOT NULL AND classified_sector_id IS NULL)
+                (type = 'secteur_brvm' AND brvm_sector_id IS NOT NULL AND classified_sector_id IS NULL)
                 OR
-                (type = "secteur_reclasse" AND classified_sector_id IS NOT NULL AND brvm_sector_id IS NULL)
+                (type = 'secteur_reclasse' AND classified_sector_id IS NOT NULL AND brvm_sector_id IS NULL)
             )
-        ');
+        ");
     }
 
     /**
