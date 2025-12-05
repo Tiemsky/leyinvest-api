@@ -2,335 +2,433 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Action;
+use App\Models\SectorFinancialMetric;
+use App\Models\StockFinancial;
+use App\Models\StockFinancialMetric;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Resource pour le dashboard d'une action
- * Inclut : présentation, indicateurs, résultats trimestriels, analyse complète
+ * Class ActionDashboardResource
+ *
+ * Cette ressource transforme un modèle "Action" pour l'affichage du Tableau de Bord Financier.
+ *
+ * @package App\Http\Resources
+ *
+ * Fonctionnalités principales :
+ * 1. Filtre les données financières pour une année spécifique ($year).
+ * 2. Gère la distinction entre sociétés financières (Banques) et non-financières (Industrie).
+ * 3. Compare les indicateurs de l'action avec les moyennes de son secteur (Benchmarking).
  */
 class ActionDashboardResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
+     * L'année pour laquelle les données financières doivent être affichées.
+     * @var int
+     */
+    private int $year;
+
+    /**
+     * ActionDashboardResource constructor.
      *
-     * @return array<string, mixed>
+     * @param mixed $resource Le modèle Action.
+     * @param int $year L'année fiscale concernée.
+     */
+    public function __construct($resource, int $year)
+    {
+        parent::__construct($resource);
+        $this->year = $year;
+    }
+
+    /**
+     * Transforme la ressource en tableau JSON.
+     *
+     * C'est le point d'entrée principal. Il agrège les données de l'action,
+     * les états financiers et les métriques comparatives sectorielles.
+     *
+     * @param Request $request
+     * @return array
      */
     public function toArray(Request $request): array
     {
-        return [
-            // Informations de base
-            'action' => [
-                'id' => $this->id,
-                'key' => $this->key,
-                'symbole' => $this->symbole,
-                'nom' => $this->nom,
-                'description' => $this->description,
-            ],
+        /** @var Action $action Typage pour l'autocomplétion IDE */
+        $action = $this->resource;
 
-            // Cotation en temps réel
-            'cotation' => [
-                'volume' => (int) $this->volume,
-                'cours_veille' => (float) $this->cours_veille,
-                'cours_ouverture' => (float) $this->cours_ouverture,
-                'cours_cloture' => (float) $this->cours_cloture,
-                'variation' => (float) $this->variation,
-                'variation_formatted' => $this->formatVariation($this->variation),
-            ],
+        // 1. Récupération des États Financiers pour l'année demandée
+        /** @var StockFinancial|null $financial */
+        $financial = $action->financials()->where('year', $this->year)->first();
 
-            // Présentation
-            'presentation' => [
-                'activite' => $this->description,
-                'secteur_brvm' => [
-                    'nom' => optional($this->brvmSector)->nom,
-                    'slug' => optional($this->brvmSector)->slug,
-                ],
-                'secteur_reclassifie' => [
-                    'nom' => optional($this->classifiedSector)->nom,
-                    'slug' => optional($this->classifiedSector)->slug,
-                ],
-            ],
-
-            // Direction / Employés
-            'direction' => $this->whenLoaded('employees', function () {
-                return $this->employees->map(function ($employee) {
-                    return [
-                        'fonction' => $employee->position ? strtoupper($employee->position->nom) : '',
-                        'nom_prenoms' => $employee->nom,
-                    ];
-                })->values()->toArray();
-            }),
-
-            // Actionnariat
-            'actionnariat' => $this->whenLoaded('shareholders', function () {
-                return $this->shareholders->map(function ($shareholder) {
-                    return [
-                        'nom' => $shareholder->nom,
-                        'pourcentage' => (float) $shareholder->percentage,
-                        'rang' => (int) $shareholder->rang,
-                    ];
-                })->sortBy('rang')->values()->toArray();
-            }),
-
-            // Bilan (dernière année disponible)
-            'bilan' => $this->getLatestBilan(),
-
-            // Compte de résultat (dernière année disponible)
-            'compte_resultat' => $this->getLatestCompteResultat(),
-
-            // Indicateurs boursiers
-            'indicateurs_boursiers' => $this->getIndicateursBoursiers(),
-
-            // Résultats trimestriels (année en cours)
-            'resultats_trimestriels' => $this->getResultatsTrimestriels(),
-
-            // Analyse financière (intégration avec le système d'indicateurs)
-            'analyse' => $this->when(
-                $request->input('include_analysis', false),
-                function () {
-                    return [
-                        'croissance' => null, // À charger via IndicatorOrchestrator
-                        'rentabilite' => null,
-                        'remuneration' => null,
-                        'valorisation' => null,
-                        'solidite_financiere' => null,
-                    ];
-                }
-            ),
-        ];
-    }
-
-    /**
-     * Récupère le bilan de la dernière année
-     */
-    private function getLatestBilan(): ?array
-    {
-        $latestFinancial = $this->whenLoaded('financials', function () {
-            return $this->financials->sortByDesc('year')->first();
-        });
-
-        if (!$latestFinancial) {
-            return null;
-        }
-
-        return [
-            'annee' => $latestFinancial->year,
-            'total_immobilisation' => $this->formatMontant($latestFinancial->total_immobilisation),
-            'credits_clientele' => $this->formatMontant($latestFinancial->credits_clientele),
-            'depots_clientele' => $this->formatMontant($latestFinancial->depots_clientele),
-            'total_actif' => $this->formatMontant($latestFinancial->total_actif),
-            'dette_totale' => $this->formatMontant($latestFinancial->dette_totale),
-            'capitaux_propres' => $this->formatMontant($latestFinancial->capitaux_propres),
-            // Valeurs brutes pour calculs
-            'raw' => [
-                'total_immobilisation' => (float) $latestFinancial->total_immobilisation,
-                'credits_clientele' => (float) $latestFinancial->credits_clientele,
-                'depots_clientele' => (float) $latestFinancial->depots_clientele,
-                'total_actif' => (float) $latestFinancial->total_actif,
-                'dette_totale' => (float) $latestFinancial->dette_totale,
-                'capitaux_propres' => (float) $latestFinancial->capitaux_propres,
-            ],
-        ];
-    }
-
-    /**
-     * Récupère le compte de résultat de la dernière année
-     */
-    private function getLatestCompteResultat(): ?array
-    {
-        $latestFinancial = $this->whenLoaded('financials', function () {
-            return $this->financials->sortByDesc('year')->first();
-        });
-
-        if (!$latestFinancial) {
-            return null;
-        }
-
-        return [
-            'annee' => $latestFinancial->year,
-            'chiffre_affaires' => $this->formatMontant($latestFinancial->produit_net_bancaire),
-            'ebitda' => $this->formatMontant($latestFinancial->ebitda),
-            'ebit' => $this->formatMontant($latestFinancial->ebit),
-            'resultat_avant_impot' => $this->formatMontant($latestFinancial->resultat_avant_impot),
-            'resultat_net' => $this->formatMontant($latestFinancial->resultat_net),
-            'valeur_ajoutee' => $this->formatMontant($latestFinancial->ebitda), // Ou autre calcul si disponible
-            'resultat_exploitation' => $this->formatMontant($latestFinancial->ebit),
-            // Valeurs brutes
-            'raw' => [
-                'produit_net_bancaire' => (float) $latestFinancial->produit_net_bancaire,
-                'ebitda' => (float) $latestFinancial->ebitda,
-                'ebit' => (float) $latestFinancial->ebit,
-                'resultat_avant_impot' => (float) $latestFinancial->resultat_avant_impot,
-                'resultat_net' => (float) $latestFinancial->resultat_net,
-            ],
-        ];
-    }
-
-    /**
-     * Calcule les indicateurs boursiers
-     */
-    private function getIndicateursBoursiers(): ?array
-    {
-        $latestFinancial = $this->whenLoaded('financials', function () {
-            return $this->financials->sortByDesc('year')->first();
-        });
-
-        if (!$latestFinancial) {
-            return null;
-        }
-
-        $cours = (float) $this->cours_cloture;
-        $dnpa = (float) $latestFinancial->dnpa;
-        $per = (float) $latestFinancial->per;
-
-        // Calcul BNPA = Cours / PER
-        $bnpa = $per > 0 ? $cours / $per : 0;
-
-        // Calcul Rendement actuel = DNPA / Cours
-        $rendementActuel = $cours > 0 ? ($dnpa / $cours) * 100 : 0;
-
-        return [
-            'rendement_actuel' => [
-                'valeur' => number_format($rendementActuel, 2) . '%',
-                'raw' => round($rendementActuel, 2),
-            ],
-            'cours_cible' => [
-                'valeur' => 'En attente', // À implémenter avec ta logique
-                'raw' => null,
-            ],
-            'dividendes_total' => [
-                'valeur' => $this->formatMontant($latestFinancial->dividendes_bruts),
-                'raw' => (float) $latestFinancial->dividendes_bruts,
-            ],
-            'dnpa' => [
-                'valeur' => number_format($dnpa, 2) . ' FCFA',
-                'raw' => $dnpa,
-            ],
-            'bnpa' => [
-                'valeur' => number_format($bnpa, 2) . ' FCFA',
-                'raw' => round($bnpa, 2),
-            ],
-            'nombre_titres' => [
-                'valeur' => number_format($latestFinancial->nombre_titre, 0, ',', ' '),
-                'raw' => (int) $latestFinancial->nombre_titre,
-            ],
-        ];
-    }
-
-    /**
-     * Récupère et calcule les résultats trimestriels
-     *
-     * NOTE: Cette méthode suppose que tu as une table `quarterly_results` ou équivalent
-     * Si non, il faudra l'adapter selon ta structure de données
-     */
-    private function getResultatsTrimestriels(): array
-    {
-        // Si tu as une relation `quarterlyResults` sur le model Action
-        if ($this->relationLoaded('quarterlyResults')) {
-            $currentYear = now()->year;
-            $quarters = $this->quarterlyResults()
-                ->where('year', $currentYear)
-                ->orderBy('trimestre')
-                ->get();
-
-            $trimestres = [];
-            foreach ([1, 2, 3, 4] as $t) {
-                $quarter = $quarters->firstWhere('trimestre', $t);
-
-                if ($quarter) {
-                    $trimestres["t{$t}"] = [
-                        'produit_net_bancaire' => [
-                            'valeur' => $this->formatMontant($quarter->produit_net_bancaire),
-                            'evolution' => $this->calculateQuarterEvolution(
-                                $quarter->produit_net_bancaire,
-                                $currentYear - 1,
-                                $t,
-                                'produit_net_bancaire'
-                            ),
-                            'raw' => (float) $quarter->produit_net_bancaire,
-                        ],
-                        'resultat_net' => [
-                            'valeur' => $this->formatMontant($quarter->resultat_net),
-                            'evolution' => $this->calculateQuarterEvolution(
-                                $quarter->resultat_net,
-                                $currentYear - 1,
-                                $t,
-                                'resultat_net'
-                            ),
-                            'raw' => (float) $quarter->resultat_net,
-                        ],
-                    ];
-                } else {
-                    $trimestres["t{$t}"] = null; // Données non disponibles
-                }
-            }
-
+        // Guard Clause : Si pas de bilan pour cette année, on arrête ici.
+        if (!$financial) {
             return [
-                'annee' => $currentYear,
-                'trimestres' => $trimestres,
+                'success' => false,
+                'message' => 'Aucune donnée financière disponible pour cette année',
+                'year' => $this->year
             ];
         }
 
-        // Si pas de relation quarterlyResults, retourner structure vide
-        // Tu peux calculer à partir des données annuelles si nécessaire
+        // 2. Récupération des Métriques pré-calculées (Ratios, Croissance...)
+        $metric = StockFinancialMetric::where('action_id', $action->id)
+            ->where('year', $this->year)
+            ->first();
+
+        // 3. Récupération des Métriques du Secteur (pour comparaison/benchmark)
+        // Comparaison avec le secteur global BRVM (ex: Finance)
+        $brvmSectorMetrics = $this->getSectorMetrics('brvm', $action->brvm_sector_id, $this->year);
+        // Comparaison avec le secteur classifié plus précis (ex: Banques commerciales)
+        $classifiedSectorMetrics = $this->getSectorMetrics('classified', $action->classified_sector_id, $this->year);
+
+        // 4. Construction de la réponse structurée
         return [
-            'annee' => now()->year,
-            'trimestres' => [
-                't1' => null,
-                't2' => null,
-                't3' => null,
-                't4' => null,
+            // --- INFO GÉNÉRALES ---
+            'action' => [
+                'id' => $action->id,
+                'key'=> $action->key,
+                'nom' => $action->nom,
+                'variation' => $action->variation,
+                'presentation' => $action->description,
+                'symbole' => $action->symbole,
+                'brvm_sector' => [
+                    'nom' => $action->brvmSector->nom,
+                    'slug' => $action->brvmSector->slug,
+                ],
+                'classified_sector' => [
+                    'nom' => $action->classifiedSector->nom,
+                    'slug' => $action->classifiedSector->slug,
+                ],
             ],
-            'note' => 'Résultats trimestriels non disponibles',
+            'year' => $this->year,
+
+            // --- ÉTATS FINANCIERS (Logique Bancaire vs Standard gérée dans les méthodes) ---
+            'bilan' => $this->formatBilan($financial, $action->isFinancialService()),
+            'compte_resultat' => $this->formatCompteResultat($financial, $action->isFinancialService()),
+
+            // --- DATA BOURSIÈRE (Cours, Dividendes, PER brut) ---
+            'indicateurs_boursiers' => $this->formatIndicateursBoursiers($financial),
+
+            // --- RATIOS & ANALYSE (Avec comparaison sectorielle) ---
+            'indicators' => [
+                'croissance' => $this->formatCroissance($metric, $brvmSectorMetrics, $classifiedSectorMetrics, $action->isFinancialService()),
+                'rentabilite' => $this->formatRentabilite($metric, $brvmSectorMetrics, $classifiedSectorMetrics),
+                'remuneration' => $this->formatRemuneration($metric, $brvmSectorMetrics, $classifiedSectorMetrics),
+                'valorisation' => $this->formatValorisation($metric, $brvmSectorMetrics, $classifiedSectorMetrics),
+                'solidite_financiere' => $this->formatSolidite($metric, $brvmSectorMetrics, $classifiedSectorMetrics, $action->isFinancialService()),
+            ],
+
+            // --- GOUVERNANCE ---
+            'governance' => [
+                'actionnariat' => $action->shareholders->map(fn($s) => [
+                    'nom' => $s->nom,
+                    'pourcentage' => $s?->pourcentage !== null ? (float)$s?->pourcentage . ' %' : null,
+                ]),
+                'employees' => $action->employees->map(fn($e) => [
+                    'id' => $e->id,
+                    'nom' => $e->nom,
+                    'position' => ['nom' => $e->position?->nom,],
+                ]),
+            ],
+
+            // --- MÉTA-DONNÉES SECTORIELLES ---
+            'sector_comparison' => [
+                'brvm_sector' => [
+                    'nom' => $action?->brvmSector?->nom,
+                    'companies_count' => $brvmSectorMetrics->companies_count ?? 0,
+                ],
+                'classified_sector' => [
+                    'nom' => $action?->classifiedSector?->nom,
+                    'companies_count' => $classifiedSectorMetrics->companies_count ?? 0,
+                ],
+            ],
         ];
     }
 
     /**
-     * Calcule l'évolution d'un trimestre par rapport à l'année précédente
+     * Formate le Bilan selon le type d'entreprise.
+     *
+     * Ajoute les champs spécifiques "Crédits/Dépôts clientèle" pour les banques.
+     *
+     * @param StockFinancial $financial
+     * @param bool $isFinancial True si c'est une banque/assurance.
+     * @return array
      */
-    private function calculateQuarterEvolution(float $currentValue, int $previousYear, int $trimestre, string $field): ?string
+    private function formatBilan(StockFinancial $financial, bool $isFinancial): array
     {
-        // Récupérer le résultat du même trimestre de l'année précédente
-        if ($this->relationLoaded('quarterlyResults')) {
-            $previousQuarter = $this->quarterlyResults()
-                ->where('year', $previousYear)
-                ->where('trimestre', $trimestre)
-                ->first();
+        $data = [
+            'total_immobilisation' => [
+                'value' => $financial?->total_immobilisation !== null ? (float) $financial->total_immobilisation : null,
+                'label' => 'Total Immobilisation'
+            ],
+            'actif_circulant' => [
+                'value' => $financial?->actif_circulant !== null ? (float) $financial->actif_circulant : null,
+                'label' => 'Actif Circulant'
+            ],
+            'total_actif' => [
+                'value' => $financial?->total_actif !== null ? (float) $financial->total_actif : null,
+                'label' => 'Total Actif'
+            ],
+            'capitaux_propres' => [
+                'value' => $financial?->capitaux_propres !== null ? (float) $financial->capitaux_propres : null,
+                'label' => 'Capitaux propres'
+            ],
+            'passif_circulant' => [
+                'value'  => $financial?->passif_circulant !== null ?  (float) $financial->passif_circulant : null,
+                 'label' => 'Passif Circulant'
+                ],
+            'dette_totale' => [
+                'value' => $financial?->dette_totale !== null ? (float) $financial->dette_totale : null,
+                'label' => 'Dette totale'
+            ],
+        ];
 
-            if ($previousQuarter && $previousQuarter->$field > 0) {
-                $evolution = (($currentValue - $previousQuarter->$field) / $previousQuarter->$field) * 100;
-                $sign = $evolution >= 0 ? '+' : '';
-                return $sign . number_format($evolution, 1) . '%';
-            }
+        // Champs spécifiques aux banques
+        if ($isFinancial) {
+            $data['credits_clientele'] = [
+                'value' => $financial?->credits_clientele !== null ? (float) $financial->credits_clientele : null ,
+                'label' => 'Crédits à la clientèle'
+            ];
+            $data['depots_clientele'] = [
+                'value' => $financial?->depots_clientele !== null ? (float) $financial->depots_clientele : null,
+                 'label' => 'Dépôts de la clientèle'
+            ];
         }
 
-        return null;
+        return $data;
     }
 
     /**
-     * Formate un montant en millions
+     * Formate le Compte de Résultat.
+     *
+     * Affiche "PNB" pour les banques vs "Chiffre d'Affaires" pour les autres.
      */
-    private function formatMontant(?float $montant): string
+    private function formatCompteResultat(StockFinancial $financial, bool $isFinancial): array
     {
-        if (is_null($montant)) {
-            return '-';
+        $data = [];
+
+        if ($isFinancial) {
+            $data['produit_net_bancaire'] = [
+                'value' => $financial?->produit_net_bancaire !== null ? (float) $financial->produit_net_bancaire : null,
+                'label' => 'Produit Net Bancaire'
+            ];
+        } else {
+            $data['chiffre_affaires'] = [
+                'value' => $financial?->chiffre_affaires !== null ? (float) $financial->chiffre_affaires : null,
+                'label' => "Chiffre d'Affaires"
+            ];
         }
 
-        // Si le montant est déjà en millions
-        if ($montant < 1000) {
-            return number_format($montant, 1, ',', ' ') . ' M';
-        }
+        // Indicateurs communs
+        $data['valeur_ajoutee'] = [
+            'value' => $financial?->valeur_ajoutee !== null ? (float) $financial->valeur_ajoutee : null,
+            'label' => 'Valeur Ajoutée'
+        ];
+        $data['ebitda'] = [
+            'value' => $financial?->ebitda !== null ?  (float) $financial->ebitda : null,
+            'label' => 'EBITDA'
+        ];
+        $data['ebit'] = [
+            'value' => $financial?->ebit !== null ?  (float) $financial->ebit : null,
+            'label' => 'EBIT'
+        ];
+        $data['resultat_avant_impot'] = [
+            'value' => $financial?->resultat_avant_impot !== null ? (float) $financial->resultat_avant_impot : null,
+            'label' => 'Résultat avant Impôt'
+        ];
+        $data['resultat_net'] = [
+            'value' => $financial?->resultat_net !== null ? (float) $financial->resultat_net : null,
+            'label' => 'Résultat Net'
+        ];
 
-        // Si en milliers, convertir en millions
-        return number_format($montant / 1000, 1, ',', ' ') . ' Mds';
+        return $data;
     }
 
     /**
-     * Formate la variation avec symbole
+     * Formate les indicateurs boursiers de base (Cours, Dividendes).
      */
-    private function formatVariation(float $variation): string
+    private function formatIndicateursBoursiers(StockFinancial $financial): array
     {
-        $sign = $variation >= 0 ? '+' : '';
-        return $sign . number_format($variation, 2) . '%';
+        return [
+            'nombre_titres' => [
+                'value' => $financial?->nombre_titre !== null ? (float) $financial?->nombre_titre : null,
+                'label' => 'Nombre de titres'
+            ],
+            'cours_31_12' => [
+                'value' => $financial?->cours_31_12 !== null ? (float) $financial->cours_31_12 : null,
+                'label' => 'Cours au 31/12'
+            ],
+            'dnpa' => [
+                'value' => $financial?->dnpa !== null ? (float) $financial->dnpa : null,
+                'label' => 'DNPA'
+            ],
+            'dividendes_total' => [
+                'value' => $financial?->dividendes_bruts !== null ? (float) $financial->dividendes_bruts : null,
+                'label' => 'Dividendes total'
+            ],
+            'per' => [
+                'value' => $financial?->per !== null ? (float) $financial->per : null,
+                'label' => 'PER'
+            ],
+            'capex' => [
+                'value' => $financial?->capex !== null ? (float) $financial->capex : null,
+                'label' => 'CAPEX'
+            ],
+        ];
+    }
+
+    /**
+     * Calcule et formate les ratios de croissance.
+     * Utilise des clés différentes (suffixes _sf vs _as) selon le secteur.
+     */
+    private function formatCroissance($metric, $brvmMetrics, $classifiedMetrics, bool $isFinancial): array
+    {
+        if (!$metric) return [];
+
+        if ($isFinancial) {
+            // Suffixe _sf = Services Financiers
+            return [
+                'pnb' => $this->formatIndicator('croissance_pnb', $metric, $brvmMetrics, $classifiedMetrics),
+                'ebit' => $this->formatIndicator('croissance_ebit_sf', $metric, $brvmMetrics, $classifiedMetrics),
+                'ebitda' => $this->formatIndicator('croissance_ebitda_sf', $metric, $brvmMetrics, $classifiedMetrics),
+                'resultat_net' => $this->formatIndicator('croissance_rn_sf', $metric, $brvmMetrics, $classifiedMetrics),
+                'capex' => $this->formatIndicator('croissance_capex_sf', $metric, $brvmMetrics, $classifiedMetrics),
+                'moy_croissance' => $this->formatIndicator('moy_croissance_sf', $metric, $brvmMetrics, $classifiedMetrics),
+            ];
+        } else {
+            // Suffixe _as = Autres Secteurs
+            return [
+                'chiffre_affaires' => $this->formatIndicator('croissance_ca', $metric, $brvmMetrics, $classifiedMetrics),
+                'ebit' => $this->formatIndicator('croissance_ebit_as', $metric, $brvmMetrics, $classifiedMetrics),
+                'ebitda' => $this->formatIndicator('croissance_ebitda_as', $metric, $brvmMetrics, $classifiedMetrics),
+                'resultat_net' => $this->formatIndicator('croissance_rn_as', $metric, $brvmMetrics, $classifiedMetrics),
+                'capex' => $this->formatIndicator('croissance_capex_as', $metric, $brvmMetrics, $classifiedMetrics),
+                'moy_croissance' => $this->formatIndicator('moy_croissance_as', $metric, $brvmMetrics, $classifiedMetrics),
+            ];
+        }
+    }
+
+    /**
+     * Formate les ratios de rentabilité (ROE, ROA, Marges).
+     */
+    private function formatRentabilite($metric, $brvmMetrics, $classifiedMetrics): array
+    {
+        if (!$metric) return [];
+
+        return [
+            'marge_nette' => $this->formatIndicator('marge_nette', $metric, $brvmMetrics, $classifiedMetrics),
+            'marge_ebitda' => $this->formatIndicator('marge_ebitda', $metric, $brvmMetrics, $classifiedMetrics),
+            'marge_operationnelle' => $this->formatIndicator('marge_operationnelle', $metric, $brvmMetrics, $classifiedMetrics),
+            'roe' => $this->formatIndicator('roe', $metric, $brvmMetrics, $classifiedMetrics),
+            'roa' => $this->formatIndicator('roa', $metric, $brvmMetrics, $classifiedMetrics),
+            'moy_rentabilite' => $this->formatIndicator('moy_rentabilite', $metric, $brvmMetrics, $classifiedMetrics),
+        ];
+    }
+
+    /**
+     * Formate les ratios de rémunération actionnaire (Rendement, Pay-out ratio).
+     */
+    private function formatRemuneration($metric, $brvmMetrics, $classifiedMetrics): array
+    {
+        if (!$metric) return [];
+
+        return [
+            'dnpa' => $this->formatIndicator('dnpa_calculated', $metric, $brvmMetrics, $classifiedMetrics),
+            'rendement_dividendes' => $this->formatIndicator('rendement_dividendes', $metric, $brvmMetrics, $classifiedMetrics),
+            'taux_distribution' => $this->formatIndicator('taux_distribution', $metric, $brvmMetrics, $classifiedMetrics),
+            'moy_remuneration' => $this->formatIndicator('moy_remuneration', $metric, $brvmMetrics, $classifiedMetrics),
+        ];
+    }
+
+    /**
+     * Formate les ratios de valorisation boursière (PER, PBR).
+     */
+    private function formatValorisation($metric, $brvmMetrics, $classifiedMetrics): array
+    {
+        if (!$metric) return [];
+
+        return [
+            'per' => $this->formatIndicator('per', $metric, $brvmMetrics, $classifiedMetrics),
+            'pbr' => $this->formatIndicator('pbr', $metric, $brvmMetrics, $classifiedMetrics),
+            'ratio_ps' => $this->formatIndicator('ratio_ps', $metric, $brvmMetrics, $classifiedMetrics),
+            'ev_ebitda' => $this->formatIndicator('ev_ebitda', $metric, $brvmMetrics, $classifiedMetrics),
+            'cours_cible' => $this->formatIndicator('cours_cible', $metric, $brvmMetrics, $classifiedMetrics, false),
+            'moy_valorisation' => $this->formatIndicator('moy_valorisation', $metric, $brvmMetrics, $classifiedMetrics),
+        ];
+    }
+
+    /**
+     * Formate les indicateurs de solidité financière (Dette, Autonomie).
+     * Différencie également Banques vs Autres (Dette/Capitaux vs Prêts/Dépôts).
+     */
+    private function formatSolidite($metric, $brvmMetrics, $classifiedMetrics, bool $isFinancial): array
+    {
+        if (!$metric) return [];
+
+        if ($isFinancial) {
+            return [
+                'autonomie_financiere' => $this->formatIndicator('autonomie_financiere', $metric, $brvmMetrics, $classifiedMetrics),
+                'ratio_prets_depots' => $this->formatIndicator('ratio_prets_depots', $metric, $brvmMetrics, $classifiedMetrics),
+                'loan_to_deposit' => $this->formatIndicator('loan_to_deposit', $metric, $brvmMetrics, $classifiedMetrics),
+                'endettement_general' => $this->formatIndicator('endettement_general_sf', $metric, $brvmMetrics, $classifiedMetrics),
+                'cout_du_risque' => $this->formatIndicator('cout_du_risque_value', $metric, $brvmMetrics, $classifiedMetrics),
+                'moy_solidite_financiere' => $this->formatIndicator('moy_solidite_sf', $metric, $brvmMetrics, $classifiedMetrics),
+            ];
+        } else {
+            return [
+                'dette_capitalisation' => $this->formatIndicator('dette_capitalisation', $metric, $brvmMetrics, $classifiedMetrics),
+                'endettement_actif' => $this->formatIndicator('endettement_actif', $metric, $brvmMetrics, $classifiedMetrics),
+                'endettement_general' => $this->formatIndicator('endettement_general_as', $metric, $brvmMetrics, $classifiedMetrics),
+                'moy_solidite_financiere' => $this->formatIndicator('moy_solidite_as', $metric, $brvmMetrics, $classifiedMetrics),
+            ];
+        }
+    }
+
+    /**
+     * Méthode Helper générique pour formater un indicateur.
+     *
+     * Retourne la valeur de l'entreprise + les moyennes sectorielles.
+     *
+     * @param string $field Le nom de la colonne dans la base de données.
+     * @param mixed $metric L'objet métrique de l'entreprise.
+     * @param mixed $brvmMetrics L'objet métrique du secteur BRVM.
+     * @param mixed $classifiedMetrics L'objet métrique du secteur classifié.
+     * @param bool $includeSector Faut-il inclure les stats sectorielles ? (Défaut: true).
+     *
+     * @return array Structure : { value, sector_brvm_moy, sector_brvm_ecart_type, ... }
+     */
+    private function formatIndicator(string $field, $metric, $brvmMetrics, $classifiedMetrics, bool $includeSector = true): array
+    {
+        // On récupère la donnée brute de l'action
+        $data = [
+            'value' => $metric?->$field !== null ? (float) $metric->$field : null,
+        ];
+
+        // On ajoute les données de benchmark si demandé
+        if ($includeSector) {
+            // Moyenne et Écart-type BRVM
+            $data['sector_brvm_moy'] = $brvmMetrics?->{$field . '_moy'} !== null ? (float)$brvmMetrics->{$field . '_moy'} : null;
+            $data['sector_brvm_ecart_type'] = $brvmMetrics?->{$field . '_ecart_type'} !== null ? (float)$brvmMetrics->{$field . '_ecart_type'} : null;
+
+            // Moyenne et Écart-type Secteur Classifié
+            $data['sector_classified_moy'] = $classifiedMetrics?->{$field . '_moy'} !== null ? (float) $classifiedMetrics->{$field . '_moy'} : null;
+            $data['sector_classified_ecart_type'] = $classifiedMetrics?->{$field . '_ecart_type'} !== null ? (float) $classifiedMetrics->{$field . '_ecart_type'} :null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Récupère les métriques moyennes d'un secteur pour une année donnée.
+     *
+     * @param string $type Type de secteur ('brvm' ou 'classified').
+     * @param int $sectorId L'ID du secteur.
+     * @param int $year L'année.
+     * @return SectorFinancialMetric|null
+     */
+    private function getSectorMetrics(string $type, int $sectorId, int $year): ?SectorFinancialMetric
+    {
+        return SectorFinancialMetric::where('sector_type', $type)
+            ->where('sector_id', $sectorId)
+            ->where('year', $year)
+            ->first();
     }
 }

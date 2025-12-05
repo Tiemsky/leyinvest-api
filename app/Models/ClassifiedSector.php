@@ -37,12 +37,6 @@ class ClassifiedSector extends Model
         return $this->hasMany(Action::class, 'classified_sector_id');
     }
 
-    /**
-     * Relation avec benchmarks
-     */
-    public function benchmarks(): HasMany{
-        return $this->hasMany(SectorBenchmark::class, 'classified_sector_id');
-    }
 
     /**
      * Scope pour résolution par slug

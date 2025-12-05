@@ -1,0 +1,167 @@
+# docker-compose.staging.yml
+# Configuration Docker Compose pour STAGING
+# Branch: develop
+# Domain: staging-api.leyinvest.com
+
+version: '3.8'
+
+services:
+  # ============================================
+  # APPLICATION LARAVEL STAGING
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: leyinvest_app_staging
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      # Application
+      - APP_NAME=${APP_NAME:-LeyInvest-Staging}
+      - APP_ENV=staging
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=true
+      - APP_URL=https://staging-api.leyinvest.com
+
+      # Database PostgreSQL
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres_staging
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-leyinvest_staging}
+      - DB_USERNAME=${DB_USERNAME:-leyinvest_staging}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis_staging
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+
+      # Cache & Session & Queue
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+
+      # Mail (Resend)
+      - MAIL_MAILER=resend
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME="${MAIL_FROM_NAME:-LeyInvest Staging}"
+
+      # Frontend
+      - FRONTEND_URL=${FRONTEND_URL:-https://staging.leyinvest.com}
+
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+
+    networks:
+      - leyinvest-staging-network
+      - dokploy-network
+
+    depends_on:
+      postgres_staging:
+        condition: service_healthy
+      redis_staging:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      # ============================================
+      # LABELS TRAEFIK - STAGING
+      # ============================================
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+
+      # ============================================
+      # ROUTER HTTPS STAGING
+      # ============================================
+      - "traefik.http.routers.leyinvest-staging.rule=Host(`staging-api.leyinvest.com`)"
+      - "traefik.http.routers.leyinvest-staging.entrypoints=websecure"
+      - "traefik.http.routers.leyinvest-staging.tls=true"
+      - "traefik.http.routers.leyinvest-staging.tls.certresolver=letsencrypt"
+
+      # ============================================
+      # MIDDLEWARES - Utiliser les middlewares globaux
+      # ============================================
+      - "traefik.http.routers.leyinvest-staging.middlewares=security-headers@file,compression@file,api-cors@file"
+
+      # ============================================
+      # SERVICE
+      # ============================================
+      - "traefik.http.services.leyinvest-staging.loadbalancer.server.port=80"
+      - "traefik.http.services.leyinvest-staging.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.leyinvest-staging.loadbalancer.healthcheck.interval=30s"
+
+  # ============================================
+  # POSTGRESQL STAGING
+  # ============================================
+  postgres_staging:
+    image: postgres:16-alpine
+    container_name: leyinvest_postgres_staging
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-leyinvest_staging}
+      - POSTGRES_USER=${DB_USERNAME:-leyinvest_staging}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    networks:
+      - leyinvest-staging-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-leyinvest_staging} -d ${DB_DATABASE:-leyinvest_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels:
+      - "traefik.enable=false"
+
+  # ============================================
+  # REDIS STAGING
+  # ============================================
+  redis_staging:
+    image: redis:7-alpine
+    container_name: leyinvest_redis_staging
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - leyinvest-staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  leyinvest-staging-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+
+  dokploy-network:
+    external: true
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres_staging_data:
+    driver: local
+  redis_staging_data:
+    driver: local

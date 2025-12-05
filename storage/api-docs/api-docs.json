@@ -113,38 +113,34 @@
                 "tags": [
                     "Actions"
                 ],
-                "summary": "Afficher les détails d'une action",
-                "description": "Retourne les détails complets d’une action : secteurs, employés, actionnaires, etc.",
+                "summary": "Afficher les détails complet d’une action avec les indicateurs boursiers",
+                "description": "Retourne toutes les métriques d’une, incluant la valeur brute, les statistiques sectorielles et les statistiques BRVM.",
                 "operationId": "showAction",
                 "parameters": [
                     {
                         "name": "key",
                         "in": "path",
-                        "description": "Key de l'action",
+                        "description": "Clé unique de l'action  identifiant logique).",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "example": "act_abc123def"
+                            "type": "string"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Détails de l'action récupérés avec succès",
+                        "description": "Détails d’une actiion retournés avec succès.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
+                                        "key": {
                                             "type": "string",
-                                            "example": "Détails de l'action récupérés avec succès"
+                                            "example": "roa"
                                         },
-                                        "data": {
-                                            "$ref": "#/components/schemas/ShowSingleActionResource"
+                                        "metrics": {
+                                            "description": "Liste des indicateurs formatés",
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -153,10 +149,20 @@
                         }
                     },
                     "404": {
-                        "description": "Action introuvable"
-                    },
-                    "401": {
-                        "description": "Non authentifié"
+                        "description": "action non trouvé.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Indicateur introuvable."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [

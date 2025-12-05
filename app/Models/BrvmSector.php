@@ -38,13 +38,6 @@ class BrvmSector extends Model
     }
 
     /**
-     * Relation avec benchmarks
-     */
-    public function benchmarks(): HasMany{
-        return $this->hasMany(SectorBenchmark::class, 'brvm_sector_id');
-    }
-
-    /**
      * Scope pour résolution par slug
      */
     public function scopeBySlug($query, string $slug){
