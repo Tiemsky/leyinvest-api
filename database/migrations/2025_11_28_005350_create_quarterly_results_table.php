@@ -24,7 +24,7 @@ return new class extends Migration
         $table->decimal('evolution', 10, 2)->nullable();
         $table->timestamps();
 
-        $table->unique(['action_id', 'year', 'trimistre']);
+        $table->unique(['action_id', 'year', 'trimestre']);
     });
 }
 
