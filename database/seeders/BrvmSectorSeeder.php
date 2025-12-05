@@ -16,37 +16,37 @@ class BrvmSectorSeeder extends Seeder
             [
                 "nom"       => 'Consommation de base',
                 "slug"      => Str::slug("Consommation de base"),
-                "variation" => -0.54
+                "variation" => -0.18
             ],
             [
                 "nom"       => "Consommation discrétionnaire",
                 "slug"      => Str::slug("Consommation discrétionnaire"),
-                "variation" => 4.62
+                "variation" => 0.38
             ],
             [
                 "nom"        => "Énergie",
                 "slug"       => Str::slug("Énergie"),
-                "variation"  => 0.38
+                "variation"  => -0.95
             ],
             [
                 "nom"        => "Industriels",
                 "slug"       => Str::slug("Industriels"),
-                "variation"  => 1.50
+                "variation"  => 0.57
             ],
             [
                 "nom"       => "Services financiers",
                 "slug"      => Str::slug("Services financiers"),
-                "variation" => -0.16
+                "variation" => -0.41
             ],
             [
                 "nom"       => "Services publics",
                 "slug"      => Str::slug("Services publics"),
-                "variation" => -0.09
+                "variation" => 0.00
             ],
             [
                 "nom"        => "Télécommunications",
                 "slug"       => Str::slug("Télécommunications"),
-                "variation"  => -0.71
+                "variation"  => 0.20
             ],
         ]);
 

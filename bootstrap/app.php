@@ -92,19 +92,36 @@ return Application::configure(basePath: dirname(__DIR__))
     |--------------------------------------------------------------------------
     | Exception Handling Configuration
     |--------------------------------------------------------------------------
-    */
+| Utilise des réponses JSON normalisées pour l'API.
+*/
     ->withExceptions(function (Exceptions $exceptions): void {
 
         /**
          * ✅ Forcer les réponses JSON pour toutes les requêtes API
          */
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
+            // Rendre JSON si c'est une requête API ou si le client l'attend explicitement
             return $request->is('api/*') || $request->expectsJson();
         });
 
         /**
-         * 🔥 CRITIQUE : Erreur 404 - Route non trouvée
-         * SANS REDIRECTION pour éviter de casser CORS
+         * 🔥 CRITIQUE : Erreur 404 - Ressource non trouvée (Model Binding)
+         * Capte les 404 spécifiques à la DB (e.g., /api/posts/999) pour un message précis.
+         */
+        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ressource non trouvée. L\'identifiant spécifié pour la ressource [' . $e->getModel() . '] n\'existe pas.',
+                    'code' => 404,
+                    'timestamp' => now(),
+                ], 404);
+            }
+        });
+
+        /**
+         * 🔥 CRITIQUE : Erreur 404 - Route non trouvée (Route Inexistante)
+         * Doit être placé APRÈS ModelNotFoundException, gère les autres 404.
          */
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*')) {
@@ -135,7 +152,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         /**
          * 🔥 CRITIQUE : Erreur 401 - Non authentifié
-         * TOUJOURS retourner JSON pour l'API, JAMAIS de redirection
          */
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
@@ -152,7 +168,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * ✅ Erreur 403 - Accès interdit
+         * ✅ Erreur 403 - Accès interdit (Autorisation/Permissions)
          */
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, Request $request) {
             if ($request->is('api/*')) {
@@ -196,40 +212,31 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * ✅ Erreurs HTTP génériques (4xx, 5xx)
+         * ✅ Erreur 500 - Erreur serveur générique
+         * Ce gestionnaire capture toutes les exceptions non traitées.
+         * Bonnes pratiques : masquer les détails en production.
          */
-        $exceptions->render(function (HttpException $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->is('api/*')) {
+                // Loguer l'erreur pour investigation (important)
+                report($e);
+
+                $statusCode = $e instanceof HttpException ? $e->getStatusCode() : 500;
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() ?: 'Erreur HTTP détectée.',
-                    'code' => $e->getStatusCode(),
+                    'message' => app()->isProduction() && $statusCode >= 500
+                        ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
+                        : $e->getMessage(),
+                    // Les détails (file, line, trace) ne doivent être affichés qu'en local
+                    'details' => app()->isProduction() ? null : [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => collect($e->getTrace())->take(10)->all(),
+                    ],
+                    'code' => $statusCode,
                     'timestamp' => now(),
-                ], $e->getStatusCode());
+                ], $statusCode);
             }
         });
-
-        /**
-         * ✅ Erreur 500 - Erreur serveur générique
-         * Masquer les détails en production
-         */
-        // $exceptions->render(function (Throwable $e, Request $request) {
-        //     if ($request->is('api/*')) {
-        //         // Logger l'erreur pour investigation
-        //         report($e);
-
-        //         return response()->json([
-        //             'success' => 'false',
-        //             'message' => app()->isProduction()
-        //                 ? 'Une erreur interne est survenue. Veuillez réessayer plus tard.'
-        //                 : $e->getMessage(),
-        //             'file' => app()->isProduction() ? null : $e->getFile(),
-        //             'line' => app()->isProduction() ? null : $e->getLine(),
-        //             'trace' => app()->isProduction() ? null : $e->getTrace(),
-        //             'code' => 500,
-        //             'timestamp' => now(),
-        //         ], 500);
-        //     }
-        // });
-    })
-    ->create();
+    })->create();
