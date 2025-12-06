@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\BocIndicator;
-use Illuminate\Http\Request;
 use App\Jobs\ScrapeFinancialNewsJob;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TopController;
@@ -106,17 +104,10 @@ Route::prefix('v1')->group(function(){
 
 
 
-
-
-    if (app()->environment('local')) {
-        Route::get('/test-scrape', function () {
-            dispatch(new ScrapeFinancialNewsJob());
-            return '✅ Scraping started (check logs or DB).';
-        });
-    }
 });
 
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/analyze.php';
+require __DIR__.'/api/news.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/health.php';
