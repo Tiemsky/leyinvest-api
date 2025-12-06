@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('key')->unique()->index();
             $table->string('company')->nullable()->index();
             $table->string('title');
-            $table->text('pdf_url'); // IMPORTANT: nullable() enlevé
+            $table->text('pdf_url');
             $table->date('published_at')->index();
             $table->string('source')->index();
             $table->timestamps();

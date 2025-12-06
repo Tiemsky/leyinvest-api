@@ -4,23 +4,30 @@ namespace App\Services\Scrapers;
 
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str; // Pour la fonction Str::slug
+use Exception; // Utiliser la classe de base
 
 class BrvmScraper extends BaseScraper
 {
+    // Définir le disque de stockage (doit être configuré dans config/filesystems.php)
+    protected $disk = 'local';
+    protected $storageDirectory = 'brvm/annonces';
+
     private const SOURCES = [
         'convocations-assemblees-generales' => 'brvm_convocations',
         'projets-de-resolution'             => 'brvm_projets_resolution',
-        'notations-financieres'             => 'brvm_notations',
+        'notations-financieres'              => 'brvm_notations',
         'franchissements-de-seuil'          => 'brvm_seuils',
-        'changements-de-dirigeants'         => 'brvm_dirigeants',
+        'changements-de-dirigeants'          => 'brvm_dirigeants',
         'communiques'                       => 'brvm_communiques',
     ];
 
     /**
      * Client dédié à BRVM avec gestion de session
      */
-    private function getBrvmClient(): \Symfony\Contracts\HttpClient\HttpClientInterface
+    private function getBrvmClient(): HttpClientInterface
     {
         $options = [
             'timeout' => 30,
@@ -33,6 +40,7 @@ class BrvmScraper extends BaseScraper
             ],
         ];
 
+        // Vérification de l'environnement (similaire à votre code original)
         if (app()->environment('local')) {
             $options['verify_peer'] = false;
             $options['verify_host'] = false;
@@ -48,8 +56,13 @@ class BrvmScraper extends BaseScraper
         // Initialiser la session
         static $sessionInit = false;
         if (!$sessionInit) {
-            $client->request('GET', 'https://www.brvm.org/fr');
-            usleep(1000000);
+            try {
+                // Requête d'initialisation de session (sans vérification du statut)
+                $client->request('GET', 'https://www.brvm.org/fr');
+                usleep(1000000); // Pause d'une seconde pour simuler un comportement humain
+            } catch (Exception $e) {
+                 \Log::warning("⚠️ BRVM session init failed: {$e->getMessage()}");
+            }
             $sessionInit = true;
         }
 
@@ -61,12 +74,45 @@ class BrvmScraper extends BaseScraper
                 \Log::debug("✅ BRVM: Received " . strlen($html) . " bytes");
                 return $html;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::error("❌ BRVM fetch error: {$e->getMessage()}");
         }
 
         return null;
     }
+
+    // 🚨 NOUVELLE MÉTHODE : Télécharge et stocke le PDF de manière déterministe
+    protected function downloadAndStorePdf(string $url, string $company, string $title, string $dateString): ?string
+    {
+        // 1. Génération du Nom de Fichier Unique (Clé de Déduplication)
+        // Utilise le MD5 pour créer un nom de fichier déterministe, basé sur les métadonnées.
+        $uniqueHash = md5($company . $title . $dateString);
+        $fileName = Str::slug($company . '-' . $title) . '-' . $uniqueHash . '.pdf';
+        $fullPath = $this->storageDirectory . '/' . $fileName;
+
+        // 2. Vérification d'Existence (Stop aux doublons)
+        if (Storage::disk($this->disk)->exists($fullPath)) {
+            \Log::debug("📂 File already exists on disk, skipping download: {$fileName}");
+            return $fullPath;
+        }
+
+        // 3. Téléchargement et Stockage
+        try {
+            $response = $this->getBrvmClient()->request('GET', $url);
+
+            if ($response->getStatusCode() === 200) {
+                // Stockage du contenu brut
+                Storage::disk($this->disk)->put($fullPath, $response->getContent());
+                \Log::info("💾 PDF stored successfully on '{$this->disk}' disk at: {$fullPath}");
+                return $fullPath;
+            }
+        } catch (Exception $e) {
+            \Log::error("❌ BRVM PDF download failed for {$url}: {$e->getMessage()}");
+        }
+
+        return null;
+    }
+
 
     public function scrape(): array
     {
@@ -81,31 +127,24 @@ class BrvmScraper extends BaseScraper
                 continue;
             }
 
-            // Utiliser Crawler sur le HTML récupéré
             $crawler = new Crawler($html, $url);
-
-            // Cibler exclusivement le tableau dans #block-system-main
             $mainSection = $crawler->filterXPath('//section[@id="block-system-main"]');
+
             if (!$mainSection->count()) {
                 \Log::warning("⚠️ BRVM: #block-system-main not found in {$path}");
                 continue;
             }
 
-            // Extraire le tableau principal
             $table = $mainSection->filter('table.views-table');
             if (!$table->count()) {
                 \Log::warning("⚠️ BRVM: No table found in {$path}");
                 continue;
             }
 
-            // Extraire les lignes (avec ou sans tbody)
+            // Logique d'extraction des lignes
             $rows = $table->filter('tbody tr');
             if (!$rows->count()) {
-                // Fallback: toutes les <tr> sauf celles avec <th>
-                $allRows = $table->filter('tr');
-                $rows = $allRows->reduce(function (Crawler $row) {
-                    return !$row->filter('th')->count();
-                });
+                $rows = $table->filter('tr')->reduce(fn (Crawler $row) => !$row->filter('th')->count());
             }
 
             \Log::debug("Found {$rows->count()} rows in {$path}");
@@ -114,49 +153,54 @@ class BrvmScraper extends BaseScraper
                 try {
                     $rowCrawler = new Crawler($row, $url);
 
-                    // Date
+                    // 1. Date
                     $dateNode = $rowCrawler->filter('td.views-field-field-date-annonce span.date-display-single');
                     if (!$dateNode->count()) continue;
-
                     $dateStr = trim($dateNode->text());
                     $date = $this->parseDate($dateStr);
                     if (!$date || !$this->isWithinWindow($date, 14)) continue;
 
-                    // Société
+                    // 2. Société
                     $companyNode = $rowCrawler->filter('td.views-field-og-group-ref');
-                    $company = $companyNode->count() ? trim($companyNode->text()) : null;
+                    $company = $companyNode->count() ? trim($companyNode->text()) : 'N/A';
 
-                    // Titre
+                    // 3. Titre
                     $titleNode = $rowCrawler->filter('td.views-field-title');
                     if (!$titleNode->count()) continue;
                     $title = trim($titleNode->text());
 
-                    // Lien PDF
+                    // 4. Lien PDF
                     $linkNode = $rowCrawler->filter('td.views-field-field-fichier-annonce a.btn-download');
-                    if (!$linkNode->count()) {
-                        \Log::warning("⚠️ BRVM: No PDF link for: {$title}");
-                        continue;
-                    }
+                    if (!$linkNode->count()) continue;
 
                     $pdfUrl = trim($linkNode->attr('href'));
                     if (empty($pdfUrl)) continue;
 
+                    // Reconstruire l'URL absolue si nécessaire
                     if (!str_starts_with($pdfUrl, 'http')) {
                         $pdfUrl = 'https://www.brvm.org' . ltrim($pdfUrl, '/');
+                    }
+
+                    // 🚨 NOUVEAU : Télécharger et obtenir le chemin local
+                    $localPath = $this->downloadAndStorePdf($pdfUrl, $company, $title, $date->toDateString());
+
+                    if (!$localPath) {
+                        \Log::error("❌ Failed to process or store PDF for: {$title}");
+                        continue;
                     }
 
                     $results[] = [
                         'company'      => $company,
                         'title'        => $title,
-                        'pdf_url'      => $pdfUrl,
+                        'pdf_url'      => $localPath, // 🚨 Le chemin est maintenant le chemin local !
                         'published_at' => $date->toDateString(),
                         'source'       => $sourceKey,
                     ];
 
                     \Log::debug("✅ BRVM: Added {$company} - {$title}");
 
-                } catch (\Exception $e) {
-                    \Log::error('❌ BRVM row error', [
+                } catch (Exception $e) {
+                    \Log::error('❌ BRVM row processing error', [
                         'exception' => $e->getMessage(),
                         'url' => $url,
                     ]);

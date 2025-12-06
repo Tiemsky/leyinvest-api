@@ -155,7 +155,7 @@ class ActionSeeder extends Seeder
             }
 
             Action::create(array_merge($data, [
-                'key' => 'act_' . strtolower(Str::random(8)),
+                'key' => 'act_' . strtolower($data['symbole']),
                 'brvm_sector_id' => $brvmId,
                 'classified_sector_id' => $classifiedId,
             ]));
