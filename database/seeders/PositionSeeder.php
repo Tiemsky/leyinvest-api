@@ -15,10 +15,26 @@ class PositionSeeder extends Seeder
     public function run(): void
     {
         $positions = [
-            ['nom' => "PCA", 'description' =>Str::slug("President du conseil d'administration")],
-            ['nom' => "DG", 'description' =>Str::slug("President directeur général")],
-            ['nom' => "DAF", 'description' =>Str::slug("Directeur Administratif et Financier")],
-            ['nom' => "Directeur Marketing/Commercial", 'description' =>Str::slug("Directeur Marketing/Commercial")],
+            [
+                'nom'           => "PCA",
+                "slug"          => Str::slug("PCA"),
+                'description'   =>Str::slug("President du conseil d'administration")
+            ],
+            [
+                'nom' => "DG",
+                "slug" => Str::slug("DG"),
+                'description' =>Str::slug("President directeur général")
+            ],
+            [
+                'nom' => "DAF",
+                "slug" => Str::slug("DAF"),
+                'description' =>Str::slug("Directeur Administratif et Financier")
+            ],
+            [
+                'nom' => "Directeur Marketing/Commercial",
+                "slug" => Str::slug("Directeur Marketing/Commercial"),
+                'description' =>Str::slug("Directeur Marketing/Commercial")
+            ],
         ];
         // On vide la table
         DB::table('positions')->delete();
@@ -26,6 +42,7 @@ class PositionSeeder extends Seeder
         foreach ($positions as $position) {
             DB::table('positions')->insert([
                 'nom' => $position['nom'],
+                'slug' => $position['slug'],
                 'description' => $position['description'],
                 'created_at' => now(),
                 'updated_at' => now(),

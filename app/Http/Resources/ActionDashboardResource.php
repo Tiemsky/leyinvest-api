@@ -79,6 +79,8 @@ class ActionDashboardResource extends JsonResource
         // Comparaison avec le secteur classifié plus précis (ex: Banques commerciales)
         $classifiedSectorMetrics = $this->getSectorMetrics('classified', $action->classified_sector_id, $this->year);
 
+        $quarterlyResults = $this->getQuarterlyResultsFormatted($this->year+1, $action);
+
         // 4. Construction de la réponse structurée
         return [
             // --- INFO GÉNÉRALES ---
@@ -128,6 +130,8 @@ class ActionDashboardResource extends JsonResource
                     'position' => ['nom' => $e->position?->nom,],
                 ]),
             ],
+
+            'resultats_trimestriels' => $quarterlyResults,
 
             // --- MÉTA-DONNÉES SECTORIELLES ---
             'sector_comparison' => [
@@ -431,4 +435,41 @@ class ActionDashboardResource extends JsonResource
             ->where('year', $year)
             ->first();
     }
+
+
+  // Supposons que vous soyez dans le modèle parent (e.g., Action)
+
+  private function getQuarterlyResultsFormatted(int $year, Action $action): array
+  {
+      // Filtrer la collection déjà chargée
+      $results = $action->quarterlyResults
+          ->where('year', $year)
+          ->sortBy('trimestre');
+
+      $formattedData = [];
+      $trimestreMap = [
+          1 => 'trimestre_one',
+          2 => 'trimestre_two',
+          3 => 'trimestre_three',
+          4 => 'trimestre_four'
+      ];
+
+      foreach ($results as $result) {
+          $key = $trimestreMap[$result->trimestre] ?? null;
+
+          if ($key) {
+              $formattedData[$key] = [
+                  'chiffre_affaires' => (float) $result->chiffre_affaires,
+                  'evolution_ca' => (float) $result->evolution_ca,
+                  'resultat_net' => (float) $result->resultat_net,
+                  'evolution_rn' => (float) $result->evolution_rn,
+              ];
+          }
+      }
+
+      return [
+          'year' => $year,
+          'data' => $formattedData,
+      ];
+  }
 }
