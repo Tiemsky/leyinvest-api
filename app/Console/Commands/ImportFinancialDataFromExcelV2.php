@@ -71,13 +71,13 @@ class ImportFinancialDataFromExcelV2 extends Command
         $truncate = $this->option('truncate');
         $logErrors = $this->option('log-errors');
 
-        if ($truncate && !$dryRun) {
-            $this->warn("🗑️  Truncating tables...");
-            DB::table('quarterly_results')->truncate();
-            DB::table('shareholders')->truncate();
-            DB::table('stock_financials')->truncate();
-            DB::table('employees')->truncate();
-        }
+        // if ($truncate && !$dryRun) {
+        //     $this->warn("🗑️  Truncating tables...");
+        //     DB::table('quarterly_results')->truncate();
+        //     DB::table('shareholders')->truncate();
+        //     DB::table('stock_financials')->truncate();
+        //     DB::table('employees')->truncate();
+        // }
 
         foreach ($sheets as $sheetIndex => $rows) {
             // Filtrer les lignes vides
