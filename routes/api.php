@@ -4,6 +4,7 @@ use App\Jobs\ScrapeFinancialNewsJob;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TopController;
 use App\Http\Controllers\Api\V1\FlopController;
+use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ActionController;
 use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\UserActionController;
@@ -90,6 +91,9 @@ Route::prefix('v1')->group(function(){
     Route::get('/flops', [FlopController::class, 'index']);
     Route::get('/tops', [TopController::class, 'index']);
     Route::get('/countries', [CountryController::class, 'index']);
+
+
+    Route::get('/plans', [PlanController::class, 'index']);
 
 
     //For testing purposes only

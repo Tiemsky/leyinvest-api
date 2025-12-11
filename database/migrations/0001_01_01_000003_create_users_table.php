@@ -3,6 +3,7 @@
 use App\Enums\PlanEnum;
 use App\Enums\RoleEnum;
 use App\Models\Country;
+use App\Models\Plan;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -35,7 +36,7 @@ return new class extends Migration
             $table->boolean('registration_completed')->default(false);
             $table->string('avatar')->nullable();
             $table->string('auth_provider')->default('email');
-            $table->foreignId('plan_id')->default(1)->constrained('plans')->OnDelete(1);
+            $table->foreignIdFor(Plan::class)->default(1)->constrained('plans')->OnDelete(1);
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

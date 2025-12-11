@@ -39,7 +39,7 @@ class PlanSeeder extends Seeder
             [
                 'nom' => 'Pro',
                 'slug' => 'pro',
-                'prix' => 9.99,
+                'prix' => 11900,
                 'billing_cycle' => 'monthly',
                 'features' => [
                     'indicateurs_marches' => true,
@@ -62,7 +62,7 @@ class PlanSeeder extends Seeder
             [
                 'nom' => 'Premium',
                 'slug' => 'premium',
-                'prix' => 19.99,
+                'prix' => 14900,
                 'billing_cycle' => 'monthly',
                 'features' => [
                     'indicateurs_marches' => true,

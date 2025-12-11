@@ -97,16 +97,14 @@ class User extends Authenticatable
     /**
      * Vérifier si l'OTP a expiré
      */
-    public function isOtpExpired(): bool
-    {
+    public function isOtpExpired(): bool{
         return $this->otp_expires_at === null || $this->otp_expires_at->isPast();
     }
 
     /**
      * Compléter l'inscription
      */
-    public function completeRegistration(array $data): bool
-    {
+    public function completeRegistration(array $data): bool{
         return $this->update([
             'password' => $data['password'],
             'country_id' => $data['country_id'],
@@ -139,7 +137,7 @@ class User extends Authenticatable
        }
 
        public function currentPlan(): BelongsTo{
-           return $this->belongsTo(Plan::class, 'current_plan_id');
+           return $this->belongsTo(Plan::class, 'plan_id');
        }
 
        // Méthodes de vérification

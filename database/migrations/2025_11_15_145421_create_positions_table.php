@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('positions', function (Blueprint $table) {
             $table->id();
             $table->string('nom');
+            $table->string('slug')->nullable();
             $table->string('description')->nullable();
             $table->timestamps();
         });

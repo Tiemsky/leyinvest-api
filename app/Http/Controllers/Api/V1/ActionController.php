@@ -169,6 +169,7 @@ class ActionController extends Controller
               'classifiedSector',
               'shareholders',
               'employees.position',
+              'quarterlyResults',
               // Optimisation : On ne charge que la ligne financière de l'année concernée
               'financials' => fn($q) => $q->where('year', $year)
           ]);
