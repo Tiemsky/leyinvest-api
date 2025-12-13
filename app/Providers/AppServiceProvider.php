@@ -2,14 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Observers\UserObserver;
 use Illuminate\Http\Request;
-use App\Models\Concerns\HasKey;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Auth\Notifications\ResetPassword;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,7 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-
+        // Enregistrer l'Observer pour auto-créer l'abonnement gratuit
+        User::observe(UserObserver::class);
 
        // Rate limiter pour l'authentification
        RateLimiter::for('auth', function (Request $request) {

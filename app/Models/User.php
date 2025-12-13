@@ -131,13 +131,28 @@ class User extends Authenticatable
 
        public function activeSubscription(){
            return $this->hasOne(Subscription::class)
-               ->active()
-               ->with('plan')
+               ->where(function($query) {
+                   $query->where('status', 'active')
+                         ->orWhere('status', 'trialing');
+               })
+               ->where(function($q) {
+                   $q->whereNull('ends_at')
+                     ->orWhere('ends_at', '>', now());
+               })
+               ->with('plan.features')
                ->latest();
        }
 
-       public function currentPlan(): BelongsTo{
-           return $this->belongsTo(Plan::class, 'plan_id');
+       public function invoices(){
+           return $this->hasMany(\App\Models\Invoice::class);
+       }
+
+       /**
+        * Récupérer le plan actuel de l'utilisateur via sa souscription active
+        */
+       public function currentPlan()
+       {
+           return $this->activeSubscription?->plan;
        }
 
        // Méthodes de vérification
@@ -151,11 +166,11 @@ class User extends Authenticatable
            return $subscription && $subscription->plan->slug === $planSlug;
        }
 
-       public function hasFeature($feature)
+       public function hasFeature(string $feature): bool
        {
            $subscription = $this->activeSubscription;
 
-           if (!$subscription) {
+           if (!$subscription || !$subscription->isValid()) {
                // Plan gratuit par défaut
                $freePlan = Plan::free()->first();
                return $freePlan ? $freePlan->hasFeature($feature) : false;
@@ -164,34 +179,37 @@ class User extends Authenticatable
            return $subscription->plan->hasFeature($feature);
        }
 
-       // Méthodes de gestion d'abonnement
-       public function subscribeTo(Plan $plan, array $options = [])
+       public function getFeatureLimit(string $featureKey, string $limitKey = 'limit'): ?int
        {
-           // Annuler l'abonnement actif
-           if ($current = $this->activeSubscription) {
-               $current->cancel();
+           $subscription = $this->activeSubscription;
+
+           if (!$subscription || !$subscription->isValid()) {
+               $freePlan = Plan::free()->first();
+               return $freePlan?->getFeatureLimit($featureKey, $limitKey);
            }
 
-           // Créer nouvelle souscription
-           $subscription = $this->subscriptions()->create([
-               'plan_id' => $plan->id,
-               'status' => $options['trial'] ?? false ? 'trialing' : 'active',
-               'trial_ends_at' => $options['trial_ends_at'] ?? null,
-               'starts_at' => $options['starts_at'] ?? now(),
-               'ends_at' => $options['ends_at'] ?? null,
-           ]);
-
-           // Mettre à jour le plan actuel
-           $this->update(['current_plan_id' => $plan->id]);
-
-           return $subscription;
+           return $subscription->plan->getFeatureLimit($featureKey, $limitKey);
        }
 
-       public function cancelSubscription()
+       /**
+        * Souscrire à un plan (utilise maintenant SubscriptionService)
+        * @deprecated Utiliser SubscriptionService::subscribe() à la place
+        */
+       public function subscribeTo(Plan $plan, array $options = [])
+       {
+           $subscriptionService = app(\App\Services\SubscriptionService::class);
+           return $subscriptionService->subscribe($this, $plan, $options);
+       }
+
+       /**
+        * Annuler l'abonnement actif
+        * @deprecated Utiliser SubscriptionService::cancel() à la place
+        */
+       public function cancelSubscription(?string $reason = null): bool
        {
            if ($subscription = $this->activeSubscription) {
-               $subscription->cancel();
-               return true;
+               $subscriptionService = app(\App\Services\SubscriptionService::class);
+               return $subscriptionService->cancel($subscription, $reason);
            }
            return false;
        }

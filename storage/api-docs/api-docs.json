@@ -2242,13 +2242,117 @@
                 }
             }
         },
+        "/api/v1/invoices": {
+            "get": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Lister les factures de l'utilisateur",
+                "description": "Retourne la liste des factures associées à l'utilisateur authentifié.",
+                "operationId": "listUserInvoices",
+                "responses": {
+                    "200": {
+                        "description": "Factures récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Factures récupérées avec succès."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InvoiceListItem"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/invoices/{invoiceNumber}": {
+            "get": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Afficher les détails d'une facture",
+                "description": "Retourne les informations complètes d'une facture appartenant à l'utilisateur authentifié.",
+                "operationId": "showInvoice",
+                "parameters": [
+                    {
+                        "name": "invoiceNumber",
+                        "in": "path",
+                        "description": "Numéro unique de la facture",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "INV-2025-00045"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Facture récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Facture récupérée avec succès."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/InvoiceResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Facture introuvable"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/v1/plans": {
             "get": {
                 "tags": [
                     "Plans"
                 ],
-                "summary": "Récupérer la liste des plans actifs",
-                "description": "Retourne la liste des plans où is_active = true.",
+                "summary": "Récupérer la liste des plans actifs et visibles",
+                "description": "Retourne la liste des plans destinés à être affichés publiquement.",
                 "operationId": "getPlans",
                 "responses": {
                     "200": {
@@ -2261,84 +2365,11 @@
                                             "type": "boolean",
                                             "example": true
                                         },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Plans récupérés avec succès."
-                                        },
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer",
-                                                        "example": 1
-                                                    },
-                                                    "key": {
-                                                        "type": "string",
-                                                        "example": "starter"
-                                                    },
-                                                    "name": {
-                                                        "type": "string",
-                                                        "example": "Starter"
-                                                    },
-                                                    "slug": {
-                                                        "type": "string",
-                                                        "example": "starter"
-                                                    },
-                                                    "price": {
-                                                        "type": "number",
-                                                        "format": "float",
-                                                        "example": 9.99
-                                                    },
-                                                    "billing_cycle": {
-                                                        "type": "string",
-                                                        "example": "monthly"
-                                                    },
-                                                    "features": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "string"
-                                                        },
-                                                        "example": [
-                                                            "10 projets",
-                                                            "5 utilisateurs"
-                                                        ]
-                                                    },
-                                                    "is_active": {
-                                                        "type": "boolean",
-                                                        "example": true
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string",
-                                                        "format": "date-time"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string",
-                                                        "format": "date-time"
-                                                    }
-                                                },
-                                                "type": "object"
+                                                "$ref": "#/components/schemas/PlanResource"
                                             }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Erreur serveur",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Une erreur est survenue."
                                         }
                                     },
                                     "type": "object"
@@ -2347,6 +2378,533 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/plans/{slug}": {
+            "get": {
+                "tags": [
+                    "Plans"
+                ],
+                "summary": "Afficher un plan spécifique",
+                "operationId": "showPlan",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "description": "Slug du plan (ex: 'premium-annuel')",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Plan récupéré avec succès.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlanResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Plan non trouvé ou non visible."
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/current": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Récupérer l'abonnement actif",
+                "description": "Retourne l'abonnement actuellement actif de l'utilisateur authentifié.",
+                "operationId": "getCurrentSubscription",
+                "responses": {
+                    "200": {
+                        "description": "Abonnement récupéré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Aucun abonnement actif."
+                                        },
+                                        "data": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/SubscriptionResource"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/subscribe": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Souscrire à un plan",
+                "description": "Crée une souscription avec statut TRIALING, ACTIVE ou PENDING selon le plan et le paiement.",
+                "operationId": "subscribePlan",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "plan_slug"
+                                ],
+                                "properties": {
+                                    "plan_slug": {
+                                        "type": "string",
+                                        "example": "premium"
+                                    },
+                                    "coupon_code": {
+                                        "type": "string",
+                                        "example": "PROMO2024",
+                                        "nullable": true
+                                    },
+                                    "payment_method": {
+                                        "type": "string",
+                                        "example": "fedapay",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Souscription créée",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Abonnement en attente de paiement."
+                                        },
+                                        "next_step": {
+                                            "type": "string",
+                                            "example": "payment_link"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SubscriptionResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation échouée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/payment-link": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Générer le lien de paiement",
+                "description": "Retourne l’URL de paiement pour une souscription en statut PENDING.",
+                "operationId": "getSubscriptionPaymentLink",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "subscription_id",
+                                    "return_url"
+                                ],
+                                "properties": {
+                                    "subscription_id": {
+                                        "type": "integer",
+                                        "example": 42
+                                    },
+                                    "return_url": {
+                                        "type": "string",
+                                        "format": "url",
+                                        "example": "https://app.example.com/payment/success"
+                                    },
+                                    "cancel_url": {
+                                        "type": "string",
+                                        "format": "url",
+                                        "nullable": true
+                                    },
+                                    "provider": {
+                                        "type": "string",
+                                        "example": "fedapay",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lien de paiement généré",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Lien de paiement généré."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "checkout_url": {
+                                                    "type": "string",
+                                                    "format": "url"
+                                                },
+                                                "subscription_id": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Accès interdit"
+                    },
+                    "409": {
+                        "description": "Souscription non payable"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/change-plan": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Changer de plan",
+                "description": "Effectue un upgrade immédiat ou planifie un downgrade.",
+                "operationId": "changeSubscriptionPlan",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "plan_slug"
+                                ],
+                                "properties": {
+                                    "plan_slug": {
+                                        "type": "string",
+                                        "example": "enterprise"
+                                    },
+                                    "coupon_code": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Plan modifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SubscriptionResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun abonnement actif"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/cancel": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Annuler l'abonnement",
+                "description": "Annule l'abonnement immédiatement ou à la fin de la période.",
+                "operationId": "cancelSubscription",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "nullable": true
+                                    },
+                                    "immediately": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Abonnement annulé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SubscriptionResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun abonnement actif"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/resume": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Reprendre un abonnement annulé",
+                "description": "Réactive un abonnement annulé encore dans sa période de grâce.",
+                "operationId": "resumeSubscription",
+                "responses": {
+                    "200": {
+                        "description": "Abonnement réactivé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Abonnement réactivé avec succès."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SubscriptionResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Aucun abonnement éligible"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/validate-coupon": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Valider un coupon",
+                "description": "Valide un coupon et simule la réduction appliquée sur un plan.",
+                "operationId": "validateCoupon",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "coupon_code",
+                                    "plan_slug"
+                                ],
+                                "properties": {
+                                    "coupon_code": {
+                                        "type": "string",
+                                        "example": "PROMO2024"
+                                    },
+                                    "plan_slug": {
+                                        "type": "string",
+                                        "example": "premium"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Coupon valide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "code": {
+                                                    "type": "string"
+                                                },
+                                                "original_price": {
+                                                    "type": "number",
+                                                    "example": 10000
+                                                },
+                                                "final_price": {
+                                                    "type": "number",
+                                                    "example": 8000
+                                                },
+                                                "discount_amount": {
+                                                    "type": "number",
+                                                    "example": 2000
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "example": "XOF"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Coupon invalide"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
             }
         },
         "/api/v1/tops": {
@@ -2981,6 +3539,14 @@
                         "type": "boolean",
                         "example": true
                     },
+                    "role": {
+                        "type": "string",
+                        "example": "user"
+                    },
+                    "current_plan": {
+                        "type": "string",
+                        "example": "Gratuit"
+                    },
                     "email_verified_at": {
                         "type": "string",
                         "format": "date-time",
@@ -3180,6 +3746,252 @@
                 },
                 "type": "object"
             },
+            "InvoiceResource": {
+                "description": "Détails complets d'une facture",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 45
+                    },
+                    "invoice_number": {
+                        "type": "string",
+                        "example": "INV-2025-00045"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "PAID"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "example": "XOF"
+                    },
+                    "amounts": {
+                        "properties": {
+                            "subtotal": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 23000
+                            },
+                            "discount": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 3000
+                            },
+                            "tax": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 0
+                            },
+                            "total": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 20000
+                            },
+                            "total_due": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 0
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "dates": {
+                        "properties": {
+                            "issued_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2025-02-01T10:15:00Z"
+                            },
+                            "due_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2025-02-05T23:59:59Z"
+                            },
+                            "paid_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2025-02-01T10:16:10Z"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "plan_details": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "example": "Plan Premium"
+                            },
+                            "slug": {
+                                "type": "string",
+                                "example": "premium"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "coupon": {
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "example": "PROMO10"
+                            },
+                            "type": {
+                                "type": "string",
+                                "example": "percent"
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "download_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://api.example.com/api/v1/invoices/INV-2025-00045/download"
+                    }
+                },
+                "type": "object"
+            },
+            "InvoiceListItem": {
+                "description": "Facture (vue simplifiée pour la liste)",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 45
+                    },
+                    "invoice_number": {
+                        "type": "string",
+                        "example": "INV-2025-00045"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "PAID"
+                    },
+                    "total": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 25000
+                    },
+                    "currency": {
+                        "type": "string",
+                        "example": "XOF"
+                    },
+                    "issued_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-02-01T10:15:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "PlanResource": {
+                "title": "Plan d'Abonnement",
+                "description": "Structure des données d'un plan d'abonnement pour l'API.",
+                "required": [
+                    "slug",
+                    "name",
+                    "price",
+                    "billing_cycle"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "ID interne du plan.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "key": {
+                        "description": "Clé publique unique du plan.",
+                        "type": "string",
+                        "example": "PLN_XZY123"
+                    },
+                    "slug": {
+                        "description": "Identifiant lisible et unique pour les URLs.",
+                        "type": "string",
+                        "example": "premium-annuel"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Premium Annuel"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Accès illimité à toutes les fonctionnalités.",
+                        "nullable": true
+                    },
+                    "price": {
+                        "description": "Prix du plan.",
+                        "type": "number",
+                        "format": "float",
+                        "example": 99.99
+                    },
+                    "billing_cycle": {
+                        "description": "Fréquence de facturation.",
+                        "type": "string",
+                        "enum": [
+                            "monthly",
+                            "quarterly",
+                            "yearly"
+                        ],
+                        "example": "yearly"
+                    },
+                    "trial_days": {
+                        "description": "Nombre de jours d'essai.",
+                        "type": "integer",
+                        "example": 14
+                    },
+                    "status": {
+                        "description": "Statut du plan et du contexte utilisateur",
+                        "properties": {
+                            "is_active": {
+                                "type": "boolean",
+                                "example": true
+                            },
+                            "is_visible": {
+                                "type": "boolean",
+                                "example": true
+                            },
+                            "is_free": {
+                                "type": "boolean",
+                                "example": false
+                            },
+                            "is_current": {
+                                "description": "Vrai si le plan correspond à l'abonnement actif de l'utilisateur (si connecté).",
+                                "type": "boolean",
+                                "example": false,
+                                "nullable": true
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "features": {
+                        "description": "Liste des fonctionnalités actives pour ce plan.",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "example": "unlimited_storage"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "example": "Stockage illimité"
+                                },
+                                "enabled": {
+                                    "type": "boolean",
+                                    "example": true
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-10-27T10:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
             "SectorWithActionsResource": {
                 "description": "Secteur avec liste de ses actions",
                 "properties": {
@@ -3332,6 +4144,117 @@
                         "type": "string",
                         "format": "date-time",
                         "example": "2025-10-18T12:45:00Z"
+                    }
+                },
+                "type": "object"
+            },
+            "SubscriptionResource": {
+                "title": "Abonnement",
+                "description": "Détails complets de l'abonnement utilisateur.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "sub_x8s7s..."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "trialing",
+                            "canceled",
+                            "expired",
+                            "pending"
+                        ],
+                        "example": "active"
+                    },
+                    "plan": {
+                        "$ref": "#/components/schemas/PlanResource"
+                    },
+                    "dates": {
+                        "properties": {
+                            "starts_at": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "ends_at": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "trial_ends_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            },
+                            "canceled_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            },
+                            "days_remaining": {
+                                "description": "Jours restants avant expiration/renouvellement",
+                                "type": "integer",
+                                "example": 25
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "state": {
+                        "description": "Indicateurs booléens pour la logique frontend",
+                        "properties": {
+                            "is_active": {
+                                "type": "boolean"
+                            },
+                            "is_trialing": {
+                                "type": "boolean"
+                            },
+                            "is_canceled": {
+                                "type": "boolean"
+                            },
+                            "on_grace_period": {
+                                "type": "boolean"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "financial": {
+                        "properties": {
+                            "amount_paid": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 5000
+                            },
+                            "currency": {
+                                "type": "string",
+                                "example": "XOF"
+                            },
+                            "payment_status": {
+                                "type": "string",
+                                "enum": [
+                                    "paid",
+                                    "pending",
+                                    "failed"
+                                ],
+                                "example": "paid"
+                            },
+                            "coupon_code": {
+                                "type": "string",
+                                "example": "PROMO2024",
+                                "nullable": true
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "details": {
+                        "description": "Métadonnées de calcul (sous-total, remise, etc.)",
+                        "type": "object",
+                        "example": {
+                            "subtotal": 5000,
+                            "discount": 0
+                        }
                     }
                 },
                 "type": "object"
@@ -3677,6 +4600,14 @@
         {
             "name": "Google Authentication",
             "description": "Google Authentication"
+        },
+        {
+            "name": "Invoices",
+            "description": "Invoices"
+        },
+        {
+            "name": "Subscriptions",
+            "description": "Subscriptions"
         },
         {
             "name": "User Actions",

@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Enums\RoleEnum;
 use App\Models\Country;
-use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -18,7 +17,7 @@ class UserSeeder extends Seeder
 
         // USER 1
         User::create([
-            'key' => Str::uuid()->toString(),
+            'key' => "use". time(),
             'google_id' => null,
             'country_id' => $countryId,
             'role' =>  RoleEnum::ADMIN->value,
@@ -37,12 +36,11 @@ class UserSeeder extends Seeder
             'registration_completed' => true,
             'avatar' => null,
             'auth_provider' => 'email',
-            'plan_id' => 1,
         ]);
 
         // USER 2
         User::create([
-            'key' => Str::uuid()->toString(),
+            'key' => "use". (time() + 1),
             'google_id' => null,
             'country_id' => $countryId,
             'role' =>  RoleEnum::USER->value,
@@ -57,15 +55,14 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'otp_code' => null,
             'otp_expires_at' => null,
-            'email_verified' => false,
-            'registration_completed' => false,
+            'email_verified' => true,
+            'registration_completed' => true,
             'avatar' => null,
             'auth_provider' => 'email',
-            'plan_id' => 1,
         ]);
 
         User::create([
-            'key' => Str::uuid()->toString(),
+            'key' => "use". (time() + 2),
             'google_id' => null,
             'country_id' => $countryId,
             'role' =>  RoleEnum::USER->value,
@@ -80,11 +77,10 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'otp_code' => null,
             'otp_expires_at' => null,
-            'email_verified' => false,
-            'registration_completed' => false,
+            'email_verified' => true,
+            'registration_completed' => true,
             'avatar' => null,
             'auth_provider' => 'email',
-            'plan_id' => 2,
         ]);
     }
 }

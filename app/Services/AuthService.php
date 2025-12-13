@@ -191,6 +191,16 @@ class AuthService
             ]);
         }
 
+        // --- OPTIMISATION : EAGER LOADING POUR LA RESOURCE API ---
+
+        // Charge la relation 'activeSubscription' et ses relations imbriquées ('plan', 'coupon')
+        // Ceci évite les requêtes N+1 et optimise la réponse JSON.
+        $user->load([
+            'activeSubscription' => function ($query) {
+                $query->with('plan', 'coupon');
+            }
+        ]);
+
         // 3. Création des tokens
         $tokens = $this->refreshTokenService->createTokens($user, $deviceName);
         Log::info("User {$user->email} logged in successfully.");
