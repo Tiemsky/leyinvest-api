@@ -28,7 +28,7 @@ return new class extends Migration
             $table->timestamp('paused_at')->nullable()->comment('Date de pause');
 
             // Champs de paiement
-            $table->string('payment_status')->nullable()->after('payment_method')->comment('pending, paid, failed');
+            $table->string('payment_status')->nullable()->comment('pending, paid, failed');
             $table->decimal('amount_paid', 10, 2)->nullable()->comment('Montant payé');
             $table->string('currency', 3)->default('XOF');
 
