@@ -220,7 +220,6 @@ class AuthController extends Controller
                 'data' => [
                     'user' => new AuthUserResource($result['user']),
                     'access_token' => $result['access_token'],
-                    // ❌ SUPPRIMÉ : 'refresh_token' n'est plus exposé dans le JSON
                     'token_type' => $result['token_type'],
                     'expires_in' => $result['expires_in'],
                     'refresh_expires_in' => $result['refresh_expires_in'],

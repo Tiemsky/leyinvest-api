@@ -18,10 +18,12 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->decimal('prix', 8, 2)->default(0);
             $table->string('billing_cycle')->default('monthly'); // monthly, yearly
-            $table->json('features'); // Fonctionnalités du plan
             $table->boolean('is_active')->default(true);
-            $table->softDeletes();
+            $table->integer( 'sort_order' )->nullable();
+            $table->boolean('is_visible')->default(true)->comment('Visible pour les clients');
+            $table->integer('trial_days')->default(0);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

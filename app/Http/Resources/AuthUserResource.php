@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use App\Http\Resources\WalletResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * @OA\Schema(
@@ -23,6 +22,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *     @OA\Property(property="whatsapp", type="string", nullable=true, example="+2250707070707"),
  *     @OA\Property(property="email_verified", type="boolean", example=true),
  *     @OA\Property(property="registration_completed", type="boolean", example=true),
+ *     @OA\Property(property="role", type="string", example=true, example="user"),
+ *     @OA\Property(property="current_plan", type="string", example=true, example="Gratuit"),
  *     @OA\Property(property="email_verified_at", type="string", format="date-time", nullable=true, example="2025-10-18T12:45:00Z"),
  *     @OA\Property(property="created_at", type="string", format="date-time", example="2025-10-18T12:45:00Z"),
  *     @OA\Property(property="updated_at", type="string", format="date-time", example="2025-10-18T12:45:00Z")
@@ -39,13 +40,15 @@ class AuthUserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // On récupère l'abonnement actif s'il est chargé
+        $activeSubscription = $this->whenLoaded('activeSubscription');
          return [
             'id' => $this->id,
             'nom' => $this->nom,
             'prenom' => $this->prenom,
             'email' => $this->email,
             'country' => $this->country,
-            'age' => $this->age,
+            'age' => (int) $this->age,
             'genre' => $this->genre,
             'situation_professionnelle' => $this->situation_professionnelle,
             'numero' => $this->numero,
@@ -53,6 +56,11 @@ class AuthUserResource extends JsonResource
             'email_verified' => (bool) $this->email_verified,
             'registration_completed' => (bool) $this->registration_completed,
             'role' => $this->role,
+            // L'abonnement est inclus uniquement s'il existe ET qu'il est chargé (N+1 safe)
+            'subscription' => $this->when($activeSubscription, function () use ($activeSubscription) {
+                // Utilise la SubscriptionResource définie précédemment pour le formatage
+                return new SubscriptionResource($activeSubscription);
+            }),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
