@@ -1,4 +1,5 @@
 <?php
+namespace Routes\Api;
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\PlanController;

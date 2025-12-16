@@ -167,4 +167,29 @@ class Action extends Model
         return $this->hasMany(Position::class);
     }
 
+    /**
+     * Relation avec les prévisions financières | Analyze; prevision de rendements
+     */
+    public function forecast(){
+        return $this->hasOne(FinancialForecast::class);
+    }
+
+    // Accessor pour le Rendement (Toujours calculé à la volée)
+    // Rendement = (DNPA Prev / Cours Cloture) * 100 [cite: 47]
+    public function getRendementPrevisionnelAttribute()
+    {
+        // On charge la prévision si elle n'est pas chargée
+        if (!$this->relationLoaded('forecast')) {
+            $this->load('forecast');
+        }
+
+        $dnpaPrev = $this->forecast->dnpa_previsionnel ?? 0;
+        $cours = $this->cours_cloture;
+
+        if ($cours > 0) {
+            return round(($dnpaPrev / $cours) * 100, 2);
+        }
+        return 0;
+    }
+
 }

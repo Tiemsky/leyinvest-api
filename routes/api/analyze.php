@@ -1,11 +1,9 @@
 <?php
 
 namespace Routes\Api;
-/**
- * AJOUTER CES ROUTES DANS routes/api.php
- */
 
 use App\Http\Controllers\ActionDashboardController;
+use App\Http\Controllers\Api\V1\ActionForecastController;
 use App\Http\Controllers\SectorStatsController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +17,8 @@ Route::prefix('v1')->group(function () {
             // Historique complet sur 5 ans
             Route::get('{action}/history', [ActionDashboardController::class, 'history'])
                 ->name('actions.history');
+
+            Route::get('forecast', [ActionForecastController::class, 'index'])->name('actions.forecasts');
         });
 
         // ========== SECTEURS - STATISTIQUES ==========
