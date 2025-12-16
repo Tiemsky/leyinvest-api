@@ -231,6 +231,55 @@
                 ]
             }
         },
+        "/api/v1/actions/forecasts": {
+            "get": {
+                "tags": [
+                    "Actions",
+                    "Forecasts"
+                ],
+                "summary": "Lister les actions avec prévisions",
+                "description": "Retourne une liste paginée des actions financières avec leurs données de prévision.",
+                "operationId": "listActionForecasts",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Numéro de page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des actions avec prévisions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ActionForecastResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/maintenance/cleanup-incomplete-registrations": {
             "post": {
                 "tags": [
@@ -3421,6 +3470,63 @@
                 },
                 "type": "object"
             },
+            "ActionForecastResource": {
+                "title": "Action avec prévisions",
+                "description": "Action financière avec données de prévision calculées",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "ACT_BICICI"
+                    },
+                    "symbole": {
+                        "type": "string",
+                        "example": "BICICI"
+                    },
+                    "nom": {
+                        "type": "string",
+                        "example": "BICICI Côte d'Ivoire"
+                    },
+                    "cours_cloture": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 4850
+                    },
+                    "previsions": {
+                        "description": "Prévisions financières associées à l'action",
+                        "properties": {
+                            "rn_previsionnel": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 1200000000,
+                                "nullable": true
+                            },
+                            "dnpa_previsionnel": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 350.75,
+                                "nullable": true
+                            },
+                            "rendement_net_pourcent": {
+                                "description": "Rendement prévisionnel net calculé dynamiquement",
+                                "type": "string",
+                                "example": "7.35%"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "last_updated": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-02-10T14:32:45Z",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "ActionResource": {
                 "properties": {
                     "id": {
@@ -4580,6 +4686,10 @@
         {
             "name": "Actions",
             "description": "Actions"
+        },
+        {
+            "name": "Forecasts",
+            "description": "Forecasts"
         },
         {
             "name": "Admin - Maintenance",
