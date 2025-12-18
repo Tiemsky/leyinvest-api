@@ -10,11 +10,6 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
-    /*
-    |--------------------------------------------------------------------------
-    | Routing Configuration
-    |--------------------------------------------------------------------------
-    */
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
         api: __DIR__ . '/../routes/api.php',
@@ -22,78 +17,39 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
 
-    /*
-    |--------------------------------------------------------------------------
-    | Middleware Configuration
-    |--------------------------------------------------------------------------
-    */
     ->withMiddleware(function (Middleware $middleware): void {
-
-        /**
-         * ✅ CORS MIDDLEWARE - DOIT ÊTRE EN PREMIER
-         * CRITIQUE : HandleCors doit traiter les requêtes OPTIONS (preflight)
-         * AVANT tout autre middleware qui pourrait rediriger
-         */
-        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
-
-        /**
-         * ✅ API MIDDLEWARE GROUP
-         * - EnsureFrontendRequestsAreStateful : Pour Sanctum SPA authentication
-         * - ForceJsonResponse : Force les réponses JSON pour l'API
-         */
-        $middleware->api(prepend: [
+        // 1. Définir la priorité des middlewares critiques
+        $middleware->priority([
+            \Illuminate\Http\Middleware\HandleCors::class,
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \App\Http\Middleware\ForceJsonResponse::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
         ]);
 
-        /**
-         * ✅ MIDDLEWARE ALIASES
-         */
-        $middleware->alias([
-            'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+        // 2. Configurer le groupe API
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ForceJsonResponse::class,
+            // Crucial pour React : permet à Sanctum de gérer les cookies sur l'API
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
 
-            // Custom middleware pour les tokens
+        // 3. Gestion du CSRF pour le Mobile
+        // Les apps mobiles ne peuvent pas gérer le token CSRF. On l'exempte pour l'API.
+        // Sanctum sécurisera quand même le Web via le middleware 'stateful' ci-dessus.
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'sanctum/csrf-cookie',
+        ]);
+
+        // 4. Protection DDoS Globale
+        $middleware->throttleApi('global');
+
+        // 5. Alias de Middlewares
+        $middleware->alias([
+            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'check.token.expiration' => \App\Http\Middleware\CheckTokenExpiration::class,
         ]);
-
-        /**
-         * 🔥 CRITIQUE : Empêcher les redirections automatiques pour l'API
-         * Sans cela, les requêtes non-authentifiées vers /api/* seront redirigées
-         * vers route('login'), ce qui casse le preflight CORS
-         */
-        $middleware->redirectGuestsTo(function (Request $request) {
-            // Si c'est une requête API, retourner JSON 401 au lieu de rediriger
-            if ($request->is('api/*')) {
-                abort(response()->json([
-                    'status' => 'error',
-                    'message' => 'Non authentifié. Veuillez vous connecter.',
-                    'code' => 401,
-                    'timestamp' => now(),
-                ], 401));
-            }
-
-            // Pour les requêtes web, rediriger vers login
-            return route('login');
-        });
-
-        /**
-         * ✅ Configuration API stateful (pour Sanctum SPA)
-         */
-        $middleware->statefulApi();
-
-        /**
-         * ✅ Limitation du trafic API avec le rate limiter par défaut
-         */
-        $middleware->throttleApi();
     })
 
-    /*
-    |--------------------------------------------------------------------------
-    | Exception Handling Configuration
-    |--------------------------------------------------------------------------
-| Utilise des réponses JSON normalisées pour l'API.
-*/
     ->withExceptions(function (Exceptions $exceptions): void {
 
         /**
