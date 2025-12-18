@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('name');
             $table->string('token', 64)->unique();
             $table->string('refresh_token', 64)->nullable()->unique();
+            $table->string('refresh_token_selector', 16)->nullable()->unique();
             $table->text('abilities')->nullable();
             $table->timestamp('last_used_at')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
