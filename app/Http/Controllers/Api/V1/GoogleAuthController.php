@@ -4,20 +4,26 @@ namespace App\Http\Controllers\Api\V1;
 
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use App\Services\CookieService;
 use Illuminate\Http\JsonResponse;
 use App\Services\GoogleAuthService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use App\Services\RefreshTokenService;
 use Illuminate\Http\RedirectResponse;
 
 class GoogleAuthController extends Controller
 {
     protected string $frontendUrl;
+
     public function __construct(
-        private GoogleAuthService $googleAuthService
+        private GoogleAuthService $googleAuthService,
+        private RefreshTokenService $refreshTokenService,
+        private CookieService $cookieService
     ) {
-        $this->frontendUrl = env('FRONTEND_URL', 'http://localhost:8080');
+        $this->frontendUrl = config('app.frontend_url', 'http://localhost:5173');
     }
+
 
     /**
      * @OA\Get(
@@ -47,22 +53,20 @@ class GoogleAuthController extends Controller
      */
     public function login(): JsonResponse
     {
+    /**
+     * Génère l'URL pour envoyer l'utilisateur vers Google
+     */
         try {
+            // Utilise Socialite en interne
             $authUrl = $this->googleAuthService->getAuthUrl();
-
             return response()->json([
                 'success' => true,
-                'url' => $authUrl,
-                'message' => 'Redirect to this URL for Google authentication'
-            ], 200);
+                'message'   => 'Url genere avec success',
+                'url' => $authUrl
+            ]);
         } catch (\Exception $e) {
-            Log::error('Google Login Error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'error' => 'google_login_failed',
-                'message' => 'Impossible de générer l\'URL d\'authentification Google'
-            ], 500);
+            Log::error('Google Auth URL error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Erreur de connexion Google'], 500);
         }
     }
 
@@ -120,64 +124,34 @@ class GoogleAuthController extends Controller
      *     )
      * )
      */
-    public function callback(Request $request): JsonResponse|RedirectResponse
-    {
 
-        // Préparer l'URL de base pour les redirections d'erreur côté frontend
-        $baseErrorUrl = $this->frontendUrl . '/auth/login?error=';
+    // app/Http/Controllers/Api/V1/GoogleAuthController.php
 
-        try {
-            // 1. Vérification du code d'autorisation (si manquant, cela peut être une annulation)
-            if (!$request->has('code')) {
-                // Redirection vers le frontend avec un paramètre d'erreur (cancel)
-                return redirect()->away($baseErrorUrl . 'cancelled_auth');
-            }
+public function callback(Request $request)
+{
+    try {
+        $googleUser = $this->googleAuthService->getGoogleUser();
+        $user = $this->googleAuthService->getOrCreateUser($googleUser);
 
-            // 2. Récupérer et créer/mettre à jour l'utilisateur via le service
-            $googleUser = $this->googleAuthService->getGoogleUser();
-            $user = $this->googleAuthService->getOrCreateUser($googleUser);
+        // On utilise ton service de RefreshToken (SHA-256)
+        $tokens = $this->refreshTokenService->createTokens($user, 'google_auth');
 
-            // 3. Génération du jeton Sanctum
-            $token = $this->googleAuthService->generateAuthToken($user);
+        // Redirection vers React avec SEULEMENT l'access_token
+        $redirectUrl = config('app.frontend_url') . '/auth/callback?token=' . $tokens['access_token'];
 
-            // 4. Sécurité: Vérification de l'Origine (ajustez cette logique si l'en-tête Origin est indisponible)
-            $origin = $request->headers->get('Origin') ?: rtrim(config('app.frontend_url'), '/');
-            $allowed = config('app.allowed_frontend_urls', []);
-
-            if (!empty($allowed) && !in_array($origin, $allowed)) {
-                Log::warning("Unauthorized origin detected: {$origin}");
-                // Redirection d'erreur vers le frontend
-                return redirect()->away($baseErrorUrl . 'unauthorized_origin');
-            }
-
-            // 5. Construction de l'URL de Redirection Finale
-
-            // Le chemin côté React où le token sera lu
-            $redirectPath = '/auth/callback';
-
-            // Paramètres : toujours envoyer le token
-            $queryParams = "token={$token}";
-
-            // Ajouter un flag pour la complétion du profil si nécessaire
-            if (!$user->registration_completed) {
-                $queryParams .= "&registration_completion=false";
-            }
-
-            $redirectUrl = $this->frontendUrl . $redirectPath . '?' . $queryParams;
-
-            // 6. Succès : Redirection HTTP (302) vers le Frontend (CRITIQUE)
-            return redirect()->away($redirectUrl);
-
-        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
-            // Erreur souvent liée à l'expiration de session (protection CSRF)
-            Log::error('Invalid state (CSRF Protection failed)', ['exception' => $e]);
-            return redirect()->away($baseErrorUrl . 'session_expired');
-        } catch (\Exception $e) {
-            // Gestion des erreurs internes (ex: DB, Service, Guzzle, etc.)
-            Log::error('Google callback internal error', ['exception' => $e]);
-            return redirect()->away($baseErrorUrl . 'internal_error');
+        if (!$user->registration_completed) {
+            $redirectUrl .= '&new_user=true';
         }
+
+        // Envoi du refresh_token via Cookie HttpOnly
+        return redirect()->away($redirectUrl)->withCookie(
+            $this->cookieService->createRefreshTokenCookie($tokens['refresh_token'])
+        );
+    } catch (\Exception $e) {
+        return redirect(config('app.frontend_url') . '/login?error=auth_failed');
     }
+}
+
 
 
     /**

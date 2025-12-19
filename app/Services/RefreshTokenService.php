@@ -11,44 +11,35 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class RefreshTokenService
 {
-    /**
-     * Durée de vie de l'access token en minutes
-     */
     private int $accessTokenExpiration;
-
-    /**
-     * Durée de vie du refresh token en minutes
-     */
     private int $refreshTokenExpiration;
 
     public function __construct()
     {
-        // Récupérer les configurations avec des valeurs par défaut sécurisées
-        $this->accessTokenExpiration = config('sanctum.access_token_expiration', 15);
-        $this->refreshTokenExpiration = config('sanctum.refresh_token_expiration', 10080);
+        $this->accessTokenExpiration = config('sanctum.access_token_expiration', 60); // 1h
+        $this->refreshTokenExpiration = config('sanctum.refresh_token_expiration', 43200); // 30 jours
     }
 
-    /**
-     * Créer un access token et un refresh token
-     */
     public function createTokens(User $user, string $deviceName = 'api'): array
     {
-        // 1. Générer l'access token avec Sanctum
+        // 1. Créer l'Access Token
         $accessToken = $user->createToken(
             $deviceName,
             ['*'],
             now()->addMinutes($this->accessTokenExpiration)
         );
 
-        // 2. Générer et hasher le refresh token complet (sécurité et performance)
-        $refreshToken = $this->generateRefreshToken(); // String unique
-        $hashedRefreshToken = Hash::make($refreshToken);
+        // 2. Générer le Refresh Token
+        $refreshToken = $this->generateRefreshToken();
 
-        // 3. Stocker le refresh token hashed et son expiration
+        // OPTIMISATION : On stocke un ID simple (Plain ID) ou un Hash rapide (SHA256)
+        // pour permettre une recherche directe en BDD sans boucle foreach.
+        $tokenIdentifier = hash('sha256', $refreshToken);
+
         DB::table('personal_access_tokens')
             ->where('id', $accessToken->accessToken->id)
             ->update([
-                'refresh_token' => $hashedRefreshToken,
+                'refresh_token' => $tokenIdentifier, // Recherche rapide
                 'refresh_token_expires_at' => now()->addMinutes($this->refreshTokenExpiration),
             ]);
 
@@ -61,126 +52,57 @@ class RefreshTokenService
         ];
     }
 
-    /**
-     * Rafraîchir l'access token avec un refresh token (Rotation du token)
-     */
     public function refreshToken(string $refreshToken): array
     {
-        $validToken = $this->findValidTokenByRefreshToken($refreshToken);
+        $token = $this->findTokenRecord($refreshToken);
 
-        if (!$validToken) {
+        if (!$token || now()->parse($token->refresh_token_expires_at)->isPast()) {
             throw ValidationException::withMessages([
-                'refresh_token' => ['Le jeton de rafraîchissement est invalide ou expiré.'],
+                'refresh_token' => ['Session expirée ou invalide.'],
             ]);
         }
 
-        // Charger l'utilisateur
-        $user = User::find($validToken->tokenable_id);
+        $user = User::find($token->tokenable_id);
 
-        if (!$user) {
-            // Révoquer le token associé à un utilisateur inexistant
-            $validToken->delete();
-            throw ValidationException::withMessages([
-                'refresh_token' => ['Utilisateur introuvable.'],
-            ]);
-        }
+        // Rotation : Supprimer l'ancien token Sanctum (Access + Refresh)
+        PersonalAccessToken::find($token->id)->delete();
 
-        // Révoquer l'ancien token (rotation du Refresh Token)
-        $validToken->delete();
-
-        // Créer de nouveaux tokens
-        return $this->createTokens($user, $validToken->name);
+        return $this->createTokens($user, $token->name);
     }
 
-    /**
-     * Révoquer un refresh token spécifique
-     */
-    public function revokeRefreshToken(string $refreshToken): bool
-    {
-        $validToken = $this->findValidTokenByRefreshToken($refreshToken, false);
-
-        if ($validToken) {
-            $validToken->delete();
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Révoquer tous les refresh tokens d'un utilisateur
-     */
-    public function revokeAllUserTokens(User $user): void
-    {
-        $user->tokens()->delete();
-    }
-
-    /**
-     * Nettoyer les refresh tokens expirés (Méthode de maintenance)
-     */
-    public function cleanExpiredTokens(): int
-    {
-        // Nettoie tous les tokens dont le cycle de vie le plus long est dépassé
-        return PersonalAccessToken::where('refresh_token_expires_at', '<', now())->delete();
-    }
-
-    /**
-     * Vérifier si un refresh token est valide (sans le révoquer)
-     */
-    public function validateRefreshToken(string $refreshToken): bool
-    {
-        return (bool) $this->findValidTokenByRefreshToken($refreshToken);
-    }
-
-    /**
-     * Obtenir les informations d'un token sans le révoquer
-     */
     public function getTokenInfo(string $refreshToken): ?array
     {
-        $token = $this->findValidTokenByRefreshToken($refreshToken);
+        $token = $this->findTokenRecord($refreshToken);
 
-        if ($token) {
-            return [
-                'user_id' => $token->tokenable_id,
-                'device_name' => $token->name,
-                'created_at' => $token->created_at,
-                'expires_at' => $token->refresh_token_expires_at,
-            ];
-        }
+        if (!$token) return null;
 
-        return null;
+        return [
+            'user_id' => $token->tokenable_id,
+            'device_name' => $token->name,
+            'expires_at' => $token->refresh_token_expires_at,
+        ];
     }
 
     /**
-     * Générer un refresh token aléatoire sécurisé
+     * RECHERCHE ULTRA-RAPIDE (Plus de boucle foreach)
      */
+    private function findTokenRecord(string $refreshToken)
+    {
+        $tokenIdentifier = hash('sha256', $refreshToken);
+
+        return DB::table('personal_access_tokens')
+            ->where('refresh_token', $tokenIdentifier)
+            ->first();
+    }
+
     private function generateRefreshToken(): string
     {
         return Str::random(64);
     }
 
-    /**
-     * Méthode utilitaire pour trouver le token validé (Optimisation de la performance)
-     * Nous itérons sur un petit jeu de résultats récents pour éviter un parcours complet de la BDD.
-     */
-    private function findValidTokenByRefreshToken(string $refreshToken, bool $checkExpiration = true): ?PersonalAccessToken
+    public function revokeRefreshToken(string $refreshToken): void
     {
-        $query = PersonalAccessToken::whereNotNull('refresh_token');
-
-        if ($checkExpiration) {
-             $query->where('refresh_token_expires_at', '>', now());
-        }
-
-        // Limite la recherche aux 500 tokens les plus récents pour l'optimisation
-        $tokens = $query->latest()->limit(500)->get();
-
-        // Vérifier le refresh token hashed
-        foreach ($tokens as $token) {
-            if (Hash::check($refreshToken, $token->refresh_token)) {
-                return $token;
-            }
-        }
-
-        return null;
+        $tokenIdentifier = hash('sha256', $refreshToken);
+        DB::table('personal_access_tokens')->where('refresh_token', $tokenIdentifier)->delete();
     }
 }

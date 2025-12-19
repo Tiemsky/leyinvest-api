@@ -1,54 +1,18 @@
 <?php
-
 namespace App\Providers;
 
 use App\Models\User;
 use App\Observers\UserObserver;
-use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        // Enregistrer l'Observer pour auto-créer l'abonnement gratuit
+    public function boot(): void{
         User::observe(UserObserver::class);
-
-       // Rate limiter pour l'authentification
-       RateLimiter::for('auth', function (Request $request) {
-        return Limit::perMinute(5)->by($request->ip());
-    });
-
-    // Rate limiter pour OTP
-    RateLimiter::for('otp', function (Request $request) {
-        return Limit::perMinute(3)->by($request->input('email'));
-    });
-
-    // Rate limiter général pour l'API
-    RateLimiter::for('api', function (Request $request) {
-        return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-    });
-
         Password::defaults(function () {
-            return Password::min(8)
-                ->letters()
-                ->mixedCase()
-                ->numbers()
-                ->symbols();
+            return Password::min(8)->letters()->mixedCase()->numbers()->symbols();
         });
+        // Rate limits gérés UNIQUEMENT par RateLimitServiceProvider
     }
 }

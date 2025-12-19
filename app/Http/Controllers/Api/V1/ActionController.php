@@ -189,7 +189,6 @@ class ActionController extends Controller
       ], Response::HTTP_OK);
     }
 
-
     /**
  * @OA\Get(
  *     path="/api/v1/actions/historique/{actionKey}",

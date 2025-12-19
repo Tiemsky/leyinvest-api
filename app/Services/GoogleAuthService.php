@@ -1,17 +1,15 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class GoogleAuthService
 {
     /**
      * Générer l'URL d'authentification Google
-     *
-     * @return string URL de redirection Google
      */
     public function getAuthUrl(): string
     {
@@ -22,93 +20,70 @@ class GoogleAuthService
     }
 
     /**
-     * Récupérer l'utilisateur Google depuis le callback
-     *
-     * @throws \Laravel\Socialite\Two\InvalidStateException
-     * @throws \GuzzleHttp\Exception\ClientException
+     * Récupérer l'utilisateur Google depuis le callback Socialite
      */
     public function getGoogleUser()
     {
-        return Socialite::driver('google')
-            ->stateless()
-            ->user();
+        // On utilise stateless() car on est en mode API (sans session Laravel classique)
+        return Socialite::driver('google')->stateless()->user();
     }
 
     /**
-     * Créer ou récupérer un utilisateur depuis les données Google
-     * Utilise une transaction pour garantir l'intégrité des données
-     *
-     * @param mixed $googleUser Objet utilisateur retourné par Google
-     * @return User
-     * @throws \Exception
+     * Créer ou mettre à jour un utilisateur via Google
      */
     public function getOrCreateUser($googleUser): User
     {
         $email = $googleUser->getEmail();
         $googleId = $googleUser->getId();
 
-        // Validation des données essentielles
         if (empty($email) || empty($googleId)) {
-            throw new \Exception('Email ou Google ID manquant');
+            throw new \Exception('Données Google incomplètes (Email ou ID manquant).');
         }
 
         return DB::transaction(function () use ($email, $googleId, $googleUser) {
-            // Chercher par email OU google_id avec verrouillage
+            // Recherche par email ou google_id avec verrouillage pour éviter les doublons
             $user = User::where('email', $email)
                 ->orWhere('google_id', $googleId)
                 ->lockForUpdate()
                 ->first();
 
             if ($user) {
-                // Utilisateur existant - mise à jour
                 $this->updateExistingUser($user, $googleUser, $googleId);
                 return $user->fresh();
             }
 
-            // Créer un nouvel utilisateur
             return $this->createNewUser($googleUser, $googleId);
         });
     }
 
     /**
-     * Mettre à jour un utilisateur existant
-     *
-     * @param User $user
-     * @param mixed $googleUser
-     * @param string $googleId
-     * @return void
+     * Met à jour les informations si l'utilisateur existe déjà
      */
     private function updateExistingUser(User $user, $googleUser, string $googleId): void
     {
         $updates = [];
 
-        // Lier le compte Google si pas encore fait
+        // Si l'utilisateur s'était inscrit par email, on lie son compte Google
         if (empty($user->google_id)) {
             $updates['google_id'] = $googleId;
         }
 
-        // Vérifier l'email si pas encore fait
+        // Google certifie l'email, donc on valide automatiquement
         if (!$user->email_verified) {
             $updates['email_verified'] = true;
         }
 
-        // Mettre à jour nom/prénom si vides
-        if (empty($user->nom) && !empty($googleUser->user['family_name'])) {
-            $updates['nom'] = $googleUser->user['family_name'];
-        }
-
-        if (empty($user->prenom) && !empty($googleUser->user['given_name'])) {
-            $updates['prenom'] = $googleUser->user['given_name'];
-        }
-
-        // Mettre à jour l'avatar
-        if ($googleUser->getAvatar()) {
+        // On ne met à jour l'avatar que s'il n'en a pas déjà un personnalisé
+        if (empty($user->avatar) && $googleUser->getAvatar()) {
             $updates['avatar'] = $googleUser->getAvatar();
         }
 
-        // Mettre à jour le provider si nécessaire
-        if (empty($user->auth_provider)) {
-            $updates['auth_provider'] = 'google';
+        // On remplit nom/prénom s'ils sont manquants
+        if (empty($user->nom)) {
+            $updates['nom'] = $googleUser->user['family_name'] ?? ($user->nom ?? '');
+        }
+        if (empty($user->prenom)) {
+            $updates['prenom'] = $googleUser->user['given_name'] ?? ($user->prenom ?? '');
         }
 
         if (!empty($updates)) {
@@ -117,82 +92,20 @@ class GoogleAuthService
     }
 
     /**
-     * Créer un nouvel utilisateur
-     *
-     * @param mixed $googleUser
-     * @param string $googleId
-     * @return User
+     * Création d'un nouvel utilisateur (Premier Login Google)
      */
     private function createNewUser($googleUser, string $googleId): User
     {
-        $user = User::create([
+        return User::create([
             'email' => $googleUser->getEmail(),
+            'google_id' => $googleId,
             'nom' => $googleUser->user['family_name'] ?? '',
             'prenom' => $googleUser->user['given_name'] ?? '',
-            'google_id' => $googleId,
             'avatar' => $googleUser->getAvatar(),
             'auth_provider' => 'google',
             'email_verified' => true,
-            'registration_completed' => false,
+            'registration_completed' => false, // Oblige à passer par une étape de finition si besoin
             'role' => 'user',
         ]);
-
-        return $user;
-    }
-
-    /**
-     * Vérifier si le profil est complet
-     *
-     * @param mixed $googleUser
-     * @return bool
-     */
-    private function checkProfileComplete($googleUser): bool
-    {
-        return !empty($googleUser->user['family_name'])
-            && !empty($googleUser->user['given_name']);
-    }
-
-
-
-    /**
-     * Générer un token d'authentification pour l'utilisateur
-     * Compatible avec React/SPA
-     *
-     * @param User $user
-     * @param string $tokenName
-     * @return string
-     */
-    public function generateAuthToken(User $user, string $tokenName = 'auth_token'): string
-    {
-        // Révoquer les anciens tokens si nécessaire
-        // $user->tokens()->delete();
-
-        return $user->createToken($tokenName)->plainTextToken;
-    }
-
-    /**
-     * Préparer la réponse pour le frontend React
-     *
-     * @param User $user
-     * @param string $token
-     * @return array
-     */
-    public function prepareAuthResponse(User $user, string $token): array
-    {
-        return [
-            'success' => true,
-            'token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'email' => $user->email,
-                'nom' => $user->nom,
-                'prenom' => $user->prenom,
-                'avatar' => $user->avatar,
-                'role' => $user->role,
-                'registration_completed' => $user->registration_completed,
-                'email_verified' => $user->email_verified,
-            ],
-        ];
     }
 }
