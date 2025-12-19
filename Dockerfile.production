@@ -1,193 +1,96 @@
-# docker-compose.production.yml
-# Configuration Docker Compose pour PRODUCTION
-# Branch: main
-# Domain: api.leyinvest.com
+# ============================================
+# STAGE 1 : BUILD - Préparation des dépendances
+# ============================================
+FROM php:8.3-fpm-alpine AS base
 
-version: '3.8'
+# Installer les dépendances système nécessaires
+RUN apk update && apk add --no-cache \
+    postgresql-dev \
+    git \
+    curl \
+    libxml2-dev \
+    libzip-dev \
+    make \
+    autoconf \
+    g++
 
-services:
-  # ============================================
-  # APPLICATION LARAVEL PRODUCTION
-  # ============================================
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    container_name: leyinvest_app_production
-    restart: unless-stopped
-    working_dir: /var/www/html
-    environment:
-      # Application
-      - APP_NAME=${APP_NAME:-LeyInvest}
-      - APP_ENV=production
-      - APP_KEY=${APP_KEY}
-      - APP_DEBUG=false
-      - APP_URL=https://api.leyinvest.com
+# Installer les extensions PHP critiques
+# FinTech : PDO pour Postgres, Redis pour Cache/Queue
+RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
-      # Database PostgreSQL
-      - DB_CONNECTION=pgsql
-      - DB_HOST=postgres_production
-      - DB_PORT=5432
-      - DB_DATABASE=${DB_DATABASE:-leyinvest_production}
-      - DB_USERNAME=${DB_USERNAME:-leyinvest_production}
-      - DB_PASSWORD=${DB_PASSWORD}
+# Installer Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-      # Redis
-      - REDIS_HOST=redis_production
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+WORKDIR /app
 
-      # Cache & Session & Queue
-      - CACHE_DRIVER=redis
-      - SESSION_DRIVER=redis
-      - QUEUE_CONNECTION=redis
-
-      # Mail (Resend)
-      - MAIL_MAILER=resend
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
-      - MAIL_FROM_NAME="${MAIL_FROM_NAME:-LeyInvest}"
-
-      # Frontend
-      - FRONTEND_URL=${FRONTEND_URL:-https://leyinvest.com}
-
-    volumes:
-      - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
-
-    networks:
-      - leyinvest-production-network
-      - dokploy-network
-
-    depends_on:
-      postgres_production:
-        condition: service_healthy
-      redis_production:
-        condition: service_healthy
-
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-    labels:
-      # ============================================
-      # LABELS TRAEFIK - PRODUCTION
-      # ============================================
-      - "traefik.enable=true"
-      - "traefik.docker.network=dokploy-network"
-
-      # ============================================
-      # ROUTER HTTPS PRODUCTION
-      # ============================================
-      - "traefik.http.routers.leyinvest-production.rule=Host(`api.leyinvest.com`)"
-      - "traefik.http.routers.leyinvest-production.entrypoints=websecure"
-      - "traefik.http.routers.leyinvest-production.tls=true"
-      - "traefik.http.routers.leyinvest-production.tls.certresolver=letsencrypt"
-
-      # ============================================
-      # MIDDLEWARES - Utiliser les middlewares globaux + rate limiting strict
-      # ============================================
-      - "traefik.http.routers.leyinvest-production.middlewares=security-headers@file,compression@file,api-cors@file,rate-limit@file"
-
-      # ============================================
-      # SERVICE
-      # ============================================
-      - "traefik.http.services.leyinvest-production.loadbalancer.server.port=80"
-      - "traefik.http.services.leyinvest-production.loadbalancer.healthcheck.path=/health"
-      - "traefik.http.services.leyinvest-production.loadbalancer.healthcheck.interval=30s"
-
-      # Sticky sessions pour load balancing (si scale > 1)
-      - "traefik.http.services.leyinvest-production.loadbalancer.sticky.cookie=true"
-      - "traefik.http.services.leyinvest-production.loadbalancer.sticky.cookie.name=leyinvest_session"
-      - "traefik.http.services.leyinvest-production.loadbalancer.sticky.cookie.secure=true"
-      - "traefik.http.services.leyinvest-production.loadbalancer.sticky.cookie.httpOnly=true"
-
-  # ============================================
-  # POSTGRESQL PRODUCTION
-  # ============================================
-  postgres_production:
-    image: postgres:16-alpine
-    container_name: leyinvest_postgres_production
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${DB_DATABASE:-leyinvest_production}
-      - POSTGRES_USER=${DB_USERNAME:-leyinvest_production}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres_production_data:/var/lib/postgresql/data
-    networks:
-      - leyinvest-production-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-leyinvest_production} -d ${DB_DATABASE:-leyinvest_production}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    command: >
-      postgres
-      -c shared_buffers=256MB
-      -c max_connections=200
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-    labels:
-      - "traefik.enable=false"
-
-  # ============================================
-  # REDIS PRODUCTION
-  # ============================================
-  redis_production:
-    image: redis:7-alpine
-    container_name: leyinvest_redis_production
-    restart: unless-stopped
-    command: >
-      redis-server
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-      --save 900 1
-      --save 300 10
-      --save 60 10000
-    volumes:
-      - redis_production_data:/data
-    networks:
-      - leyinvest-production-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 20s
-    labels:
-      - "traefik.enable=false"
+# Copier composer.json et composer.lock et installer les dépendances
+# Ceci permet de mettre en cache les dépendances si seuls les fichiers PHP changent
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader
 
 # ============================================
-# NETWORKS
+# STAGE 2 : PRODUCTION - Image finale légère
 # ============================================
-networks:
-  leyinvest-production-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.25.0.0/16
+FROM php:8.3-fpm-alpine AS final
 
-  dokploy-network:
-    external: true
+# Installer les extensions minimales pour l'exécution
+RUN apk update && apk add --no-cache \
+    nginx \
+    libxml2 \
+    postgresql-client \
+    wget # Nécessaire pour le healthcheck de l'app
+
+# Installer les extensions PHP critiques (encore)
+RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
+    && pecl install redis \
+    && docker-php-ext-enable redis
+
+# Configuration de PHP pour la production
+# Optimisation OPcache: Réduction des appels de fichiers
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo "opcache.revalidate_freq=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+
+# Définir le répertoire de travail
+WORKDIR /var/www/html
+
+# Copier les fichiers depuis l'étape de base (Dépendances)
+COPY --from=base /app/vendor /var/www/html/vendor
+
+# Copier le code source de l'application
+COPY . /var/www/html
+
+# Ajuster les permissions pour l'utilisateur non-root
+# FinTech Security: Ne pas utiliser root.
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
+
+# Config Nginx : Déplacer les fichiers de config
+COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Commande de démarrage par défaut : Lancer à la fois Nginx et PHP-FPM
+# Utilisation de supervisord ou d'un script simple pour les faire coexister.
+# Ici, nous utilisons un script d'entrée simple pour le service 'app'.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Exposer le port par défaut de Nginx
+EXPOSE 80
+
+CMD ["/usr/local/bin/entrypoint.sh"]
 
 # ============================================
-# VOLUMES
+# Fichier requis: docker/entrypoint.sh
+# Pour que Nginx et PHP-FPM cohabitent dans le conteneur 'app'
 # ============================================
-volumes:
-  postgres_production_data:
-    driver: local
-  redis_production_data:
-    driver: local
+# #!/bin/sh
+#
+# # Démarrer PHP-FPM en arrière-plan
+# php-fpm
+#
+# # Démarrer Nginx au premier plan
+# nginx -g 'daemon off;'
