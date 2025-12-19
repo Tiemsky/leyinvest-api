@@ -6,54 +6,56 @@ return [
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // On inclut sanctum/csrf-cookie pour React et toutes les routes API
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
 
     'allowed_methods' => ['*'],
 
     /*
     |--------------------------------------------------------------------------
-    | SÉCURITÉ : Origins autorisées
+    | SÉCURITÉ : Origins dynamiques (Local vs Prod)
     |--------------------------------------------------------------------------
-    |
-    | Avec supports_credentials=true, il est CRITIQUE de spécifier les origins
-    | autorisées plutôt que d'utiliser '*'. Configurez FRONTEND_URL dans .env
-    |
     */
-    // 'allowed_origins' => array_filter([
-    //     env('FRONTEND_URL', 'http://localhost:3000'),
-    //     env('APP_URL', 'http://localhost:8000'),
-    //     'https://leyinvest.vercel.app'
-    //     // Ajouter d'autres origins autorisées si nécessaire
-    // ]),
+    'allowed_origins' => (function () {
+        // 1. On récupère les URLs définies dans le .env (séparées par des virgules)
+        $allowed = env('ALLOWED_FRONTEND_URLS')
+            ? explode(',', env('ALLOWED_FRONTEND_URLS'))
+            : [];
 
-    'allowed_origins' => ['*'],
+        // 2. Si on est en environnement local, on ajoute les URLs de dev courantes
+        // pour éviter d'être bloqué si on change de port
+        if (env('APP_ENV') === 'local') {
+            $localUrls = [
+                'http://localhost:3000',
+                'http://localhost:5173', // Port par défaut de Vite (React)
+                'http://localhost:8080',
+                'http://127.0.0.1:3000',
+                'http://127.0.0.1:5173',
+                'http://127.0.0.1:8080',
+            ];
+            $allowed = array_unique(array_merge($allowed, $localUrls));
+        }
 
+        return $allowed;
+    })(),
+
+    // Note pour le Mobile : Les applications mobiles natives (Flutter/React Native)
+    // n'envoient pas de header "Origin". Elles ne sont donc pas bloquées par le CORS.
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['*'], // Permet headers Authorization, X-XSRF-TOKEN, etc.
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['Authorization'],
 
-    'max_age' => 0,
+    'max_age' => 86400, // Cache les pré-requêtes OPTIONS pendant 24h pour la performance
 
     /*
     |--------------------------------------------------------------------------
     | Support des Credentials (Cookies HTTP-only)
     |--------------------------------------------------------------------------
-    |
-    | Activé pour permettre l'envoi de cookies HTTP-only entre le frontend et l'API.
-    | Requis pour la sécurité des refresh tokens contre les attaques XSS.
-    |
     */
     'supports_credentials' => true,
 
