@@ -1,12 +1,10 @@
 # docker-compose.local.yml
-# Configuration Docker Compose pour Développement Local (WSL2)
-# Architecture: x86_64 (AMD64)
-
+# Configuration Docker Compose pour Développement Local
 version: '3.8'
 
 services:
   # ============================================
-  # APPLICATION LARAVEL
+  # 1. APPLICATION LARAVEL (Serveur Web)
   # ============================================
   app:
     build:
@@ -19,38 +17,25 @@ services:
       # Application
       - APP_ENV=local
       - APP_DEBUG=true
-      - APP_KEY=${APP_KEY}
       - APP_URL=http://localhost:8000
-
       # Database
       - DB_CONNECTION=pgsql
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=leyinvest
       - DB_USERNAME=leyinvest
       - DB_PASSWORD=secret
-
+      - DB_DATABASE=leyinvest
       # Redis
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
-
-      # Cache & Session & Queue
       - CACHE_DRIVER=redis
       - SESSION_DRIVER=redis
       - QUEUE_CONNECTION=redis
-
-      # Mail (Mailhog pour tests locaux)
+      # Mail
       - MAIL_MAILER=smtp
       - MAIL_HOST=mailhog
-      - MAIL_PORT=1025
-      - MAIL_USERNAME=null
-      - MAIL_PASSWORD=null
-      - MAIL_ENCRYPTION=null
-      - MAIL_FROM_ADDRESS=tiafranck@leyinvestcom.ci
-      - MAIL_FROM_NAME=LeyInvest
+    # Les volumes montent le code local dans le conteneur
     volumes:
       - ./:/var/www/html
-      - ./storage:/var/www/html/storage:delegated
+      - ./storage:/var/www/html/storage:delegated # Optimisation de performance WSL/Mac
       - ./bootstrap/cache:/var/www/html/bootstrap/cache:delegated
     networks:
       - leyinvest-local
@@ -63,31 +48,22 @@ services:
       - "8000:8000"
 
   # ============================================
-  # QUEUE WORKER (Local)
+  # 2. WORKER (Job Processor)
   # ============================================
-  queue:
+  worker:
     build:
       context: .
       dockerfile: Dockerfile.local
-    container_name: leyinvest_queue_local
+    container_name: leyinvest_worker_local
     restart: unless-stopped
     working_dir: /var/www/html
+    # Commande simple de worker (vous pouvez remplacer par 'php artisan horizon' si Horizon est installé)
     command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --timeout=90
     environment:
       - APP_ENV=local
-      - APP_DEBUG=true
-      - DB_CONNECTION=pgsql
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=leyinvest
-      - DB_USERNAME=leyinvest
-      - DB_PASSWORD=secret
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
-      - MAIL_MAILER=smtp
-      - MAIL_HOST=mailhog
-      - MAIL_PORT=1025
     volumes:
       - ./:/var/www/html
     networks:
@@ -98,7 +74,30 @@ services:
       - postgres
 
   # ============================================
-  # POSTGRESQL DATABASE
+  # 3. SCHEDULER (Tâches planifiées)
+  # ============================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: leyinvest_scheduler_local
+    restart: unless-stopped
+    working_dir: /var/www/html
+    # Commande pour exécuter le cron toutes les minutes (pour les tests)
+    command: sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+    environment:
+      - APP_ENV=local
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - leyinvest-local
+    depends_on:
+      - app
+
+  # ============================================
+  # 4. POSTGRESQL DATABASE
   # ============================================
   postgres:
     image: postgres:16-alpine
@@ -108,7 +107,6 @@ services:
       - POSTGRES_DB=leyinvest
       - POSTGRES_USER=leyinvest
       - POSTGRES_PASSWORD=secret
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -122,7 +120,7 @@ services:
       retries: 5
 
   # ============================================
-  # REDIS
+  # 5. REDIS
   # ============================================
   redis:
     image: redis:7-alpine
@@ -142,7 +140,7 @@ services:
       retries: 5
 
   # ============================================
-  # PGADMIN (Interface Web PostgreSQL)
+  # 6. PGADMIN (Interface Web PostgreSQL)
   # ============================================
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -150,9 +148,7 @@ services:
     restart: unless-stopped
     environment:
       - PGADMIN_DEFAULT_EMAIL=tiafranck@leyinvestcom.ci
-      - PGADMIN_DEFAULT_PASSWORD=admin123
-      - PGADMIN_CONFIG_SERVER_MODE=False
-      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+      - PGADMIN_DEFAULT_PASSWORD=admin123 # A changer!
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
@@ -163,7 +159,7 @@ services:
       - postgres
 
   # ============================================
-  # MAILHOG (Test Emails Locaux)
+  # 7. MAILHOG (Test Emails Locaux)
   # ============================================
   mailhog:
     image: mailhog/mailhog:latest
@@ -176,7 +172,7 @@ services:
       - "8025:8025"  # Web UI
 
   # ============================================
-  # REDIS COMMANDER (Interface Web Redis)
+  # 8. REDIS COMMANDER (Interface Web Redis)
   # ============================================
   redis-commander:
     image: ghcr.io/joeferner/redis-commander:latest
@@ -192,15 +188,12 @@ services:
       - redis
 
 # ============================================
-# NETWORKS
+# NETWORKS & VOLUMES
 # ============================================
 networks:
   leyinvest-local:
     driver: bridge
 
-# ============================================
-# VOLUMES
-# ============================================
 volumes:
   postgres_data:
     driver: local
