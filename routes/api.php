@@ -1,25 +1,33 @@
 <?php
 
-use App\Jobs\ScrapeFinancialNewsJob;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TopController;
 use App\Http\Controllers\Api\V1\FlopController;
-use App\Http\Controllers\Api\V1\PlanController;
-use App\Http\Controllers\Api\V1\ActionController;
 use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\UserActionController;
-use App\Http\Controllers\Api\V1\BocIndicatorController;
-use App\Http\Controllers\Api\V1\FinancialNewsController;
 use App\Http\Controllers\Api\V1\UserDashboardController;
 
 
-Route::prefix('v1')->group(function(){
+Route::prefix('v1')->group(function () {
 
-    Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function(){
-        Route:: get('/user/dashboard', [UserDashboardController::class, 'index']);
+    // ============================================
+    // ROUTES PUBLIQUES (Lecture seule)
+    // Rate Limit : 'api' (60/min - standard)
+    // ============================================
+    Route::middleware(['throttle:api'])->group(function () {
+        Route::get('/countries', [CountryController::class, 'index']);
+        Route::get('/flops', [FlopController::class, 'index']);
+        Route::get('/tops', [TopController::class, 'index']);
+    });
 
-           // Routes pour les actions suivies
-           Route::prefix('user')->name('actions.')->group(function () {
+
+
+    Route::middleware(['auth:sanctum', 'check.token.expiration', 'throttle:api'])->group(function () {
+        //Dashboard de l'utilisateur authentifiee
+        Route::get('/user/dashboard', [UserDashboardController::class, 'index']);
+
+        // Routes pour les actions suivies
+        Route::prefix('user')->name('actions.')->group(function () {
 
             // Obtenir toutes les actions suivies
             Route::get('/actions', [UserActionController::class, 'index'])
@@ -56,63 +64,14 @@ Route::prefix('v1')->group(function(){
             Route::get('/{actionId}/followers', [UserActionController::class, 'followers'])
                 ->name('followers');
         });
-
-        Route::get('/actions', [ActionController::class, 'index']);
-        Route::get('/actions/analyze', [ActionController::class, 'analyze']);
-        Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
-        Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
-        Route::get('/indicators', [BocIndicatorController::class, 'index']);
-
-
-
-
-    // ============================================
-    // ROUTES PROTÉGÉES - VOIR TOUTES LES ACTUALITÉS
-    // ============================================
-       Route::group(['prefix' => 'financial-news'], function () {
-
-        Route::get('companies', [FinancialNewsController::class, 'companies']);
-
-        Route::get('sources', [FinancialNewsController::class, 'sources']);
-
-        Route::get('statistics', [FinancialNewsController::class, 'statistics']);
-
-        Route::get('recent/{days?}', [FinancialNewsController::class, 'recent']);
-
-        Route::get('source/{source}', [FinancialNewsController::class, 'getFinancialNewBySource']);
-
-        Route::get('/', [FinancialNewsController::class, 'index']);
-
-        Route::get('{financialNews}', [FinancialNewsController::class, 'show']);
     });
-
-    });
-
-    Route::get('/flops', [FlopController::class, 'index']);
-    Route::get('/tops', [TopController::class, 'index']);
-    Route::get('/countries', [CountryController::class, 'index']);
-
-
-    Route::get('/plans', [PlanController::class, 'index']);
-
-
-    //For testing purposes only
-        // Route::get('/actions', [ActionController::class, 'index']);
-        // Route::get('/actions/analyze', [ActionController::class, 'analyze']);
-        // Route::get('/actions/analyze/{action}', [ActionController::class, 'show']);
-        // Route::get('/actions/historique/{action}', [ActionController::class, 'historique']);
-        // Route::get('/indicators', [BocIndicatorController::class, 'index']);
-
-
-
-
-
-
 });
 
-require __DIR__.'/api/auth.php';
-require __DIR__.'/api/analyze.php';
-require __DIR__.'/api/news.php';
-require __DIR__.'/api/subscription.php';
-require __DIR__.'/api/admin.php';
-require __DIR__.'/api/health.php';
+// Chargement des modules (routes externes)
+require __DIR__ . '/api/auth.php';
+require __DIR__ . '/api/analyze.php';      // Contient ActionController, BocIndicator, etc.
+require __DIR__ . '/api/news.php';         // Contient FinancialNewsController
+require __DIR__ . '/api/subscription.php'; // Plans, Invoices
+require __DIR__ . '/api/admin.php';        // Administration
+require __DIR__ . '/api/health.php';       // Monitoring (Pas de throttle)
+require __DIR__ . '/api/documents.php';    // Téléchargements
