@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcessTestJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,3 +11,5 @@ Artisan::command('inspire', function () {
 
 // Vérifier et marquer les souscriptions expirées chaque jour à minuit
 Schedule::command('subscriptions:expire')->daily();
+
+// Schedule::job(new ProcessTestJob())->everyFiveSeconds();
