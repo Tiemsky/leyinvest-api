@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\AuthUserResource;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -169,13 +170,14 @@ class AuthService
      */
     public function login(array $credentials, string $deviceName = 'api'): array
     {
-        $genericError = ['Ces informations d\'identification ne correspondent pas à nos enregistrements.'];
-
+        //Initial: Recupration du record en fonction des donnees fournis
         $user = User::where('email', $credentials['email'])->first();
 
-        // 1. Vérification de l'existence de l'utilisateur ou du mot de passe (Sécurité: message générique)
+        // 1. Vérification de l'existence de l'utilisateur ou du mot de passe
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages(['email' => $genericError]);
+            throw ValidationException::withMessages([
+                'email' => ['Ces informations d\'identification ne correspondent pas.'],
+            ]);
         }
 
         // 2. Vérifications spécifiques (ces erreurs ne sont affichées QUE si les credentials sont corrects)
@@ -191,8 +193,6 @@ class AuthService
             ]);
         }
 
-        // --- OPTIMISATION : EAGER LOADING POUR LA RESOURCE API ---
-
         // Charge la relation 'activeSubscription' et ses relations imbriquées ('plan', 'coupon')
         // Ceci évite les requêtes N+1 et optimise la réponse JSON.
         $user->load([
@@ -205,55 +205,28 @@ class AuthService
         $tokens = $this->refreshTokenService->createTokens($user, $deviceName);
         Log::info("User {$user->email} logged in successfully.");
 
-        return [
-            'user' => $user,
-            'access_token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
-            'token_type' => $tokens['token_type'],
-            'expires_in' => $tokens['expires_in'],
-            'refresh_expires_in' => $tokens['refresh_expires_in'],
-        ];
+        return $this->formatResponse($user, $tokens);
     }
 
-/**
- * Rafraîchir le token d'accès.
- */
-public function refreshToken(string $refreshToken): array
-{
-    // FIX: Appeler directement le service. Si le token est invalide/expiré,
-    // le service lèvera déjà la ValidationException (voir le RefreshTokenService corrigé).
-    $tokens = $this->refreshTokenService->refreshToken($refreshToken);
+    /**
+     * Rafraîchir le token de manière sécurisée (Compatible Web/Mobile).
+     */
+    public function refreshToken(string $refreshToken): array
+    {
+        // 1. Le service valide et fait tourner (rotate) le token automatiquement
+        $tokens = $this->refreshTokenService->refreshToken($refreshToken);
+        // 2. Récupération de l'utilisateur à partir du nouveau refresh_token
+        $tokenInfo = $this->refreshTokenService->getTokenInfo($tokens['refresh_token']);
+        $user = User::with(['activeSubscription.plan'])->find($tokenInfo['user_id']);
 
-    // Après un succès du rafraîchissement, on récupère les infos de l'utilisateur
-    // via le nouveau token (méthode de secours si le service ne retourne pas l'user).
-    // Une approche plus propre consiste à récupérer l'info via un appel distinct si nécessaire.
-    // Dans ce scénario, nous allons chercher l'utilisateur via un appel au service.
+        if (!$user) {
+            throw ValidationException::withMessages(['token' => ['Utilisateur introuvable.']]);
+        }
+        return $this->formatResponse($user, $tokens);
 
-    $tokenInfo = $this->refreshTokenService->getTokenInfo($tokens['refresh_token']);
-
-    if (empty($tokenInfo['user_id'])) {
-         // Si le service ne donne aucune info sur l'utilisateur, lever une erreur générique
-         throw ValidationException::withMessages(['token' => ['Informations utilisateur introuvables.']]);
     }
 
-    $user = User::find($tokenInfo['user_id']);
 
-    if (!$user) {
-        // Le service aurait déjà dû gérer ce cas en révoquant le token, mais on le sécurise ici.
-        throw ValidationException::withMessages(['token' => ['Utilisateur introuvable.']]);
-    }
-
-    Log::info("Token refreshed for user {$user->email}");
-
-    return [
-        'user' => $user,
-        'access_token' => $tokens['access_token'],
-        'refresh_token' => $tokens['refresh_token'],
-        'token_type' => $tokens['token_type'],
-        'expires_in' => $tokens['expires_in'],
-        'refresh_expires_in' => $tokens['refresh_expires_in'],
-    ];
-}
     /**
      * Renvoyer un OTP pour une inscription incomplète.
      */
@@ -285,8 +258,7 @@ public function refreshToken(string $refreshToken): array
     /**
      * Mot de passe oublié : envoyer un OTP de réinitialisation.
      */
-    public function forgotPassword(string $email): void
-    {
+    public function forgotPassword(string $email): void{
         $user = User::where('email', $email)
             ->where('registration_completed', true)
             ->where('email_verified', true)
@@ -306,8 +278,7 @@ public function refreshToken(string $refreshToken): array
     /**
      * Vérifier l'OTP de réinitialisation de mot de passe.
      */
-    public function verifyResetOtp(string $email, string $otp): User
-    {
+    public function verifyResetOtp(string $email, string $otp): User{
         $user = User::where('email', $email)
             ->where('registration_completed', true)
             ->where('email_verified', true)
@@ -501,23 +472,32 @@ public function refreshToken(string $refreshToken): array
         }
     }
 
-    /**
-     * Déconnexion de la session actuelle.
+  /**
+     * Déconnexion complète (Sanctum + Refresh Token).
      */
-    public function logout(User $user): void
+    public function logout(User $user, ?string $refreshToken = null): void
     {
+        // 1. Supprimer le token d'accès actuel (Sanctum)
         $user->currentAccessToken()?->delete();
-        Log::info("User {$user->email} logged out from current session.");
+
+        // 2. Révoquer le refresh token spécifique (si fourni, ex: via cookie ou body)
+        if ($refreshToken) {
+            $this->refreshTokenService->revokeRefreshToken($refreshToken);
+        }
+
+        Log::info("User {$user->email} logged out.");
     }
 
-    /**
-     * Déconnexion de toutes les sessions.
+   /**
+     * Déconnexion de TOUTES les sessions (Sécurité).
      */
     public function logoutAll(User $user): void
     {
-        $this->refreshTokenService->revokeAllUserTokens($user);
+        // Révoquer tous les tokens Sanctum
         $user->tokens()->delete();
-        Log::info("User {$user->email} logged out from all sessions.");
+        // Révoquer tous les Refresh Tokens dans Redis/DB
+        $this->refreshTokenService->revokeRefreshToken($user->id);
+        Log::info("User {$user->email} logged out from all devices.");
     }
 
     /**
@@ -528,7 +508,7 @@ public function refreshToken(string $refreshToken): array
         DB::beginTransaction();
         try {
             // Révoquer tous les tokens
-            $this->refreshTokenService->revokeAllUserTokens($user);
+            $this->refreshTokenService->revokeRefreshToken($user);
             $user->tokens()->delete();
 
             // Supprimer l'avatar
@@ -548,4 +528,20 @@ public function refreshToken(string $refreshToken): array
             throw $e;
         }
     }
+
+
+
+ /**
+ * Formate la réponse pour garantir que Login et Refresh renvoient la même chose
+ */
+protected function formatResponse(User $user, array $tokens): array{
+    return [
+        'user'               => new AuthUserResource($user),
+        'access_token'       => $tokens['access_token'],
+        'refresh_token'      => $tokens['refresh_token'], // Toujours présent pour le contrôleur
+        'token_type'         => 'Bearer',
+        'expires_in'         => $tokens['expires_in'],
+        'refresh_expires_in' => $tokens['refresh_expires_in'],
+    ];
+}
 }

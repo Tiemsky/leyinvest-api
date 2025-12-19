@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Coupon;
+use App\Models\Subscription;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class CouponService
