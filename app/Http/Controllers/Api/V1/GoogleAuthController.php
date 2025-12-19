@@ -125,8 +125,6 @@ class GoogleAuthController extends Controller
      * )
      */
 
-    // app/Http/Controllers/Api/V1/GoogleAuthController.php
-
 public function callback(Request $request)
 {
     try {
