@@ -18,8 +18,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'check.token.expiration', 'thro
     // ========== ACTIONS - ANALYZE - DASHBOARD & HISTORIQUE ==========
     Route::prefix('actions')->group(function () {
 
-        // Recuperer la liste de toutes les actions disponibles - Liste Globale
+        // Récupérer la liste de toutes les actions disponibles - Liste Globale
         Route::get('/', [ActionController::class, 'index']);
+
+        Route::get('analyze', [ActionController::class, 'analyze']);
 
         //Afficher les détails complet d’une action avec les indicateurs boursiers
         Route::get('analyze/{action}', [ActionController::class, 'show']);
