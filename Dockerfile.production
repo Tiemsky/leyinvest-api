@@ -3,7 +3,7 @@
 # ============================================
 FROM php:8.3-fpm-alpine AS builder
 
-# Installation des outils de build + Librairies pour GD
+# Installation des dépendances de compilation
 RUN apk update && apk add --no-cache \
     postgresql-dev \
     libzip-dev \
@@ -20,7 +20,7 @@ RUN apk update && apk add --no-cache \
     pkgconfig \
     linux-headers
 
-# Configuration et installation de GD + autres extensions
+# Compilation des extensions PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets intl gd \
     && pecl install redis \
@@ -31,15 +31,16 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-# On installe les dépendances (GD est maintenant présent, donc ça passera)
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+#CORRECTION : ignorer ext-gd (et éventuellement redis) pendant l'installation
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-req=ext-gd
 
 # ============================================
 # STAGE 2 : PRODUCTION
 # ============================================
 FROM php:8.3-fpm-alpine AS final
 
-# Librairies runtime (Ajout de freetype, libjpeg et libpng pour GD)
+# Librairies runtime
 RUN apk update && apk add --no-cache \
     nginx \
     libpq \
@@ -51,17 +52,17 @@ RUN apk update && apk add --no-cache \
     libpng \
     wget
 
-# Copie des extensions compilées depuis le builder
+# Copie des extensions et configs
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
 
 WORKDIR /var/www/html
 
-# Copie des fichiers
+# Copie de l'application
 COPY --from=builder /app/vendor /var/www/html/vendor
 COPY . /var/www/html
 
-# Finalisation Composer
+# Finalisation autoloader
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer dump-autoload --optimize --no-dev && rm /usr/bin/composer
 
