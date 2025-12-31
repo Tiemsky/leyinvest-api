@@ -5,7 +5,7 @@ services:
   app-staging:
     build:
       context: .
-      dockerfile: Dockerfile.production
+      dockerfile: Dockerfile.staging
     container_name: leyinvest_app_staging
     restart: unless-stopped
     networks:
@@ -22,7 +22,7 @@ services:
   # == WORKER (Staging) ==
   worker-staging:
     build: .
-    dockerfile: Dockerfile.production
+    dockerfile: Dockerfile.staging
     container_name: leyinvest_worker_staging
     command: php artisan queue:work # Moins lourd qu'Horizon pour le staging
     networks:
@@ -33,7 +33,7 @@ services:
   # == SCHEDULER (Staging) ==
   scheduler-staging:
     build: .
-    dockerfile: Dockerfile.production
+    dockerfile: Dockerfile.staging
     container_name: leyinvest_scheduler_staging
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     networks:
