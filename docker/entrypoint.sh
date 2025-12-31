@@ -1,26 +1,39 @@
 #!/bin/sh
 set -e
 
-# --- 1. Fixer les permissions (Essentiel après déploiement) ---
-# www-data est l'utilisateur sous lequel Nginx et PHP-FPM tournent.
-# Ceci garantit que Laravel peut écrire dans ses dossiers de cache et de logs.
-chown -R www-data:www-data /var/www/html/storage
-chown -R www-data:www-data /var/www/html/bootstrap/cache
-chmod -R 775 /var/www/html/storage
-chmod -R 775 /var/www/html/bootstrap/cache
+echo " Environment: $APP_ENV"
 
+# --- 1. Fixer les permissions ---
+# On cible uniquement les dossiers nécessaires pour ne pas ralentir le démarrage
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-echo "Running Laravel setup..."
-php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# --- 2. Configuration spécifique par environnement ---
 
-# --- 2. Démarrer PHP-FPM en arrière-plan ---
+if [ "$APP_ENV" = "local" ]; then
+    echo "🛠️ Mode Local : On vide les caches pour le développement..."
+    php artisan optimize:clear
+else
+    echo " Mode $APP_ENV : Optimisation des performances..."
+    # En Prod/Staging, on génère les caches pour une vitesse maximale
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+
+    # Optionnel : lancer les migrations automatiquement en staging seulement
+    if [ "$APP_ENV" = "staging" ]; then
+        echo "Running migrations..."
+        php artisan migrate --force
+    fi
+fi
+
+# --- 3. Gestion des processus ---
+
 echo "Starting PHP-FPM..."
-php-fpm &
+# Démarrage de PHP-FPM en mode démon (arrière-plan)
+php-fpm -D
 
-# --- 3. Démarrer Nginx au premier plan ---
-# Le 'exec' assure que Nginx devient le PID 1 du conteneur.
 echo "Starting Nginx..."
+# 'exec' remplace le script shell par le processus Nginx.
+# Nginx devient le PID 1 et recevra correctement les signaux d'arrêt (SIGTERM) de Docker.
 exec nginx -g 'daemon off;'
