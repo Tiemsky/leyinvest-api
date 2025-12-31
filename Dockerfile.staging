@@ -1,0 +1,96 @@
+# ============================================
+# STAGE 1 : BUILD - Préparation des dépendances
+# ============================================
+FROM php:8.3-fpm-alpine AS base
+
+# Installer les dépendances système nécessaires
+RUN apk update && apk add --no-cache \
+    postgresql-dev \
+    git \
+    curl \
+    libxml2-dev \
+    libzip-dev \
+    make \
+    autoconf \
+    g++
+
+# Installer les extensions PHP critiques
+# FinTech : PDO pour Postgres, Redis pour Cache/Queue
+RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
+    && pecl install redis \
+    && docker-php-ext-enable redis
+
+# Installer Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# Copier composer.json et composer.lock et installer les dépendances
+# Ceci permet de mettre en cache les dépendances si seuls les fichiers PHP changent
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader
+
+# ============================================
+# STAGE 2 : PRODUCTION - Image finale légère
+# ============================================
+FROM php:8.3-fpm-alpine AS final
+
+# Installer les extensions minimales pour l'exécution
+RUN apk update && apk add --no-cache \
+    nginx \
+    libxml2 \
+    postgresql-client \
+    wget # Nécessaire pour le healthcheck de l'app
+
+# Installer les extensions PHP critiques (encore)
+RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
+    && pecl install redis \
+    && docker-php-ext-enable redis
+
+# Configuration de PHP pour la production
+# Optimisation OPcache: Réduction des appels de fichiers
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo "opcache.revalidate_freq=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+
+# Définir le répertoire de travail
+WORKDIR /var/www/html
+
+# Copier les fichiers depuis l'étape de base (Dépendances)
+COPY --from=base /app/vendor /var/www/html/vendor
+
+# Copier le code source de l'application
+COPY . /var/www/html
+
+# Ajuster les permissions pour l'utilisateur non-root
+# FinTech Security: Ne pas utiliser root.
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
+
+# Config Nginx : Déplacer les fichiers de config
+COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Commande de démarrage par défaut : Lancer à la fois Nginx et PHP-FPM
+# Utilisation de supervisord ou d'un script simple pour les faire coexister.
+# Ici, nous utilisons un script d'entrée simple pour le service 'app'.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Exposer le port par défaut de Nginx
+EXPOSE 80
+
+CMD ["/usr/local/bin/entrypoint.sh"]
+
+# ============================================
+# Fichier requis: docker/entrypoint.sh
+# Pour que Nginx et PHP-FPM cohabitent dans le conteneur 'app'
+# ============================================
+# #!/bin/sh
+#
+# # Démarrer PHP-FPM en arrière-plan
+# php-fpm
+#
+# # Démarrer Nginx au premier plan
+# nginx -g 'daemon off;'
