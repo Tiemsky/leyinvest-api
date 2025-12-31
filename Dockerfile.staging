@@ -1,15 +1,15 @@
 # ============================================
-# STAGE 1 : BUILD
+# STAGE 1 : BUILD & COMPILATION
 # ============================================
-FROM php:8.3-fpm-alpine AS base
+FROM php:8.3-fpm-alpine AS builder
 
-# Installation des outils de build complets pour Alpine
+# Installation de TOUS les outils de compilation nécessaires
 RUN apk update && apk add --no-cache \
     postgresql-dev \
     libzip-dev \
     libxml2-dev \
+    icu-dev \
     git \
-    curl \
     make \
     autoconf \
     g++ \
@@ -17,65 +17,57 @@ RUN apk update && apk add --no-cache \
     pkgconfig \
     linux-headers
 
-# Installation des extensions PHP
-RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
+# Installation des extensions PHP (On compile tout ici)
+RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets intl \
     && pecl install redis \
     && docker-php-ext-enable redis
 
+# Installation de Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # ============================================
-# STAGE 2 : PRODUCTION
+# STAGE 2 : PRODUCTION (Image Finale Ultra-Légère)
 # ============================================
 FROM php:8.3-fpm-alpine AS final
 
-# IMPORTANT : libzip-dev et pkgconfig sont requis pour compiler l'extension dans le stage final
+# On installe UNIQUEMENT les librairies d'exécution (runtime)
+# Pas besoin de compilateur (gcc/make) ici, donc pas d'erreurs de headers !
 RUN apk update && apk add --no-cache \
     nginx \
-    postgresql-dev \
-    libzip-dev \
-    libxml2-dev \
-    pkgconfig \
-    autoconf \
-    g++ \
-    make \
-    wget \
-    icu-dev
-
-# Réinstallation des extensions (nécessaire car c'est une nouvelle image clean)
-RUN docker-php-ext-install pdo pdo_pgsql opcache zip pcntl sockets \
-    && pecl install redis \
-    && docker-php-ext-enable redis
-
-# NETTOYAGE : On retire les packages de build pour alléger l'image
-RUN apk del postgresql-dev libzip-dev libxml2-dev pkgconfig autoconf g++ make
-
-# Ajout des librairies RUNTIME (nécessaires pour que PHP puisse utiliser les extensions compilées)
-RUN apk add --no-cache \
     libpq \
     libzip \
-    libxml2
+    libxml2 \
+    icu-libs \
+    wget
+
+#  On copie les extensions déjà compilées depuis le stage builder
+COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
+COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
 
 # Configuration OPcache
 RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
 
 WORKDIR /var/www/html
-COPY --from=base /app/vendor /var/www/html/vendor
+
+# Copie des dépendances PHP et du code
+COPY --from=builder /app/vendor /var/www/html/vendor
 COPY . /var/www/html
 
-# Optimisation finale de Composer
+# Génération de l'autoloader final
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer dump-autoload --optimize --no-dev
+RUN composer dump-autoload --optimize --no-dev && rm /usr/bin/composer
 
 # Permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
+# Configuration Nginx
 COPY ./docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
