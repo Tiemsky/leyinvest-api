@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return ['Laravel' => app()->version()];
+    return [
+        'Ley Invest'    => 'Official Backend API Server',
+        'app'           => app()->version()];
 });
 
 

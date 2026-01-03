@@ -11,5 +11,6 @@ Artisan::command('inspire', function () {
 
 // Vérifier et marquer les souscriptions expirées chaque jour à minuit
 Schedule::command('subscriptions:expire')->daily();
+Schedule::command('registrations:cleanup')->days(7);
 
 // Schedule::job(new ProcessTestJob())->everyFiveSeconds();
