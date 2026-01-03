@@ -75,4 +75,4 @@ require __DIR__ . '/api/subscription.php'; // Plans, Invoices
 require __DIR__ . '/api/admin.php';        // Administration
 require __DIR__ . '/api/health.php';       // Monitoring (Pas de throttle)
 require __DIR__ . '/api/documents.php';    // Téléchargements
-require __DIR__ . 'scraper.php';         // Webhooks pour le scraper
+require __DIR__ . '/scraper.php';         // Webhooks pour le scraper
