@@ -23,7 +23,7 @@ Route::prefix('v1')->group(function () {
 
 
     Route::middleware(['auth:sanctum', 'check.token.expiration', 'throttle:api'])->group(function () {
-        //Dashboard de l'utilisateur authentifiee
+        //Dashboard de l'utilisateur authentifié
         Route::get('/user/dashboard', [UserDashboardController::class, 'index']);
 
         // Routes pour les actions suivies
