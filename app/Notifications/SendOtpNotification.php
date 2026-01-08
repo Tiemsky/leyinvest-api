@@ -19,7 +19,8 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     public function __construct(
         private string $otpCode,
-        private string $type = 'verification'
+        private string $type = 'verification',
+        private bool $isTest = false // Nouveau paramètre explicite pour différencier les tests et les réels envois
     ) {
         $this->onQueue('high');
     }
@@ -30,25 +31,26 @@ class SendOtpNotification extends Notification implements ShouldQueue
     }
 
     public function toMail(object $notifiable): MailMessage
-{
-    // 1. Détecter si c'est un test (pas d'ID)
-    $isTest = !isset($notifiable->id);
-    $view = $isTest ? 'emails.otp.test' : $this->getView();
+    {
+        // Détermine le type de notifiable pour la sécurité
+        $isRealUser = $notifiable instanceof \App\Models\User;
+        $userId = $isRealUser ? (string) $notifiable->id : 'anonymous';
 
-    // 2. Sécuriser l'ID pour les métadonnées
-    $userId = $isTest ? 'guest' : (string) $notifiable->id;
+        // Sélectionne la vue appropriée
+        $view = $this->isTest ? 'emails.otp.test' : $this->getView();
 
-    return (new MailMessage)
-        ->subject($this->getSubject())
-        ->view($view, [
-            'user' => $notifiable,
-            'otpCode' => $this->otpCode,
-            'type' => $this->type,
-            'expiry' => 10,
-        ])
-        ->metadata('otp_type', $this->type)
-        ->metadata('user_id', $userId); // Utilisation de la variable sécurisée
-}
+        return (new MailMessage)
+            ->subject($this->getSubject())
+            ->view($view, [
+                'user' => $notifiable,
+                'otpCode' => $this->otpCode,
+                'type' => $this->type,
+                'expiry' => 10,
+            ])
+            ->metadata('otp_type', $this->type)
+            ->metadata('user_id', $userId)
+            ->metadata('is_test', $this->isTest);
+    }
 
     /**
      * Détermine la vue Blade selon le type
@@ -64,7 +66,9 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     private function getSubject(): string
     {
-        return match ($this->type) {
+        $prefix = $this->isTest ? '[TEST] ' : '';
+
+        return $prefix . match ($this->type) {
             'reset' => '🔐 Réinitialisation de mot de passe - ' . config('app.name'),
             default => '✅ Vérification de votre compte - ' . config('app.name'),
         };
@@ -72,7 +76,8 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("Échec envoi OTP ({$this->type}) à l'ID: {$this->id}", [
+        Log::error("Échec envoi OTP ({$this->type})", [
+            'is_test' => $this->isTest,
             'error' => $exception->getMessage(),
             'otp_prefix' => substr($this->otpCode, 0, 2) . '***'
         ]);
@@ -80,6 +85,11 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     public function tags(): array
     {
-        return ['otp', $this->type];
+        $tags = ['otp', $this->type];
+
+        if ($this->isTest) {
+            $tags[] = 'test';
+        }
+        return $tags;
     }
 }

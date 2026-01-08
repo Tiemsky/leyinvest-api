@@ -8,42 +8,49 @@ use App\Notifications\SendOtpNotification;
 
 class TestEmail extends Command
 {
-    /**
-     * Le nom et la signature de la commande.
-     */
-    protected $signature = 'send:test-brevo-email';
-
-    /**
-     * La description de la commande.
-     */
+    protected $signature = 'send:test-brevo-email {--email= : Email du destinataire}';
     protected $description = 'Envoie une notification OTP de test via la file d\'attente Redis';
 
-    /**
-     * Exécute la commande console.
-     */
     public function handle()
     {
-        $email = $this->ask('Sur quel email envoyer le test ?');
+        // Récupère l'email depuis l'option ou pose la question
+        $email = $this->option('email') ?: $this->ask('Sur quel email envoyer le test ?');
 
-        // Petite validation de l'email
+        // Validation de l'email
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->error("L'adresse email saisie n'est pas valide.");
-            return;
+            $this->error("❌ L'adresse email saisie n'est pas valide.");
+            return Command::FAILURE;
         }
 
         $this->info("🚀 Préparation de l'envoi vers : $email");
 
         try {
-            // Simulation de la notification OTP
-            // Note : Comme elle implémente ShouldQueue, elle sera envoyée à Redis
+            // 👇 Le 3e paramètre indique explicitement que c'est un test
             Notification::route('mail', $email)
-                ->notify(new SendOtpNotification('123456', 'verification'));
+                ->notify(new SendOtpNotification(
+                    otpCode: '123456',
+                    type: 'verification',
+                    isTest: true //  Flag de test activé pour les tests
+                ));
 
-            $this->info("✅ La notification a été poussée avec succès dans la file 'high' de Redis !");
-            $this->warn("📢 Note : Vérifiez vos logs worker ou votre interface Horizon pour confirmer l'envoi final.");
+            $this->info("✅ La notification de TEST a été mise en file avec succès !");
+            $this->newLine();
+            $this->comment("📋 Détails :");
+            $this->line("  • File : high");
+            $this->line("  • Type : verification (test)");
+            $this->line("  • Vue : emails.otp.test");
+            $this->newLine();
+            $this->warn("💡 Vérifiez Horizon ou vos logs worker pour confirmer l'envoi.");
+
+            return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("❌ Erreur lors de la mise en file d'attente : " . $e->getMessage());
+            $this->error("❌ Erreur lors de la mise en file : " . $e->getMessage());
+            $this->newLine();
+            $this->error("Stack trace :");
+            $this->line($e->getTraceAsString());
+
+            return Command::FAILURE;
         }
     }
 }

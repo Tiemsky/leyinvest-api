@@ -1,10 +1,12 @@
 version: '3.8'
 
 services:
+  # 1. L'APPLICATION WEB (C'est elle qui construit l'image)
   app-staging:
     build:
       context: .
       dockerfile: Dockerfile.staging
+    image: leyinvest-app-image:latest # Nom donné à l'image construite
     container_name: leyinvest_app_staging
     restart: unless-stopped
     environment:
@@ -12,20 +14,14 @@ services:
       - APP_ENV=staging
     networks:
       - dokploy-network
-    deploy:
-      replicas: 1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
       timeout: 10s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.leyinvest-stg.loadbalancer.server.port=80"
 
+  # 2. LE WORKER (Il réutilise l'image construite par l'app)
   worker-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile.staging
+    image: leyinvest-app-image:latest
     container_name: leyinvest_worker_staging
     restart: unless-stopped
     environment:
@@ -34,13 +30,11 @@ services:
     networks:
       - dokploy-network
     depends_on:
-      app-staging:
-        condition: service_started
+      - app-staging
 
+  # 3. LE SCHEDULER
   scheduler-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile.staging
+    image: leyinvest-app-image:latest
     container_name: leyinvest_scheduler_staging
     restart: unless-stopped
     environment:
@@ -48,6 +42,8 @@ services:
       - APP_ENV=staging
     networks:
       - dokploy-network
+    depends_on:
+      - app-staging
 
 networks:
   dokploy-network:

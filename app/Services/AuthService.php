@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
-use App\Http\Resources\AuthUserResource;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Resources\AuthUserResource;
 use App\Notifications\SendOtpNotification;
+use App\Notifications\SendWelcomeNotification;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Http\UploadedFile;
 
 class AuthService
 {
@@ -155,6 +156,10 @@ class AuthService
             ]);
 
             Log::info("Registration completed successfully for {$user->email}");
+
+            // Envoi de l'email de bienvenue après inscription réussie
+            $user->notify(new SendWelcomeNotification());
+            Log::info("Welcome email queued for {$user->email}");
             DB::commit();
 
             return $user->fresh();
