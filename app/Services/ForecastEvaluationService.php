@@ -44,7 +44,7 @@ class ForecastEvaluationService
         return $action->forecast;
     }
 
-    // --- LOGIQUE A : RN PREVISIONNEL  ---
+    // --- LOGIQUE A : RN PRÉVISIONNEL  ---
     private function calculateRNPrevisionnel(Action $action, Collection $financials)
     {
         $currentYear = now()->year;
@@ -144,7 +144,7 @@ class ForecastEvaluationService
         }
 
         // Application IRVM
-        $irvm = $this->params['irvm'];
+        $irvm = $this->params['irvm'] ?? 0.15;
         if ($nbTitres == 0) return 0;
         return ((1 - $irvm) * $dividendeTotalPrev) / $nbTitres;
     }
