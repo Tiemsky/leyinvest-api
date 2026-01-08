@@ -31,11 +31,13 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $view = $this->getView();
+        // Si $notifiable n'a pas d'ID, c'est notre commande de test
+        $isTest = !isset($notifiable->id);
+        $view = $isTest ? 'emails.otp.test' : $this->getView();
+
 
         return (new MailMessage)
             ->subject($this->getSubject())
-            // On utilise markdown ou view pour pointer vers votre structure emails/otp/
             ->view($view, [
                 'user' => $notifiable,
                 'otpCode' => $this->otpCode,
@@ -45,7 +47,7 @@ class SendOtpNotification extends Notification implements ShouldQueue
             ])
             // Metadata pour le tracking dans l'API Brevo
             ->metadata('otp_type', $this->type)
-            ->metadata('user_id', (string)$notifiable->id);
+            ->metadata('user_id', (string) $notifiable->id);
     }
 
     /**
