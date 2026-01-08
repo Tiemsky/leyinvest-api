@@ -8,6 +8,20 @@ Route::get('/', function () {
         'app'           => app()->version()];
 });
 
+Route::get('test', function () {
+    return view('emails.otp.resend', [
+        'user' => (object)[
+            'prenom' => 'John',
+            'nom' => 'Doe',
+            'email' => 'tiafranck31@yahoo.fr'
+        ],
+        'otp' => '654321',
+        'type' => 'resend',
+        'expiry' => 10,
+
+    ]);
+});
+
 
 
 

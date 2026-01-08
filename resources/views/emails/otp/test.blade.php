@@ -11,7 +11,7 @@
     </div>
 
     <p style="font-size: 12px; color: #999;">
-        Type de test : {{ $type }} <br>
+        Type de test : <br>
         Généré le : {{ now()->format('d/m/Y H:i:s') }}
     </p>
 </div>
