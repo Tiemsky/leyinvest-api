@@ -17,7 +17,7 @@
             </div>
             <div style="background-color: #F9FBFB; border-radius: 18px; padding: 30px; border: 2px solid rgba(48, 181, 155, 0.3); max-width: 400px; margin: 0 auto;">
                 <div style="font-size: 44px; font-weight: bold; letter-spacing: 10px; color: #1C2B28; font-family: 'Courier New', Courier, monospace;">
-                    {{ $otp }}
+                    {{ $otpCode }}
                 </div>
                 <div style="margin-top: 25px; border-top: 1px solid rgba(143, 215, 201, 0.3); padding-top: 20px;">
                     <p style="margin: 0; color: #5A6E69; font-size: 13px;">⏱ Expire dans <strong>{{ $expiry ?? '10' }} min</strong> | 🆕 à <strong>{{ now()->format('H:i') }}</strong></p>

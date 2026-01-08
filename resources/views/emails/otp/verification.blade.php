@@ -8,7 +8,7 @@
     <tr>
         <td align="center" style="background: linear-gradient(145deg, #FEFEFE 0%, #E8F6F3 100%); border-radius: 12px; padding: 32px; border: 1px solid rgba(48, 181, 155, 0.2);">
             <span style="color: #5A6E69; font-size: 13px; font-weight: 600; text-transform: uppercase;">Code de vérification</span>
-            <div style="font-size: 42px; font-weight: 700; letter-spacing: 8px; color: #1C2B28; margin: 16px 0;">{{ $otp }}</div>
+            <div style="font-size: 42px; font-weight: 700; letter-spacing: 8px; color: #1C2B28; margin: 16px 0;">{{ $otpCode }}</div>
             <p style="margin: 0; color: #5A6E69; font-size: 14px;"><span style="color: #30B59B;">⏱</span> Valable pendant <strong>10 minutes</strong></p>
         </td>
     </tr>

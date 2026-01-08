@@ -15,7 +15,7 @@ Route::get('test', function () {
             'nom' => 'Doe',
             'email' => 'tiafranck31@yahoo.fr'
         ],
-        'otp' => '654321',
+        'otpCode' => '654321',
         'type' => 'resend',
         'expiry' => 10,
 

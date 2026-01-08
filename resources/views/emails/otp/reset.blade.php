@@ -13,7 +13,7 @@
         <td align="center">
             <div style="background-color: #F9FBFB; border-radius: 18px; padding: 35px; border: 2px solid rgba(48, 181, 155, 0.3); max-width: 400px; margin: 0 auto;">
                 <span style="color: #5A6E69; font-size: 12px; font-weight: 600; letter-spacing: 1px; display: block; margin-bottom: 15px;">CODE DE RÉINITIALISATION</span>
-                <div style="font-size: 44px; font-weight: bold; letter-spacing: 10px; color: #1C2B28; font-family: 'Courier New', Courier, monospace;">{{ $otp }}</div>
+                <div style="font-size: 44px; font-weight: bold; letter-spacing: 10px; color: #1C2B28; font-family: 'Courier New', Courier, monospace;">{{ $otpCode }}</div>
                 <p style="margin: 20px 0 0; color: #30B59B; font-size: 13px;">⏱ Expire dans 10 min</p>
             </div>
         </td>
