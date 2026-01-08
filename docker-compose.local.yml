@@ -1,5 +1,3 @@
-# docker-compose.local.yml
-# Configuration Docker Compose pour Développement Local
 version: '3.8'
 
 services:
@@ -14,28 +12,26 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     environment:
-      # Application
       - APP_ENV=local
       - APP_DEBUG=true
       - APP_URL=http://localhost:8000
-      # Database
       - DB_CONNECTION=pgsql
       - DB_HOST=postgres
+      - DB_PORT=5432
       - DB_USERNAME=leyinvest
       - DB_PASSWORD=secret
       - DB_DATABASE=leyinvest
-      # Redis
       - REDIS_HOST=redis
       - CACHE_DRIVER=redis
       - SESSION_DRIVER=redis
       - QUEUE_CONNECTION=redis
-      # Mail
       - MAIL_MAILER=smtp
-      - MAIL_HOST=mailhog
-    # Les volumes montent le code local dans le conteneur
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - MAIL_ENCRYPTION=null
     volumes:
       - ./:/var/www/html
-      - ./storage:/var/www/html/storage:delegated # Optimisation de performance WSL/Mac
+      - ./storage:/var/www/html/storage:delegated
       - ./bootstrap/cache:/var/www/html/bootstrap/cache:delegated
     networks:
       - leyinvest-local
@@ -48,7 +44,7 @@ services:
       - "8000:8000"
 
   # ============================================
-  # 2. WORKER (Job Processor)
+  # 2. WORKER (Job Processor) - Écoute la queue 'high'
   # ============================================
   worker:
     build:
@@ -57,13 +53,15 @@ services:
     container_name: leyinvest_worker_local
     restart: unless-stopped
     working_dir: /var/www/html
-    # Commande simple de worker (vous pouvez remplacer par 'php artisan horizon' si Horizon est installé)
-    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --timeout=90
+    command: php artisan queue:work redis --queue=high,default --sleep=3 --tries=3
     environment:
       - APP_ENV=local
       - DB_HOST=postgres
       - REDIS_HOST=redis
       - QUEUE_CONNECTION=redis
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
     volumes:
       - ./:/var/www/html
     networks:
@@ -72,6 +70,7 @@ services:
       - app
       - redis
       - postgres
+      - mailpit
 
   # ============================================
   # 3. SCHEDULER (Tâches planifiées)
@@ -83,7 +82,6 @@ services:
     container_name: leyinvest_scheduler_local
     restart: unless-stopped
     working_dir: /var/www/html
-    # Commande pour exécuter le cron toutes les minutes (pour les tests)
     command: sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
     environment:
       - APP_ENV=local
@@ -140,64 +138,49 @@ services:
       retries: 5
 
   # ============================================
-  # 6. PGADMIN (Interface Web PostgreSQL)
+  # 6. MAILPIT (Capture d'emails locale)
+  # ============================================
+  mailpit:
+    image: 'axllent/mailpit:latest'
+    container_name: leyinvest_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # Port SMTP
+      - "8025:8025" # Interface Web
+    volumes:
+      - mailpit_data:/data
+    networks:
+      - leyinvest-local
+
+  # ============================================
+  # 7. OUTILS DE DEBUG (PGAdmin, Redis Commander)
   # ============================================
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: leyinvest_pgadmin
-    restart: unless-stopped
     environment:
       - PGADMIN_DEFAULT_EMAIL=tiafranck@leyinvestcom.ci
-      - PGADMIN_DEFAULT_PASSWORD=admin123 # A changer!
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - PGADMIN_DEFAULT_PASSWORD=admin123
     networks:
       - leyinvest-local
     ports:
       - "8080:80"
-    depends_on:
-      - postgres
 
-  # ============================================
-  # 7. MAILHOG (Test Emails Locaux)
-  # ============================================
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: leyinvest_mailhog
-    restart: unless-stopped
-    networks:
-      - leyinvest-local
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
-
-  # ============================================
-  # 8. REDIS COMMANDER (Interface Web Redis)
-  # ============================================
   redis-commander:
     image: ghcr.io/joeferner/redis-commander:latest
     container_name: leyinvest_redis_commander
-    restart: unless-stopped
     environment:
       - REDIS_HOSTS=local:redis:6379
     networks:
       - leyinvest-local
     ports:
       - "8081:8081"
-    depends_on:
-      - redis
 
-# ============================================
-# NETWORKS & VOLUMES
-# ============================================
 networks:
   leyinvest-local:
     driver: bridge
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
-  pgadmin_data:
-    driver: local
+  mailpit_data:
