@@ -1,12 +1,16 @@
 version: '3.8'
 
 services:
+  # --- API & Serveur Web ---
   app:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_app
     restart: unless-stopped
+    environment:
+      - CONTAINER_ROLE=app
+      - APP_ENV=production
     networks:
       - dokploy-network
     deploy:
@@ -22,37 +26,45 @@ services:
       - "traefik.enable=true"
       - "traefik.http.services.leyinvest.loadbalancer.server.port=80"
 
+  # --- Queue Worker (Horizon) ---
   worker:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_worker
     restart: always
-    # Horizon gère lui-même les queues définies dans config/horizon.php
-    command: php artisan horizon
+    environment:
+      - CONTAINER_ROLE=horizon
+      - APP_ENV=production
     networks:
       - dokploy-network
     deploy:
       replicas: 2
 
+  # --- Scheduler (Cron) ---
   scheduler:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_scheduler
     restart: always
-    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    environment:
+      - CONTAINER_ROLE=scheduler
+      - APP_ENV=production
     networks:
       - dokploy-network
     deploy:
-      replicas: 1
+      replicas: 1 # Critique: Toujours 1 seul scheduler
 
+  # --- Horizon Monitoring UI ---
   horizon-ui:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_horizon_ui
     restart: unless-stopped
+    environment:
+      - CONTAINER_ROLE=horizon-ui # Commande personnalisée dans l'entrypoint si besoin
     command: php artisan horizon:serve --host=0.0.0.0 --port=8080
     networks:
       - dokploy-network

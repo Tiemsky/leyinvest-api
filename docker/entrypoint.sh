@@ -1,39 +1,47 @@
 #!/bin/sh
 set -e
 
-echo " Environment: $APP_ENV"
+echo "🚀 Rôle du conteneur : ${CONTAINER_ROLE:-app}"
+echo "🌐 Environnement : $APP_ENV"
 
 # --- 1. Fixer les permissions ---
-# On cible uniquement les dossiers nécessaires pour ne pas ralentir le démarrage
+# Nécessaire pour que Laravel puisse écrire ses logs et ses caches
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# --- 2. Configuration spécifique par environnement ---
-
-if [ "$APP_ENV" = "local" ]; then
-    echo "🛠️ Mode Local : On vide les caches pour le développement..."
-    php artisan optimize:clear
-else
-    echo " Mode $APP_ENV : Optimisation des performances..."
-    # En Prod/Staging, on génère les caches pour une vitesse maximale
+# --- 2. Phase d'optimisation ---
+if [ "$APP_ENV" != "local" ]; then
+    echo "⚡ Optimisation des caches..."
     php artisan config:cache
     php artisan route:cache
     php artisan view:cache
 
-    # Optionnel : lancer les migrations automatiquement en staging seulement
-    if [ "$APP_ENV" = "staging" ]; then
-        echo "Running migrations..."
-        php artisan migrate --force
-    fi
+    # Signale aux workers existants de se recharger
+    # (via Redis) dès que le nouveau conteneur démarre
+    php artisan queue:restart || true
 fi
 
-# --- 3. Gestion des processus ---
+# --- 3. Routage selon le CONTAINER_ROLE ---
 
-echo "Starting PHP-FPM..."
-# Démarrage de PHP-FPM en mode démon (arrière-plan)
-php-fpm -D
-
-echo "Starting Nginx..."
-# 'exec' remplace le script shell par le processus Nginx.
-# Nginx devient le PID 1 et recevra correctement les signaux d'arrêt (SIGTERM) de Docker.
-exec nginx -g 'daemon off;'
+case "${CONTAINER_ROLE}" in
+    "worker")
+        echo "👷 Démarrage du Worker (Queue: high, default)..."
+        # exec permet au processus de recevoir les signaux d'arrêt de Docker (SIGTERM)
+        exec php artisan queue:work --queue=high,default --tries=3 --timeout=90
+        ;;
+    "horizon")
+        echo "🌅 Démarrage de Laravel Horizon..."
+        exec php artisan horizon
+        ;;
+    "scheduler")
+        echo "⏰ Démarrage du Scheduler..."
+        # Boucle infinie pour exécuter le schedule:run toutes les minutes
+        exec sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+        ;;
+    *)
+        # Par défaut, on lance le serveur Web (App)
+        echo "🌐 Démarrage de PHP-FPM & Nginx..."
+        php-fpm -D
+        exec nginx -g 'daemon off;'
+        ;;
+esac

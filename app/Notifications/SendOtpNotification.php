@@ -30,25 +30,25 @@ class SendOtpNotification extends Notification implements ShouldQueue
     }
 
     public function toMail(object $notifiable): MailMessage
-    {
-        // Si $notifiable n'a pas d'ID, c'est notre commande de test
-        $isTest = !isset($notifiable->id);
-        $view = $isTest ? 'emails.otp.test' : $this->getView();
+{
+    // 1. Détecter si c'est un test (pas d'ID)
+    $isTest = !isset($notifiable->id);
+    $view = $isTest ? 'emails.otp.test' : $this->getView();
 
+    // 2. Sécuriser l'ID pour les métadonnées
+    $userId = $isTest ? 'guest' : (string) $notifiable->id;
 
-        return (new MailMessage)
-            ->subject($this->getSubject())
-            ->view($view, [
-                'user' => $notifiable,
-                'otpCode' => $this->otpCode,
-                'type' => $this->type,
-                'expiry' => 10,
-                'appName' => config('app.name')
-            ])
-            // Metadata pour le tracking dans l'API Brevo
-            ->metadata('otp_type', $this->type)
-            ->metadata('user_id', (string) $notifiable->id);
-    }
+    return (new MailMessage)
+        ->subject($this->getSubject())
+        ->view($view, [
+            'user' => $notifiable,
+            'otpCode' => $this->otpCode,
+            'type' => $this->type,
+            'expiry' => 10,
+        ])
+        ->metadata('otp_type', $this->type)
+        ->metadata('user_id', $userId); // Utilisation de la variable sécurisée
+}
 
     /**
      * Détermine la vue Blade selon le type

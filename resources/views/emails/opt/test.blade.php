@@ -7,7 +7,7 @@
 
     <div style="margin: 30px 0; background: #f8f9fa; border: 1px dashed #dee2e6; padding: 20px;">
         <span style="font-size: 14px; color: #6c757d; display: block; margin-bottom: 10px;">VOTRE CODE TEST</span>
-        <b style="font-size: 32px; color: #2ecc71; letter-spacing: 5px;">{{ $otpCode }}</b>
+        <b style="font-size: 32px; color: #2ecc71; letter-spacing: 5px;">12345</b>
     </div>
 
     <p style="font-size: 12px; color: #999;">
