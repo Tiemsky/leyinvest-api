@@ -11,7 +11,7 @@ class TestEmail extends Command
      *
      * @var string
      */
-    protected $signature = 'send:test-email';
+    protected $signature = 'send:test-brevo-email';
 
     /**
      * The console command description.
@@ -25,10 +25,18 @@ class TestEmail extends Command
      */
     public function handle()
     {
-        \Mail::raw('Test email from Laravel container', function ($message) {
-            $message->to('tiemksy@gmail.com')
-                    ->subject('Test SMTP Laravel');
-        });
-        $this->info('Email sent!');
+        $email = $this->ask('Sur quel email envoyer le test ?');
+        $this->info("Tentative d'envoi vers $email...");
+
+        try {
+            // On simule une notification OTP
+            \Illuminate\Support\Facades\Notification::route('mail', $email)
+                ->notify(new \App\Notifications\SendOtpNotification('123456', 'verification'));
+
+            $this->success("La notification a été poussée dans la file 'high' de Redis !");
+            $this->info("Vérifiez maintenant vos logs worker ou Horizon.");
+        } catch (\Exception $e) {
+            $this->error("Erreur immédiate : " . $e->getMessage());
+        }
     }
 }
