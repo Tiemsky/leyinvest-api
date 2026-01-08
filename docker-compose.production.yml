@@ -1,55 +1,40 @@
 version: '3.8'
 
 services:
-  # ============================================
-  # 1. APPLICATION LARAVEL (API Server)
-  # ============================================
   app:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_app
     restart: unless-stopped
-    # Pas de ports exposés : Dokploy s'en occupe via Traefik
     networks:
       - dokploy-network
     deploy:
       replicas: 2
       update_config:
         order: start-first
-    # Le Healthcheck utilise wget car installé dans ton Dockerfile final
+        parallelism: 1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-    # Les labels Traefik seront injectés par Dokploy quand tu ajouteras le domaine dans l'UI.
-    # On ne laisse ici que le strict nécessaire pour le routage interne.
+      timeout: 5s
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.leyinvest.loadbalancer.server.port=80"
 
-  # ============================================
-  # 2. HORIZON/QUEUE WORKER
-  # ============================================
   worker:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_worker
     restart: always
-    # On écrase la commande par défaut du Dockerfile pour lancer Horizon
+    # Horizon gère lui-même les queues définies dans config/horizon.php
     command: php artisan horizon
     networks:
       - dokploy-network
     deploy:
       replicas: 2
-    labels:
-      - "traefik.enable=false"
 
-  # ============================================
-  # 3. SCHEDULER (Tâches Cron)
-  # ============================================
   scheduler:
     build:
       context: .
@@ -60,28 +45,20 @@ services:
     networks:
       - dokploy-network
     deploy:
-      replicas: 1 # Critique : Jamais plus de 1 pour éviter les doublons de tâches
-    labels:
-      - "traefik.enable=false"
+      replicas: 1
 
-  # ============================================
-  # 4. LARAVEL HORIZON UI (Monitoring)
-  # ============================================
   horizon-ui:
     build:
       context: .
       dockerfile: Dockerfile.production
     container_name: leyinvest_horizon_ui
     restart: unless-stopped
-    # Utilise le serveur interne d'Artisan pour isoler l'UI
     command: php artisan horizon:serve --host=0.0.0.0 --port=8080
     networks:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      # Remarque : Tu configureras le domaine horizon.leyinvest.com dans l'UI Dokploy
       - "traefik.http.services.horizon-ui.loadbalancer.server.port=8080"
-      # Le Basic Auth est mieux géré directement dans les middlewares de Dokploy (onglet Traefik)
 
 networks:
   dokploy-network:

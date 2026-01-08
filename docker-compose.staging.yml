@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # == API LARAVEL (Staging) ==
   app-staging:
     build:
       context: .
@@ -11,38 +10,39 @@ services:
     networks:
       - dokploy-network
     deploy:
-      replicas: 1 # 1 seul suffit en staging
+      replicas: 1
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 60s
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.leyinvest-stg.loadbalancer.server.port=80"
 
-  # == WORKER (Staging) ==
   worker-staging:
-    build: .
-    dockerfile: Dockerfile.staging
+    build:
+      context: .
+      dockerfile: Dockerfile.staging
     container_name: leyinvest_worker_staging
-    command: php artisan queue:work # Moins lourd qu'Horizon pour le staging
+    # Optimisé pour écouter 'high' en priorité
+    command: php artisan queue:work --queue=high,default --tries=3 --timeout=90
     networks:
       - dokploy-network
-    deploy:
-      replicas: 1
+    restart: unless-stopped
+    depends_on:
+      app-staging:
+        condition: service_started
 
-  # == SCHEDULER (Staging) ==
   scheduler-staging:
-    build: .
-    dockerfile: Dockerfile.staging
+    build:
+      context: .
+      dockerfile: Dockerfile.staging
     container_name: leyinvest_scheduler_staging
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     networks:
       - dokploy-network
-    deploy:
-      replicas: 1
-
-  # Note : On omet souvent Horizon UI en staging pour économiser de la RAM,
-  # sauf si tu dois tester spécifiquement les files d'attente.
+    restart: unless-stopped
 
 networks:
   dokploy-network:
