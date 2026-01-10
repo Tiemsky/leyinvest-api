@@ -139,20 +139,7 @@ class Action extends Model
     public function employees(): HasMany{
         return $this->hasMany(Employee::class);
     }
-     /**
-     * Relation: Snapshots quotidiens (historique 10 jours)
-     */
-    public function dailySnapshots(): HasMany{
-        return $this->hasMany(ActionDailySnapshot::class)
-            ->orderBy('snapshot_date', 'desc');
-    }
-    /**
-     * Relation: Snapshots des 05 derniers jours uniquement
-     */
-         public function recentSnapshots(){
-        return $this->dailySnapshots()
-            ->lastDays(5);
-    }
+
     /**
      * Dernière donnée financière disponible
      */
