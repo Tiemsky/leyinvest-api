@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   # --- API & Serveur Web ---
   app:
     build:
       context: .
       dockerfile: Dockerfile.production
-    container_name: leyinvest_app
+    image: leyinvest-app-prod:latest # Helps reuse the build
     restart: unless-stopped
     environment:
       - CONTAINER_ROLE=app
@@ -24,14 +22,15 @@ services:
       timeout: 5s
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.leyinvest-api.rule=Host(`${APP_DOMAIN:-api.leyinvest.com}`)"
+      - "traefik.http.routers.leyinvest-api.entrypoints=websecure"
+      - "traefik.http.routers.leyinvest-api.tls=true"
+      - "traefik.http.routers.leyinvest-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.leyinvest.loadbalancer.server.port=80"
 
   # --- Queue Worker (Horizon) ---
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    container_name: leyinvest_worker
+    image: leyinvest-app-prod:latest # Uses the image built by 'app'
     restart: always
     environment:
       - CONTAINER_ROLE=horizon
@@ -40,13 +39,12 @@ services:
       - dokploy-network
     deploy:
       replicas: 2
+    depends_on:
+      - app
 
   # --- Scheduler (Cron) ---
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    container_name: leyinvest_scheduler
+    image: leyinvest-app-prod:latest
     restart: always
     environment:
       - CONTAINER_ROLE=scheduler
@@ -54,22 +52,26 @@ services:
     networks:
       - dokploy-network
     deploy:
-      replicas: 1 # Critique: Toujours 1 seul scheduler
+      replicas: 1
+    depends_on:
+      - app
 
   # --- Horizon Monitoring UI ---
   horizon-ui:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
-    container_name: leyinvest_horizon_ui
+    image: leyinvest-app-prod:latest
     restart: unless-stopped
     environment:
-      - CONTAINER_ROLE=horizon-ui # Commande personnalisée dans l'entrypoint si besoin
+      - CONTAINER_ROLE=horizon-ui
+      - APP_ENV=production
     command: php artisan horizon:serve --host=0.0.0.0 --port=8080
     networks:
       - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.horizon-ui.rule=Host(`horizon.leyinvest.com`)"
+      - "traefik.http.routers.horizon-ui.entrypoints=websecure"
+      - "traefik.http.routers.horizon-ui.tls=true"
+      - "traefik.http.routers.horizon-ui.tls.certresolver=letsencrypt"
       - "traefik.http.services.horizon-ui.loadbalancer.server.port=8080"
 
 networks:
