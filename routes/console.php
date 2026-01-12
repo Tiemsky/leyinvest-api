@@ -10,7 +10,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Vérifier et marquer les souscriptions expirées chaque jour à minuit
-Schedule::command('subscriptions:expire')->daily();
+Schedule::command('subscriptions:expire')->days(7);
 Schedule::command('registrations:cleanup')->days(7);
+
+Schedule::job(new \App\Jobs\SyncBrvmDataJob)->dailyAt('14:00');
+Schedule::job(new \App\Jobs\SyncBrvmDataJob)->dailyAt('00:00');
 
 // Schedule::job(new ProcessTestJob())->everyFiveSeconds();

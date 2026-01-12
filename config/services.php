@@ -2,9 +2,10 @@
 
 return [
 
-    'fastapi' => [
+    'scraper' => [
+        'webhook_token' => env('FASTAPI_WEBHOOK_TOKEN', 'leyinvest_secure_sync_2026'),
         'url' => env('FASTAPI_URL', 'http://api:8000'),
-        'token' => env('FASTAPI_WEBHOOK_TOKEN'),
+
     ],
 
     'postmark' => [

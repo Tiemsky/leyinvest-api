@@ -62,19 +62,24 @@ class BrvmSyncService
 
     private function processIndicators(array $data): array
     {
+        // Le payload est directement les indicateurs (pas sous 'data')
+        $dateRapport = $data['date_rapport'] ?? null;
+        if (!$dateRapport) {
+            throw new \Exception("Champ 'date_rapport' manquant dans les indicateurs");
+        }
+
         BocIndicator::updateOrCreate(
+            ['date_rapport' => $dateRapport],
             [
-              'date_rapport' => $data['date_rapport']
-            ],
-            [
-                'taux_rendement_moyen' => $data['taux_rendement_moyen'],
-                'per_moyen' => $data['per_moyen'],
-                'taux_rentabilite_moyen' => $data['taux_rentabilite_moyen'],
-                'prime_risque_marche' => $data['prime_risque_marche'],
-                'source_pdf'  =>  'boc_' . now()->format('Ymd') . '_2.pdf',
-                'updated_at' => now()
+                'taux_rendement_moyen' => $data['taux_rendement_moyen'] ?? null,
+                'per_moyen' => $data['per_moyen'] ?? null,
+                'taux_rentabilite_moyen' => $data['taux_rentabilite_moyen'] ?? null,
+                'prime_risque_marche' => $data['prime_risque_marche'] ?? null,
+                'source_pdf' => $data['source_pdf'] ?? null, // ✅ Ajout de source_pdf
+                'updated_at' => now(),
             ]
         );
-        return ['message' => 'Indicateurs mis à jour'];
+
+        return ['message' => "Indicateurs mis à jour pour le $dateRapport"];
     }
 }

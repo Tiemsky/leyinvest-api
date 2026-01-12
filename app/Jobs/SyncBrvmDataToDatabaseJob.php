@@ -10,25 +10,25 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncBrvmDataToDatabaseJob implements ShouldQueue
+class SyncBrvmDataJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Le nombre de secondes pendant lesquelles le job peut s'exécuter.
-     */
     public $timeout = 120;
+    public $tries = 3;
 
-    public function handle(SyncBrvmDataService $syncDataService)
+    public function handle(SyncBrvmDataService $service): void
     {
-        Log::info("🚀 [Queue] Début du Job de synchronisation BRVM...");
+        Log::info("🚀 Job de synchronisation BRVM démarré.");
 
-        $success = $syncDataService->syncAllData();
-
-        if ($success) {
-            Log::info("✅ [Queue] Synchro réussie via le Job.");
-        } else {
-            Log::error("❌ [Queue] Échec de la synchro dans le Job.");
+        if (!$service->syncAllData()) {
+            throw new \Exception("La synchronisation BRVM a échoué.");
         }
+
+        Log::info("Job de synchronisation BRVM terminé avec succès.");
+    }
+
+    public function failed(\Throwable $exception): void{
+        Log::error("Job BRVM échoué après {$this->tries} tentatives : " . $exception->getMessage());
     }
 }
