@@ -2,6 +2,7 @@
 
 use App\Jobs\ProcessTestJob;
 use Illuminate\Foundation\Inspiring;
+use App\Jobs\SyncBrvmDataToDatabaseJob;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -13,7 +14,7 @@ Artisan::command('inspire', function () {
 Schedule::command('subscriptions:expire')->days(7);
 Schedule::command('registrations:cleanup')->days(7);
 
-Schedule::job(new \App\Jobs\SyncBrvmDataJob)->dailyAt('14:00');
-Schedule::job(new \App\Jobs\SyncBrvmDataJob)->dailyAt('00:00');
+Schedule::job(new SyncBrvmDataToDatabaseJob)->dailyAt('14:00');
+Schedule::job(new SyncBrvmDataToDatabaseJob)->dailyAt('00:00');
 
 // Schedule::job(new ProcessTestJob())->everyFiveSeconds();
