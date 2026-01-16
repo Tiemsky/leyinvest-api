@@ -93,7 +93,7 @@ class SyncBrvmDataService
         foreach (array_chunk($records, 100) as $chunk) {
             Action::upsert($chunk, ['symbole'], [
                 'nom', 'cours_ouverture', 'cours_cloture',
-                'cours_veille', 'variation', 'volume', 'last_sync_at', 'updated_at'
+                'cours_veille', 'variation', 'volume', 'updated_at'
             ]);
         }
     }
@@ -110,7 +110,7 @@ class SyncBrvmDataService
             'updated_at'   => $now,
         ], $indices);
 
-        BrvmSector::upsert($records, ['slug'], ['nom', 'variation', 'last_sync_at', 'updated_at']);
+        BrvmSector::upsert($records, ['slug'], ['nom', 'variation', 'updated_at']);
     }
 
     protected function syncMarketIndicator(?array $indicator): void
