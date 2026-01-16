@@ -80,7 +80,6 @@ class SyncBrvmDataService
             $records[] = [
                 'symbole'         => $item['symbole'],
                 'nom'             => $nom,
-                'slug'            => Str::slug($nom),
                 'cours_ouverture' => $item['cours_ouverture'] ?? 0,
                 'cours_cloture'   => $item['cours_cloture'] ?? 0,
                 'cours_veille'    => $item['cours_veille'] ?? 0,
@@ -93,7 +92,7 @@ class SyncBrvmDataService
         // Upsert par paquets de 100 pour la stabilité
         foreach (array_chunk($records, 100) as $chunk) {
             Action::upsert($chunk, ['symbole'], [
-                'nom', 'slug', 'cours_ouverture', 'cours_cloture',
+                'nom', 'cours_ouverture', 'cours_cloture',
                 'cours_veille', 'variation', 'volume', 'last_sync_at', 'updated_at'
             ]);
         }
