@@ -23,142 +23,158 @@ class ForecastEvaluationService
      */
     public function calculateForAction(Action $action)
     {
-        $financials = $action->stockFinancials()->orderBy('year', 'desc')->get();
+        // On récupère le passé financier (bilans annuels) du plus récent au plus ancien
+        $historiqueAnnuel = $action->stockFinancials()->orderBy('year', 'desc')->get();
 
-        // Calcul du RNp avec la logique trimestrielle
-        $rnPrevisionnel = $this->calculateRNPrevisionnel($action, $financials);
+        // 1. On devine le futur Bénéfice Net (Résultat Net Prévisionnel)
+        $beneficeNetEsperé = $this->estimerProchainBeneficeNet($action, $historiqueAnnuel);
 
-        // Calcul du DNPAp
-        $dnpaPrevisionnel = $this->calculateDNPAPrevisionnel($action, $financials, $rnPrevisionnel);
+        // 2. On devine le futur Dividende que l'action va payer (DNPA Prévisionnel)
+        $dividendeNetEsperé = $this->estimerProchainDividendeNet($action, $historiqueAnnuel, $beneficeNetEsperé);
 
-        // Mise à jour de la table de prévisions
+        // 3. On enregistre ces prédictions dans la base de données
         $action->forecast()->updateOrCreate(
             ['action_id' => $action->id],
             [
-                'rn_previsionnel' => $rnPrevisionnel,
-                'dnpa_previsionnel' => $dnpaPrevisionnel
-                // Rappel : Le rendement n'est pas stocké ici car il dépend du cours de cloture en temps réel
+                'rn_previsionnel'   => $beneficeNetEsperé,
+                'dnpa_previsionnel' => $dividendeNetEsperé
             ]
         );
 
         return $action->forecast;
     }
 
-    // --- LOGIQUE A : RN PRÉVISIONNEL  ---
-    private function calculateRNPrevisionnel(Action $action, Collection $financials)
+/**
+     * LOGIQUE A : Estimer le bénéfice de l'année en cours.
+     */
+    private function estimerProchainBeneficeNet(Action $action, Collection $historiqueAnnuel)
     {
-        $currentYear = now()->year;
+        $anneeEnCours = now()->year;
 
-        // 1. Priorité aux données réelles (Si RN de l'année N existe déjà)
-        $realRN = $financials->firstWhere('year', $currentYear);
-        if ($realRN && $realRN->resultat_net) {
-            return $realRN->resultat_net;
+        // PRIORITÉ 1 : Si le vrai résultat est déjà publié, on l'utilise directement
+        $bilanActuel = $historiqueAnnuel->firstWhere('year', $anneeEnCours);
+        if ($bilanActuel && $bilanActuel->resultat_net) {
+            return $bilanActuel->resultat_net;
         }
 
-        // 2. Calcul Moyenne Historique (RN Moyen)
-        $historicalYears = $financials->where('year', '<', $currentYear)
-                                      ->whereNotNull('resultat_net')
-                                      ->take(4); // Max 4 ans (N-1 à N-4)
+        // PRIORITÉ 2 : Calculer une tendance basée sur le passé et les trimestres
 
-        $rnMoyen = 0;
-        if ($historicalYears->isNotEmpty()) {
-            $numerator = 0;
-            $denominator = 0;
-            $i = 1;
-            foreach ($historicalYears as $fin) {
-                // Récupère X1, X2... (défaut 1)
-                $weight = $this->params["weight_x{$i}"] ?? 1;
-                $numerator += $fin->resultat_net * $weight;
-                $denominator += $weight;
-                $i++;
+        // A. Calcul de la tendance passée (Moyenne pondérée des 4 dernières années)
+        $quatreDernieresAnnees = $historiqueAnnuel->where('year', '<', $anneeEnCours)
+                                                ->whereNotNull('resultat_net')
+                                                ->take(4);
+
+        $beneficeMoyenDuPasse = 0;
+        if ($quatreDernieresAnnees->isNotEmpty()) {
+            $totalBeneficesPonderes = 0;
+            $totalDesPoids = 0;
+            $index = 1;
+            foreach ($quatreDernieresAnnees as $bilan) {
+                $poids = $this->reglages["weight_x{$index}"] ?? 1;
+                $totalBeneficesPonderes += $bilan->resultat_net * $poids;
+                $totalDesPoids += $poids;
+                $index++;
             }
-            $rnMoyen = $denominator > 0 ? $numerator / $denominator : 0;
+            $beneficeMoyenDuPasse = $totalDesPoids > 0 ? $totalBeneficesPonderes / $totalDesPoids : 0;
         }
 
-        // 3. Calcul Moyenne Evolution Trimestrielle (Ev_moyenne)
-        // Calculons maintenant Evolution Net Prévisionnelle
-        // On récupère les trimestres de l'année en cours via la relation
-        $quarterlyData = $action->quarterlyResults()
-                                ->where('year', $currentYear)
-                                ->whereIn('trimestre', [1, 2, 3]) // On cherche T1, T2, T3
-                                ->get();
+        // B. Calcul de la forme actuelle (Moyenne des performances des derniers trimestres)
+        $resultatsTrimestriels = $action->quarterlyResults()
+                                       ->where('year', $anneeEnCours)
+                                       ->whereIn('trimestre', [1, 2, 3])
+                                       ->get();
 
-        // Extraction des valeurs (0 si non existant)
-        // EvT1 = trimestre 1, EvT2 = trimestre 2, etc.
-        $evT1 = $quarterlyData->firstWhere('trimestre', 1)->evolution_rn ?? 0;
-        $evT2 = $quarterlyData->firstWhere('trimestre', 2)->evolution_rn ?? 0;
-        $evT3 = $quarterlyData->firstWhere('trimestre', 3)->evolution_rn ?? 0;
+        $performanceT1 = $resultatsTrimestriels->firstWhere('trimestre', 1)->evolution_rn ?? 0;
+        $performanceT2 = $resultatsTrimestriels->firstWhere('trimestre', 2)->evolution_rn ?? 0;
+        $performanceT3 = $resultatsTrimestriels->firstWhere('trimestre', 3)->evolution_rn ?? 0;
 
-        // Formule: (EvT1 + EvT2 + EvT3) / 3
-        $evMoyenne = ($evT1 + $evT2 + $evT3) / 3;
+        $performanceMoyenneTrimestres = ($performanceT1 + $performanceT2 + $performanceT3) / 3;
 
-        // Calcul Final RNp [cite: 22]
-        $K = $this->params['coeff_k'] ?? 0.3;
-        $Z = $this->params['coeff_z'] ?? 0.7;
+        // C. Mélange des deux : On mixe le passé (Z) et la forme actuelle (K)
+        $poidsFormeActuelle = $this->reglages['coeff_k'] ?? 0.3;
+        $poidsPasseHistorique = $this->reglages['coeff_z'] ?? 0.7;
 
-        return ($evMoyenne * $K) + ($rnMoyen * $Z);
+        return ($performanceMoyenneTrimestres * $poidsFormeActuelle) + ($beneficeMoyenDuPasse * $poidsPasseHistorique);
     }
 
-    // --- LOGIQUE B : DNPA PREVISIONNEL  ---
-    private function calculateDNPAPrevisionnel(Action $action, Collection $financials, $rnPrevisionnel)
+    /**
+     * LOGIQUE B : Estimer le dividende que touchera l'investisseur.
+     */
+    private function estimerProchainDividendeNet(Action $action, Collection $historiqueAnnuel, $beneficeNetEsperé)
     {
-        // On a besoin des 5 dernières années historiques pour les moyennes [cite: 50]
-        // Mais CV calculé sur n années disponibles
-        $history = $financials->whereNotNull('resultat_net')
-                              ->where('resultat_net', '!=', 0)
-                              ->take(5);
+        // On analyse les 5 dernières années pour voir si l'entreprise est régulière
+        $historiqueRecent = $historiqueAnnuel->whereNotNull('resultat_net')
+                                             ->where('resultat_net', '!=', 0)
+                                             ->take(5);
 
-        if ($history->count() < 3) return 0; // Sécurité si pas assez de data
+        if ($historiqueRecent->count() < 3) return 0;
 
-        // Calcul des TD historiques et DNPA
-        $dataPoints = $history->map(function ($item) {
+        // On calcule deux choses :
+        // 1. La part du bénéfice reversée (Taux de Distribution - TD)
+        // 2. Le montant cash par action (DNPA)
+        $analysesSaisies = $historiqueRecent->map(function ($bilan) {
             return [
-                'td' => $item->dividendes_bruts / $item->resultat_net,
-                'dnpa' => $item->dnpa
+                'taux_reversé' => $bilan->dividendes_bruts / $bilan->resultat_net,
+                'montant_cash' => $bilan->dnpa
             ];
         });
 
-        // Moyennes sur 5 ans (ou disponibles)
-        $avgTD_5 = $dataPoints->avg('td');
-        $avgDNPA_5 = $dataPoints->avg('dnpa');
+        // On regarde laquelle de ces deux habitudes est la plus stable (Écart-type)
+        $stabiliteTaux = $this->calculerEcartType($analysesSaisies->pluck('taux_reversé')->toArray());
+        $stabiliteMontant = $this->calculerEcartType($analysesSaisies->pluck('montant_cash')->toArray());
 
-        // Ecart-types et Moyennes pour CV (sur n années)
-        $stdTD = $this->statsStandardDeviation($dataPoints->pluck('td')->toArray());
-        $stdDNPA = $this->statsStandardDeviation($dataPoints->pluck('dnpa')->toArray());
+        $moyenneTaux5ans = $analysesSaisies->avg('taux_reversé');
+        $moyenneMontant5ans = $analysesSaisies->avg('montant_cash');
 
-        // CV = Ecart-type / Moyenne 5 ans
-        $CVa = ($avgTD_5 != 0) ? $stdTD / $avgTD_5 : 999;
-        $CVb = ($avgDNPA_5 != 0) ? $stdDNPA / $avgDNPA_5 : 999;
+        // Coefficient de Variation (plus c'est petit, plus c'est stable)
+        $scoreInstabiliteTaux = ($moyenneTaux5ans != 0) ? $stabiliteTaux / $moyenneTaux5ans : 999;
+        $scoreInstabiliteMontant = ($moyenneMontant5ans != 0) ? $stabiliteMontant / $moyenneMontant5ans : 999;
 
-        // Choix de la méthode [cite: 40-43]
-        $dividendeTotalPrev = 0;
-        $dernierRN = $history->first()->resultat_net ?? 0; // N-1
-        $nbTitres = $history->first()->nombre_titre; // N-1 (ou actuel selon besoin)
+        $enveloppeDividendesBruts = 0;
+        $dernierBeneficeReel = $historiqueRecent->first()->resultat_net ?? 0;
+        $nombreTotalTitres = $historiqueRecent->first()->nombre_titre;
 
-        if ($CVa < $CVb) {
-            // Cas 1: TD plus stable
-            $dividendeTotalPrev = $avgTD_5 * $dernierRN;
+        // On choisit la méthode la plus fiable (celle qui varie le moins)
+        if ($scoreInstabiliteTaux < $scoreInstabiliteMontant) {
+            // L'entreprise reverse toujours le même POURCENTAGE de son bénéfice
+            $enveloppeDividendesBruts = $moyenneTaux5ans * $dernierBeneficeReel;
         } else {
-            // Cas 2: DNPA plus stable ou égal
-            $dividendeTotalPrev = $avgDNPA_5 * 1.1 * $nbTitres;
+            // L'entreprise reverse toujours environ le même MONTANT par action (+ une petite marge de 10%)
+            $enveloppeDividendesBruts = $moyenneMontant5ans * 1.1 * $nombreTotalTitres;
         }
 
-        // Application IRVM
-        $irvm = $this->params['irvm'] ?? 0.15;
-        if ($nbTitres == 0) return 0;
-        return ((1 - $irvm) * $dividendeTotalPrev) / $nbTitres;
+        // On retire l'impôt (IRVM) pour avoir le Net qui va dans la poche de l'investisseur
+        $taxeEtat = $this->reglages['irvm'] ?? 0.15;
+
+        if ($nombreTotalTitres == 0) return 0;
+
+        $dividendeGlobalNet = $enveloppeDividendesBruts * (1 - $taxeEtat);
+        return $dividendeGlobalNet / $nombreTotalTitres;
     }
 
-    // Helper statistique pour Ecart-Type
-    private function statsStandardDeviation(array $a) {
-        $n = count($a);
-        if ($n === 0) return 0;
-        $mean = array_sum($a) / $n;
-        $carry = 0.0;
-        foreach ($a as $val) {
-            $d = ((double) $val) - $mean;
-            $carry += $d * $d;
-        }
-        return sqrt($carry / $n);
+
+    /**
+ * Calcule la volatilité (l'écart-type) d'une liste de nombres.
+ * En clair : mesure à quel point les chiffres s'éloignent de la moyenne.
+ */
+private function calculerEcartType(array $listeDeNombres)
+{
+    $nombreElements = count($listeDeNombres);
+    // Si la liste est vide, on ne peut rien calculer
+    if ($nombreElements === 0) return 0;
+    // 1. Calculer la moyenne de tous les nombres
+    $somme = array_sum($listeDeNombres);
+    $moyenne = $somme / $nombreElements;
+    // 2. Calculer l'écart de chaque nombre par rapport à cette moyenne
+    $sommeDesEcartsAuCarre = 0.0;
+    foreach ($listeDeNombres as $nombre) {
+        // On regarde la distance entre le nombre et la moyenne
+        $distanceDeLaMoyenne = (double)$nombre - $moyenne;
+        // On multiplie cette distance par elle-même (pour que ce soit toujours positif)
+        $sommeDesEcartsAuCarre += $distanceDeLaMoyenne * $distanceDeLaMoyenne;
     }
+    // 3. Faire la moyenne de ces écarts et prendre la racine carrée
+    $variance = $sommeDesEcartsAuCarre / $nombreElements;
+    return sqrt($variance);
+}
 }

@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Action;
 use App\Models\BrvmSector;
-use App\Models\BocIndicator;
 use Illuminate\Support\Str;
+use App\Models\BocIndicator;
+use App\Support\BrvmMapping;
+use App\Models\ClassifiedSector;
+use App\Jobs\ProcessForecastsJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\Response;
@@ -29,20 +32,20 @@ class SyncBrvmDataService
     public function syncAllData(): bool
     {
         if (empty($this->token)) {
-            Log::error("❌ Configuration manquante : FASTAPI_WEBHOOK_TOKEN");
+            Log::error("Configuration manquante : FASTAPI_WEBHOOK_TOKEN");
             return false;
         }
 
-        Log::info("🔄 Démarrage de la synchronisation BRVM depuis {$this->baseUrl}");
+        Log::info(" Démarrage de la synchronisation BRVM depuis {$this->baseUrl}");
 
         try {
             $response = Http::withHeaders([
                 'X-Webhook-Token' => $this->token,
-                'Accept'          => 'application/json',
+                'Accept' => 'application/json',
             ])
-            ->timeout(60)
-            ->retry(3, 100)
-            ->get("{$this->baseUrl}/api/sync/all-data");
+                ->timeout(60)
+                ->retry(3, 100)
+                ->get("{$this->baseUrl}/api/sync/all-data");
 
             if ($response->failed()) {
                 $this->logErrorResponse($response);
@@ -59,114 +62,77 @@ class SyncBrvmDataService
             DB::transaction(function () use ($payload) {
                 // 1. On synchronise les secteurs d'abord (car les actions en dépendent)
                 $this->syncIndices($payload['indices'] ?? []);
-
                 // 2. On synchronise les actions
                 $this->syncActions($payload['actions'] ?? []);
-
                 // 3. On synchronise les indicateurs généraux
                 $this->syncMarketIndicator($payload['indicateur_marche'] ?? null);
             });
-
-            Log::info("✅ Synchronisation BRVM terminée avec succès.");
+            ProcessForecastsJob::dispatch();
+            Log::info(" Synchronisation BRVM terminée avec succès.");
             return true;
 
         } catch (\Exception $e) {
-            Log::error("❌ Erreur critique lors de la synchro BRVM : " . $e->getMessage());
+            Log::error("Erreur critique lors de la synchro BRVM : " . $e->getMessage());
             return false;
         }
     }
-
-    /**
-     * Synchronisation des actions avec logique Upsert
-     */
     protected function syncActions(array $actions): void
     {
         if (empty($actions)) return;
 
+        $brvmSectors = BrvmSector::pluck('id', 'nom')->toArray();
+        $classifiedSectors = ClassifiedSector::pluck('id', 'nom')->toArray();
+        $mapping = BrvmMapping::actionSectorMap();
         $now = now();
-        // Récupération des IDs de secteurs existants pour le mappage
-        $sectors = BrvmSector::pluck('id', 'slug')->toArray();
-
-        // On définit un ID par défaut si le secteur n'est pas trouvé (ex: secteur 1)
-        $defaultSectorId = !empty($sectors) ? reset($sectors) : 1;
 
         $records = [];
         foreach ($actions as $item) {
             $symbole = $item['symbole'];
+            $sectors = $mapping[$symbole] ?? null;
+            if (!$sectors) continue;
 
             $records[] = [
-                // Colonnes obligatoires pour l'insertion (PostgreSQL NOT NULL)
-                'key'                  => 'act_' . strtolower($symbole),
-                'symbole'              => $symbole,
-                'nom'                  => $item['nom'] ?? 'Inconnu',
-                'brvm_sector_id'       => $sectors[$item['sector_slug'] ?? ''] ?? $defaultSectorId,
-                'classified_sector_id' => 1, // Fixe selon votre besoin
-                'created_at'           => $now,
-                'updated_at'           => $now,
-
-                // Données variables qui seront mises à jour
-                'cours_ouverture'      => $item['cours_ouverture'] ?? 0,
-                'cours_cloture'        => $item['cours_cloture'] ?? 0,
-                'cours_veille'         => $item['cours_veille'] ?? 0,
-                'variation'            => $item['variation'] ?? 0,
-                'volume'               => (string) ($item['volume'] ?? '0'),
+                'key' => 'act_' . strtolower($symbole),                'symbole' => $symbole,
+                'nom' => $item['nom'] ?? 'Inconnu',
+                'brvm_sector_id' => $brvmSectors[$sectors[0]] ?? 1,
+                'classified_sector_id' => $classifiedSectors[$sectors[1]] ?? 1,
+                'volume' => (string)($item['volume'] ?? '0'),
+                'cours_veille' => $item['cours_veille'] ?? 0,
+                'cours_ouverture' => $item['cours_ouverture'] ?? 0,
+                'cours_cloture' => $item['cours_cloture'] ?? 0,
+                'variation' => $item['variation'] ?? 0,
+                'created_at' => $now,
+                'updated_at' => $now,
             ];
         }
 
-        // Upsert :
-        // Arg 1: Données complètes
-        // Arg 2: Colonne unique pour détecter le conflit
-        // Arg 3: Colonnes à mettre à jour UNIQUEMENT si le symbole existe déjà
-        foreach (array_chunk($records, 100) as $chunk) {
-            Action::upsert($chunk, ['symbole'], [
-                'cours_ouverture',
-                'cours_cloture',
-                'cours_veille',
-                'variation',
-                'volume',
-                'updated_at'
-            ]);
-        }
-
-        Log::debug(count($actions) . " actions traitées.");
+        Action::upsert($records, ['symbole'], ['volume', 'cours_veille', 'cours_ouverture', 'cours_cloture', 'variation', 'updated_at']);
     }
 
-    /**
-     * Synchronisation des secteurs (indices)
-     */
     protected function syncIndices(array $indices): void
     {
-        if (empty($indices)) return;
+        if (empty($indices))
+            return;
 
-        $now = now();
         $records = array_map(fn($item) => [
-            'slug'       => $item['slug'],
-            'nom'        => $item['nom'],
-            'variation'  => $item['variation'] ?? 0,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'key' => 'brv_' . Str::random(config('key.length', 10)),
+            'slug' => $item['slug'],
+            'nom' => $item['nom'],
+            'variation' => $item['variation'] ?? 0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ], $indices);
 
         BrvmSector::upsert($records, ['slug'], ['nom', 'variation', 'updated_at']);
     }
 
-    /**
-     * Mise à jour des indicateurs de marché
-     */
     protected function syncMarketIndicator(?array $indicator): void
     {
-        if (!$indicator || empty($indicator['date_rapport'])) return;
-
+        if (!$indicator)
+            return;
         BocIndicator::updateOrCreate(
             ['date_rapport' => $indicator['date_rapport']],
-            [
-                'per_moyen'              => $indicator['per_moyen'] ?? null,
-                'taux_rendement_moyen'   => $indicator['taux_rendement_moyen'] ?? null,
-                'taux_rentabilite_moyen' => $indicator['taux_rentabilite_moyen'] ?? null,
-                'prime_risque_marche'    => $indicator['prime_risque_marche'] ?? null,
-                'source_pdf'             => $indicator['source_pdf'] ?? null,
-                'updated_at'             => now(),
-            ]
+            array_merge($indicator, ['updated_at' => now()])
         );
     }
 
@@ -174,8 +140,8 @@ class SyncBrvmDataService
     {
         Log::error("API Scraper Error", [
             'status' => $response->status(),
-            'body'   => $response->json() ?? $response->body(),
-            'url'    => $this->baseUrl
+            'body' => $response->json() ?? $response->body(),
+            'url' => $this->baseUrl
         ]);
     }
 }

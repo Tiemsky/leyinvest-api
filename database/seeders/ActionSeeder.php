@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Action;
 use App\Models\BrvmSector;
 use Illuminate\Support\Str;
+use App\Support\BrvmMapping;
 use Illuminate\Database\Seeder;
 use App\Models\ClassifiedSector;
 use Illuminate\Support\Facades\DB;
@@ -12,73 +13,16 @@ use Illuminate\Support\Facades\DB;
 class ActionSeeder extends Seeder
 {
     /**
-     * Mapping : symbole → [brvm_sector_name, classified_sector_name]
+     * Map des actions vers leurs secteurs BRVM et Classified
+     * Format: 'SYMBOLE' => ['BRVM_SECTOR_NAME', 'CLASSIFIED_SECTOR_NAME']
      */
-    protected array $actionSectorMap = [
-        'NTLC' => ['Consommation de base', 'Biens de consommation'],
-        'PALC' => ['Consommation de base', 'Agro Industrie'],
-        'SCRC' => ['Consommation de base', 'Agro Industrie'],
-        'SICC' => ['Consommation de base', 'Agro Industrie'],
-        'SLBC' => ['Consommation de base', 'Biens de consommation'],
-        'SOGC' => ['Consommation de base', 'Agro Industrie'],
-        'SPHC' => ['Consommation de base', 'Agro Industrie'],
-        'STBC' => ['Consommation de base', 'Biens de consommation'],
-        'UNLC' => ['Consommation de base', 'Biens de consommation'],
-
-        'ABJC' => ['Consommation discrétionnaire', 'Consommation discrétionnaire '],
-        'BNBC' => ['Consommation discrétionnaire', 'BTP'],
-        'CFAC' => ['Consommation discrétionnaire', 'Automobile '],
-        'LNBB' => ['Consommation discrétionnaire', 'Consommation discrétionnaire '],
-        'NEIC' => ['Consommation discrétionnaire', 'Consommation discrétionnaire '],
-        'PRSC' => ['Consommation discrétionnaire', 'Automobile '],
-        'UNXC' => ['Consommation discrétionnaire', 'Industrie'],
-
-        'SHEC' => ['Énergie', 'Pétrole et Energie'],
-        'SMBC' => ['Énergie', 'BTP'],
-        'TTLC' => ['Énergie', 'Pétrole et Energie'],
-        'TTLS' => ['Énergie', 'Pétrole et Energie'],
-
-        'CABC' => ['Industriels', 'Industrie'],
-        'FTSC' => ['Industriels', 'Industrie'],
-        'SDSC' => ['Industriels', 'Logistique'],
-        'SEMC' => ['Industriels', 'Industrie'],
-        'SIVC' => ['Industriels', 'Industrie'],
-        'STAC' => ['Industriels', 'BTP'],
-
-        'BICB' => ['Services financiers', 'Services Financiers'],
-        'BICC' => ['Services financiers', 'Services Financiers'],
-        'BOAB' => ['Services financiers', 'Services Financiers'],
-        'BOABF' => ['Services financiers', 'Services Financiers'],
-        'BOAC' => ['Services financiers', 'Services Financiers'],
-        'BOAM' => ['Services financiers', 'Services Financiers'],
-        'BOAN' => ['Services financiers', 'Services Financiers'],
-        'BOAS' => ['Services financiers', 'Services Financiers'],
-        'CBIBF' => ['Services financiers', 'Services Financiers'],
-        'ECOC' => ['Services financiers', 'Services Financiers'],
-        'ETIT' => ['Services financiers', 'Services Financiers'],
-        'NSBC' => ['Services financiers', 'Services Financiers'],
-        'ORGT' => ['Services financiers', 'Services Financiers'],
-        'SAFC' => ['Services financiers', 'Services Financiers'],
-        'SGBC' => ['Services financiers', 'Services Financiers'],
-        'SIBC' => ['Services financiers', 'Services Financiers'],
-
-        'CIEC' => ['Services publics', 'Services publics'],
-        'SDCC' => ['Services publics', 'Services publics'],
-
-        'ONTBF' => ['Télécommunications', 'Télécommunications'],
-        'ORAC' => ['Télécommunications', 'Télécommunications'],
-        'SNTS' => ['Télécommunications', 'Télécommunications'],
-    ];
-
     public function run(): void
     {
-        // On vide la table
         DB::table('actions')->delete();
 
-        // Récupérer tous les secteurs avec leurs noms → ID
         $brvmSectors = BrvmSector::pluck('id', 'nom')->toArray();
         $classifiedSectors = ClassifiedSector::pluck('id', 'nom')->toArray();
-
+        $mapping = BrvmMapping::actionSectorMap();
         // Données des actions actualisées
         $rawActions = [
             ['symbole' => 'NTLC', 'nom' => "NESTLE COTE D'IVOIRE", 'volume' => 1406, 'cours_veille' => 9580, 'cours_ouverture' => 9580, 'cours_cloture' => 9660, 'variation' => -6.58],
@@ -137,27 +81,14 @@ class ActionSeeder extends Seeder
         ];
 
         foreach ($rawActions as $data) {
-            $symbole = $data['symbole'];
+            $sectors = $mapping[$data['symbole']] ?? null;
 
-            if (!isset($this->actionSectorMap[$symbole])) {
-                $this->command->warn("Secteur non défini pour l'action {$symbole}");
-                continue;
-            }
-
-            [$brvmName, $classifiedName] = $this->actionSectorMap[$symbole];
-
-            $brvmId = $brvmSectors[$brvmName] ?? null;
-            $classifiedId = $classifiedSectors[$classifiedName] ?? null;
-
-            if (!$brvmId || !$classifiedId) {
-                $this->command->error("Secteur introuvable pour {$symbole}: BRVM={$brvmName}, Classified={$classifiedName}");
-                continue;
-            }
+            if (!$sectors) continue;
 
             Action::create(array_merge($data, [
                 'key' => 'act_' . strtolower($data['symbole']),
-                'brvm_sector_id' => $brvmId,
-                'classified_sector_id' => $classifiedId,
+                'brvm_sector_id' => $brvmSectors[$sectors[0]] ?? 1,
+                'classified_sector_id' => $classifiedSectors[$sectors[1]] ?? 1,
             ]));
         }
     }
