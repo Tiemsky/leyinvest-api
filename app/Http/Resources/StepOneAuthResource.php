@@ -5,21 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * @OA\Schema(
- *     schema="StepOneAuthResource",
- *     type="object",
- *     title="Utilisateur En Première Étape d'inscription",
- *     description="Représente un utilisateur ayant complété la première étape de l'inscription",
- *     @OA\Property(property="id", type="integer", example=1),
- *     @OA\Property(property="nom", type="string", example="Doe"),
- *     @OA\Property(property="prenom", type="string", example="John"),
- *     @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
- *     @OA\Property(property="email_verified", type="boolean", example=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", example="2025-10-18T12:45:00Z"),
- *     @OA\Property(property="updated_at", type="string", format="date-time", example="2025-10-18T12:45:00Z")
- * )
- */
 class StepOneAuthResource extends JsonResource
 {
     /**
@@ -30,12 +15,12 @@ class StepOneAuthResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'key' => $this->key,
-            'nom' => $this->nom,
-            'prenom' => $this->prenom,
-            'email' => $this->email,
-            'role' => $this->role,
+            'id' => (int) $this->id,
+            'key' => (string) $this->key,
+            'nom' => (string) $this->nom,
+            'prenom' => (string) $this->prenom,
+            'email' => (string) $this->email,
+            'role' => (string) $this->role,
             'email_verified' => (bool) $this->email_verified,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

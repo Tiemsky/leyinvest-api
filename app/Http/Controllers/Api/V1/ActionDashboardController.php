@@ -9,6 +9,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ActionHistoryResource;
 use App\Http\Resources\ActionDashboardResource;
 
+/**
+ * @tags Tableau de bord des actions
+ */
 class ActionDashboardController extends Controller
 {
 

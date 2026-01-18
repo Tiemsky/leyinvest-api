@@ -5,21 +5,24 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Plan;
-use App\Models\Subscription; // Importation du modèle Subscription
+use App\Models\Subscription;
 use App\Services\SubscriptionService;
 use App\Services\CouponService;
-use App\Services\PaymentService; // Supposons que vous ayez un service de paiement
+use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Exception;
 
+/**
+ * @tags Souscription
+*/
 class SubscriptionController extends Controller
 {
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected CouponService $couponService,
-        protected PaymentService $paymentService // Injection du service de paiement
+        protected PaymentService $paymentService
     ) {
     }
 
@@ -40,46 +43,14 @@ class SubscriptionController extends Controller
         ], $status);
     }
 
-    // --- ENDPOINTS ABONNEMENT ---
-
     /**
      * GET /api/v1/subscriptions/current
-     * Récupère l'abonnement actif de l'utilisateur.
+     * Récupère les détails de l'abonnement actif de l'utilisateur.
      */
-
-    /**
-     * @OA\Get(
-     *     path="/api/v1/subscriptions/current",
-     *     summary="Récupérer l'abonnement actif",
-     *     description="Retourne l'abonnement actuellement actif de l'utilisateur authentifié.",
-     *     operationId="getCurrentSubscription",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Abonnement récupéré",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Aucun abonnement actif."),
-     *             @OA\Property(
-     *                 property="data",
-     *                 oneOf={
-     *                     @OA\Schema(ref="#/components/schemas/SubscriptionResource"),
-     *                     @OA\Schema(type="null")
-     *                 }
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
-
     public function current(Request $request): JsonResponse
     {
         // Ajout de 'coupon' pour un Eager Loading complet
         $subscription = $request->user()->activeSubscription()->with('plan', 'coupon')->first();
-
         if (!$subscription) {
             return response()->json(['success' => true, 'message' => 'Aucun abonnement actif.', 'data' => null]);
         }
@@ -90,42 +61,6 @@ class SubscriptionController extends Controller
      * POST /api/v1/subscriptions/subscribe
      * Crée un nouvel abonnement (état PENDING ou TRIALING).
      */
-
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/subscribe",
-     *     summary="Souscrire à un plan",
-     *     description="Crée une souscription avec statut TRIALING, ACTIVE ou PENDING selon le plan et le paiement.",
-     *     operationId="subscribePlan",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"plan_slug"},
-     *             @OA\Property(property="plan_slug", type="string", example="premium"),
-     *             @OA\Property(property="coupon_code", type="string", nullable=true, example="PROMO2024"),
-     *             @OA\Property(property="payment_method", type="string", nullable=true, example="fedapay")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Souscription créée",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Abonnement en attente de paiement."),
-     *             @OA\Property(property="next_step", type="string", example="payment_link"),
-     *             @OA\Property(property="data", ref="#/components/schemas/SubscriptionResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=422, description="Validation échouée"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
-
     public function subscribe(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -160,48 +95,6 @@ class SubscriptionController extends Controller
     /**
      * POST /api/v1/subscriptions/payment-link
      * Récupère le lien de paiement (URL de redirection) pour une souscription PENDING.
-     * Cette méthode est cruciale après l'étape 'subscribe'.
-     */
-
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/payment-link",
-     *     summary="Générer le lien de paiement",
-     *     description="Retourne l’URL de paiement pour une souscription en statut PENDING.",
-     *     operationId="getSubscriptionPaymentLink",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"subscription_id","return_url"},
-     *             @OA\Property(property="subscription_id", type="integer", example=42),
-     *             @OA\Property(property="return_url", type="string", format="url", example="https://app.example.com/payment/success"),
-     *             @OA\Property(property="cancel_url", type="string", format="url", nullable=true),
-     *             @OA\Property(property="provider", type="string", nullable=true, example="fedapay")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Lien de paiement généré",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Lien de paiement généré."),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="checkout_url", type="string", format="url"),
-     *                 @OA\Property(property="subscription_id", type="integer", example=42)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=403, description="Accès interdit"),
-     *     @OA\Response(response=409, description="Souscription non payable"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
      */
 
     public function getPaymentLink(Request $request): JsonResponse
@@ -254,40 +147,6 @@ class SubscriptionController extends Controller
      * POST /api/v1/subscriptions/change-plan
      * Gère l'Upgrade et le Downgrade.
      */
-
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/change-plan",
-     *     summary="Changer de plan",
-     *     description="Effectue un upgrade immédiat ou planifie un downgrade.",
-     *     operationId="changeSubscriptionPlan",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"plan_slug"},
-     *             @OA\Property(property="plan_slug", type="string", example="enterprise"),
-     *             @OA\Property(property="coupon_code", type="string", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Plan modifié",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="data", ref="#/components/schemas/SubscriptionResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Aucun abonnement actif"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
-
     public function changePlan(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -304,10 +163,8 @@ class SubscriptionController extends Controller
 
         try {
             $newPlan = Plan::where('slug', $validated['plan_slug'])->where('is_active', true)->firstOrFail();
-
             // Délégué au service
             $updatedSubscription = $this->subscriptionService->changePlan($currentSubscription, $newPlan, $validated);
-
             // La comparaison des prix est plus sûre dans le service, mais peut être conservée ici pour le message
             $isUpgrade = $newPlan->prix > $currentSubscription->plan->prix;
 
@@ -326,36 +183,6 @@ class SubscriptionController extends Controller
 
     /**
      * POST /api/v1/subscriptions/cancel
-     */
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/cancel",
-     *     summary="Annuler l'abonnement",
-     *     description="Annule l'abonnement immédiatement ou à la fin de la période.",
-     *     operationId="cancelSubscription",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\RequestBody(
-     *         @OA\JsonContent(
-     *             @OA\Property(property="reason", type="string", nullable=true, maxLength=500),
-     *             @OA\Property(property="immediately", type="boolean", example=false)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Abonnement annulé",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="data", ref="#/components/schemas/SubscriptionResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Aucun abonnement actif"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
      */
 
     public function cancel(Request $request): JsonResponse
@@ -387,31 +214,8 @@ class SubscriptionController extends Controller
 
     /**
      * POST /api/v1/subscriptions/resume
+     * Permet de reprendre une souscription annulée dans sa période de grâce.
      */
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/resume",
-     *     summary="Reprendre un abonnement annulé",
-     *     description="Réactive un abonnement annulé encore dans sa période de grâce.",
-     *     operationId="resumeSubscription",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Abonnement réactivé",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Abonnement réactivé avec succès."),
-     *             @OA\Property(property="data", ref="#/components/schemas/SubscriptionResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Aucun abonnement éligible"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
-
     public function resume(Request $request): JsonResponse
     {
         // On cherche la souscription annulée qui est encore dans sa période de grâce.
@@ -442,48 +246,8 @@ class SubscriptionController extends Controller
 
     /**
      * POST /api/v1/subscriptions/validate-coupon
+     * Valide un code promo pour un plan donné et retourne la réduction.
      */
-    /**
-     * @OA\Post(
-     *     path="/api/v1/subscriptions/validate-coupon",
-     *     summary="Valider un coupon",
-     *     description="Valide un coupon et simule la réduction appliquée sur un plan.",
-     *     operationId="validateCoupon",
-     *     tags={"Subscriptions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"coupon_code","plan_slug"},
-     *             @OA\Property(property="coupon_code", type="string", example="PROMO2024"),
-     *             @OA\Property(property="plan_slug", type="string", example="premium")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Coupon valide",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="code", type="string"),
-     *                 @OA\Property(property="original_price", type="number", example=10000),
-     *                 @OA\Property(property="final_price", type="number", example=8000),
-     *                 @OA\Property(property="discount_amount", type="number", example=2000),
-     *                 @OA\Property(property="currency", type="string", example="XOF")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=400, description="Coupon invalide"),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
-
     public function validateCoupon(Request $request): JsonResponse
     {
         $validated = $request->validate([

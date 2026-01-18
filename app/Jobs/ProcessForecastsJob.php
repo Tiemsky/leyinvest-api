@@ -13,28 +13,28 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessForecastsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+  use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Le nombre de secondes pendant lesquelles le job peut s'exécuter.
-     */
-    public $timeout = 300;
+  /**
+   * Le nombre de secondes pendant lesquelles le job peut s'exécuter.
+   */
+  public $timeout = 300;
 
-    public function handle(ForecastEvaluationService $forecastEngine): void
-    {
-        Log::info("[Job] Début du recalcul des prévisions pour toutes les actions.");
+  public function handle(ForecastEvaluationService $forecastEngine): void
+  {
+    Log::info("[Job] Début du recalcul des prévisions pour toutes les actions.");
 
-        // On récupère les actions avec leurs relations pour éviter le problème N+1
-        $actions = Action::with('stockFinancials')->get();
+    // On récupère les actions avec leurs relations pour éviter le problème N+1
+    $actions = Action::with('stockFinancials')->get();
 
-        foreach ($actions as $action) {
-            try {
-                $forecastEngine->calculateForAction($action);
-            } catch (\Exception $e) {
-                Log::error(" Erreur de calcul pour {$action->symbole}: " . $e->getMessage());
-            }
-        }
-
-        Log::info("[Job] Recalcul des prévisions terminé.");
+    foreach ($actions as $action) {
+      try {
+        $forecastEngine->calculateForAction($action);
+      } catch (\Exception $e) {
+        Log::error(" Erreur de calcul pour {$action->symbole}: " . $e->getMessage());
+      }
     }
+
+    Log::info("[Job] Recalcul des prévisions terminé.");
+  }
 }

@@ -4,57 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-/**
- * @OA\Schema(
- *     schema="ActionForecastResource",
- *     type="object",
- *     title="Action avec prévisions",
- *     description="Action financière avec données de prévision calculées",
- *
- *     @OA\Property(property="id", type="integer", example=12),
- *     @OA\Property(property="key", type="string", example="ACT_BICICI"),
- *     @OA\Property(property="symbole", type="string", example="BICICI"),
- *     @OA\Property(property="nom", type="string", example="BICICI Côte d'Ivoire"),
- *     @OA\Property(property="cours_cloture", type="number", format="float", example=4850),
- *
- *     @OA\Property(
- *         property="previsions",
- *         type="object",
- *         description="Prévisions financières associées à l'action",
- *
- *         @OA\Property(
- *             property="rn_previsionnel",
- *             type="number",
- *             format="float",
- *             nullable=true,
- *             example=1200000000
- *         ),
- *
- *         @OA\Property(
- *             property="dnpa_previsionnel",
- *             type="number",
- *             format="float",
- *             nullable=true,
- *             example=350.75
- *         ),
- *
- *         @OA\Property(
- *             property="rendement_net_pourcent",
- *             type="string",
- *             example="7.35%",
- *             description="Rendement prévisionnel net calculé dynamiquement"
- *         )
- *     ),
- *
- *     @OA\Property(
- *         property="last_updated",
- *         type="string",
- *         format="date-time",
- *         nullable=true,
- *         example="2025-02-10T14:32:45Z"
- *     )
- * )
- */
 
 class ActionForecastResource extends JsonResource
 {

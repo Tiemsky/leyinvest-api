@@ -17,6 +17,9 @@ use App\Http\Resources\ActionDashboardResource;
 use App\Http\Resources\ShowSingleActionResource;
 use App\Http\Resources\SectorWithActionsResource;
 
+/**
+ * @tags Actions
+ */
 class ActionController extends Controller
 {
     /**
@@ -31,28 +34,9 @@ class ActionController extends Controller
         private readonly FiscalYearService $fiscalYearService
     ) {}
 
-    /**
-     * @OA\Get(
-     *     path="/api/v1/actions",
-     *     summary="Lister toutes les actions avec statut de suivi",
-     *     description="Retourne toutes les actions et indique si l'utilisateur authentifié les suit. Cette route nécessite une authentification.",
-     *     operationId="getAllActions",
-     *     tags={"Actions"},
-     *     security={{"sanctum":{}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des actions récupérée avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/ActionResource")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
+
+     /**
+      * Retourne la liste complète des actions y compris les relations nécessaires pour le suivi des utilisateurs.
      */
     public function index(Request $request): JsonResponse
     {
@@ -79,32 +63,11 @@ class ActionController extends Controller
             'success' => true,
             'message' => 'Liste des actions récupérée avec succès',
             'data' => $data,
-        ]);
+        ], Response::HTTP_OK);
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/v1/actions/analyze",
-     *     summary="Analyser les actions par secteur",
-     *     description="Retourne la liste des secteurs ainsi que leurs actions associées.",
-     *     operationId="analyzeActions",
-     *     tags={"Actions"},
-     *     security={{"sanctum":{}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Listes des actions par secteur récupérée avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Listes des actions par secteur récupérée avec succes"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/SectorWithActionsResource")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
+     * Retourne la liste des actions groupées par secteur BRVM.
      */
     public function analyze(): JsonResponse
     {
@@ -119,63 +82,18 @@ class ActionController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/v1/actions/analyze/{actionKey}",
-     *     summary="Afficher les détails complet d'une action avec les indicateurs boursiers",
-     *     description="Retourne toutes les métriques d'une action, incluant la valeur brute, les statistiques sectorielles et les statistiques BRVM. L'année de référence est calculée automatiquement selon la période fiscale (N-2 avant le 01/03, N-1 après le 02/03).",
-     *     operationId="showAction",
-     *     tags={"Actions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="key",
-     *         in="path",
-     *         required=true,
-     *         description="Clé unique de l'action (identifiant logique).",
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Détails d'une action retournés avec succès.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="object"),
-     *             @OA\Property(
-     *                 property="metadata",
-     *                 type="object",
-     *                 @OA\Property(property="reference_year", type="integer", example=2024),
-     *                 @OA\Property(property="fiscal_period", type="string"),
-     *                 @OA\Property(property="is_consolidation_period", type="boolean"),
-     *                 @OA\Property(property="from_cache", type="boolean")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Action non trouvée.",
-     *         @OA\JsonContent(
-     *              type="object",
-     *              @OA\Property(property="message", type="string", example="Action introuvable.")
-     *         )
-     *     )
-     * )
+    * Retourne les détails d'une action spécifique via son identifiant (key) pour le tableau de bord.
      */
     public function show(Action $action): JsonResponse
     {
         // Récupération de l'année de référence via le service
         // Avant le 01/03 : N-2 | Après le 02/03 : N-1
         $referenceYear = $this->fiscalYearService->getReferenceYear();
-
         // Clé de cache unique incluant l'année de référence
         // Pattern: actions:{id}:dashboard:{year}
         $cacheKey = "actions:{$action->id}:dashboard:{$referenceYear}";
-
         // Utilisation du cache Redis avec TTL de 30 minutes
         $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($action, $referenceYear) {
-
             // Eager loading optimisé : uniquement les données nécessaires
             $action->load([
                 'brvmSector',
@@ -193,6 +111,7 @@ class ActionController extends Controller
         return response()->json([
             'success' => true,
             'data' => $data,
+            'message' => 'Détails de l\'action récupérés avec succès',
             'metadata' => array_merge(
                 // Métadonnées fiscales enrichies du service
                 $this->fiscalYearService->getMetadata(),

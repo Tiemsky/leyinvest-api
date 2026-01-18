@@ -8,10 +8,7 @@ use App\Services\TopFlopService;
 use Illuminate\Http\JsonResponse;
 
 /**
- * @OA\Tag(
- *     name="Tops",
- *     description="Endpoints relatifs aux actions ayant les plus fortes hausses sur le marché."
- * )
+ * @tags Tops
  */
 class TopController extends Controller
 {
@@ -33,43 +30,14 @@ class TopController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/v1/tops",
-     *     operationId="getTopsList",
-     *     tags={"Tops"},
-     *     summary="Récupérer la liste des meilleures actions (Tops)",
-     *     description="Retourne les 5 actions ayant les plus fortes hausses enregistrées sur le marché pour la journée en cours.",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste récupérée avec succès.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/TopFlop")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Utilisateur non authentifié.",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Non authentifié.")
-     *         )
-     *     ),
-     *     security={{"sanctum": {}}}
-     * )
-     *
-     * @return JsonResponse
+     * Retourne la liste des 5 meilleures performances (tops).
      */
     public function index(): JsonResponse
     {
         $tops = $this->topFlopService->getTop(5);
-
         return response()->json([
             'success' => true,
+            'message' => 'Liste des tops récupérée avec succès',
             'data' => TopFlopResource::collection($tops),
         ]);
     }

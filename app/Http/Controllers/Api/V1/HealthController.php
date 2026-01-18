@@ -8,6 +8,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
+/**
+ * @tags Health Check
+*/
 class HealthController extends Controller
 {
     /**

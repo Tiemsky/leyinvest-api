@@ -8,48 +8,22 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Models\BocIndicator;
 
+/**
+ * @tags Indicateur du Bulletin Officiel des Cours (BOC)
+ */
 class BocIndicatorController extends Controller
 {
 
     /**
-     * @OA\Get(
-     *     path="/api/v1/indicators",
-     *     summary="Lister tous les indicateurs financiers",
-     *     description="Retourne la liste complète des indicateurs disponibles dans le système.",
-     *     operationId="getIndicator",
-     *     tags={"Indicators"},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des indicateurs récupérés avec succès",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/BocIndicatorResource")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur interne du serveur",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Erreur interne du serveur.")
-     *         )
-     *     )
-     * )
+     * Récupère la liste des indicateurs du BOC.
      */
     public function index(): JsonResponse
     {
         try {
             $indicators = BocIndicator::query()->latest()->get();
-
             return response()->json([
                 'success' => true,
+                'message' => 'Liste des indicateurs récupérés avec succès',
                 'data' => BocIndicatorResource::collection($indicators),
             ]);
         } catch (\Throwable $e) {

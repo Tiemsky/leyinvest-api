@@ -9,31 +9,13 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 
 /**
- * @OA\Tag(
- * name="Plans",
- * description="Opérations liées aux plans d'abonnement"
- * )
- */
+ * @tags Plans de souscription
+*/
 class PlanController extends Controller
 {
     /**
-     * @OA\Get(
-     * path="/api/v1/plans",
-     * tags={"Plans"},
-     * summary="Récupérer la liste des plans actifs et visibles",
-     * description="Retourne la liste des plans destinés à être affichés publiquement.",
-     * operationId="getPlans",
-     * @OA\Response(
-     * response=200,
-     * description="Plans récupérés avec succès.",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="success", type="boolean", example=true),
-     * @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/PlanResource"))
-     * )
-     * )
-     * )
-     */
+    * Retourne la liste des plans actifs et visibles avec leurs fonctionnalités actives
+    */
     public function index(): JsonResponse
     {
         // Utilisation des scopes 'active' et 'visible' pour masquer la logique de requête
@@ -50,28 +32,7 @@ class PlanController extends Controller
     }
 
     /**
-     * @OA\Get(
-     * path="/api/v1/plans/{slug}",
-     * tags={"Plans"},
-     * summary="Afficher un plan spécifique",
-     * operationId="showPlan",
-     * @OA\Parameter(
-     * name="slug",
-     * in="path",
-     * description="Slug du plan (ex: 'premium-annuel')",
-     * required=true,
-     * @OA\Schema(type="string")
-     * ),
-     * @OA\Response(
-     * response=200,
-     * description="Plan récupéré avec succès.",
-     * @OA\JsonContent(ref="#/components/schemas/PlanResource")
-     * ),
-     * @OA\Response(
-     * response=404,
-     * description="Plan non trouvé ou non visible."
-     * )
-     * )
+     * Retourne les détails d'un plan spécifique par son slug
      */
     public function show(string $slug): JsonResponse
     {

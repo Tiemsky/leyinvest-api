@@ -14,11 +14,8 @@ use App\Http\Requests\UpdateUserActionRequest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
-* @OA\Tag(
-  *     name="User and Actions",
-  *     description="Endpoints pour gérer le système de follow/unfollow des actions"
-  * )
-*/
+ * @tags User Actions - Follow & Unfollow
+ */
 class UserActionController extends Controller
 {
     public function __construct(
@@ -28,60 +25,18 @@ class UserActionController extends Controller
     /**
      * Obtenir toutes les actions suivies par l'utilisateur connecté
      */
-
-/**
-     * @OA\Get(
-     *     path="/api/v1/user/actions",
-     *     operationId="getFollowedActions",
-     *     tags={"User Actions"},
-     *     summary="Lister les actions suivies par l'utilisateur authentifié",
-     *     description="Récupère toutes les actions suivies par l'utilisateur authentifié",
-     *     security={{"sanctum": {}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste récupérée avec succès",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(ref="#/components/schemas/UserActionResource")
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié")
-     * )
-     */
     public function index(): JsonResponse
     {
         $actions = $this->userActionService->getUserFollowedActions(auth()->id());
-
         return response()->json([
             'success' => true,
+            'message' => 'Liste des actions suivies récupérée avec succès',
             'data' => UserActionResource::collection($actions),
         ], 200);
     }
 
-    /**
+      /**
      * Suivre une action
-     */
-       /**
-     * @OA\Post(
-     *     path="/api/v1/user/action/follow",
-     *     operationId="followAction",
-     *     tags={"User Actions"},
-     *     summary="Suivre une action",
-     *     description="Permet à l'utilisateur de suivre une action avec des valeurs optionnelles de stop_loss et take_profit",
-     *     security={{"sanctum": {}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/FollowActionRequest")
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Action suivie avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/UserActionResource")
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié"),
-     *     @OA\Response(response=409, description="Action déjà suivie"),
-     *     @OA\Response(response=422, description="Erreur de validation")
-     * )
      */
     public function follow(FollowActionRequest $request): JsonResponse
     {
@@ -109,32 +64,10 @@ class UserActionController extends Controller
     /**
      * Ne plus suivre une action
      */
-
-     /**
-     * @OA\Delete(
-     *     path="/api/v1/user/action/{actionId}/unfollow",
-     *     operationId="unfollowAction",
-     *     tags={"User Actions"},
-     *     summary="Ne plus suivre une action",
-     *     description="Permet de ne plus suivre une action précédemment suivie",
-     *     security={{"sanctum": {}}},
-     *     @OA\Parameter(
-     *         name="actionId",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'action à unfollow",
-     *         @OA\Schema(type="integer", example=10)
-     *     ),
-     *     @OA\Response(response=200, description="Action retirée avec succès"),
-     *     @OA\Response(response=401, description="Non authentifié"),
-     *     @OA\Response(response=404, description="Action non trouvée ou non suivie")
-     * )
-     */
     public function unfollow(int $actionId): JsonResponse
     {
         try {
             $this->userActionService->unfollow(auth()->id(), $actionId);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Action retirée avec succès',
@@ -149,73 +82,6 @@ class UserActionController extends Controller
 
 /**
  * Ne plus suivre plusieurs actions
- */
-
- /**
- * @OA\Post(
- *     path="/api/v1/user/actions/unfollow",
- *     operationId="unfollowMultipleActions",
- *     tags={"User Actions"},
- *     summary="Ne plus suivre plusieurs actions",
- *     description="Permet à un utilisateur authentifié de ne plus suivre une ou plusieurs actions en une seule requête.",
- *     security={{"sanctum": {}}},
- *
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             required={"action_ids"},
- *             @OA\Property(
- *                 property="action_ids",
- *                 type="array",
- *                 description="Liste des IDs des actions à ne plus suivre.",
- *                 @OA\Items(type="integer", example=10),
- *                 example={10, 15, 23}
- *             )
- *         )
- *     ),
- *
- *     @OA\Response(
- *         response=200,
- *         description="Actions retirées avec succès",
- *         @OA\JsonContent(
- *             @OA\Property(property="success", type="boolean", example=true),
- *             @OA\Property(property="message", type="string", example="3 action(s) retirée(s) avec succès"),
- *             @OA\Property(property="unfollowed_count", type="integer", example=3),
- *             @OA\Property(
- *                 property="not_found_ids",
- *                 type="array",
- *                 description="Liste des IDs non trouvés (si certains IDs ne correspondent pas à des actions suivies).",
- *                 @OA\Items(type="integer"),
- *                 example={}
- *             )
- *         )
- *     ),
- *
- *     @OA\Response(
- *         response=401,
- *         description="Non authentifié — jeton d'accès manquant ou invalide.",
- *         @OA\JsonContent(
- *             @OA\Property(property="message", type="string", example="Unauthenticated.")
- *         )
- *     ),
- *
- *     @OA\Response(
- *         response=422,
- *         description="Données de validation invalides.",
- *         @OA\JsonContent(
- *             @OA\Property(property="message", type="string", example="The given data was invalid."),
- *             @OA\Property(
- *                 property="errors",
- *                 type="object",
- *                 @OA\Property(
- *                     property="action_ids",
- *                     type="array",
- *                     @OA\Items(type="string", example="The action_ids field is required.")
- *                 )
- *             )
- *         )
- *     )
- * )
  */
 public function unfollowMultiple(Request $request): JsonResponse
 {
@@ -238,32 +104,6 @@ public function unfollowMultiple(Request $request): JsonResponse
 
     /**
      * Mettre à jour les paramètres (stop_loss, take_profit)
-     */
-
-     /**
-     * @OA\Patch(
-     *     path="/api/v1/user/action/{actionId}",
-     *     operationId="updateFollowParameters",
-     *     tags={"User Actions"},
-     *     summary="Mettre à jour les paramètres de suivi",
-     *     description="Permet à l'utilisateur de mettre à jour les valeurs stop_loss et take_profit d'une action déjà suivie",
-     *     security={{"sanctum": {}}},
-     *     @OA\Parameter(
-     *         name="actionId",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'action suivie",
-     *         @OA\Schema(type="integer", example=8)
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/UpdateUserActionRequest")
-     *     ),
-     *     @OA\Response(response=200, description="Paramètres mis à jour avec succès"),
-     *     @OA\Response(response=401, description="Non authentifié"),
-     *     @OA\Response(response=404, description="Action non suivie"),
-     *     @OA\Response(response=422, description="Erreur de validation")
-     * )
      */
     public function update(UpdateUserActionRequest $request, int $actionId): JsonResponse
     {
