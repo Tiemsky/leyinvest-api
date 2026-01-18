@@ -28,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
         new Dsn('brevo+api', 'default', config('services.brevo.key'))
       );
     });
-    // Rate limits gérés UNIQUEMENT par RateLimitServiceProvider
+
+    Gate::define('viewApiDocs', function (?User $user) {
+        // Option A : Autoriser tout le monde en Local et Staging (plus simple)
+        if (app()->environment(['local', 'staging'])) {
+            return true;
+        }
+
+        // Option B : Autoriser uniquement des emails spécifiques en Production
+        return in_array($user?->email, [env('API_DOCS_ALLOWED_EMAIL')]);
+    });
   }
 }
