@@ -28,7 +28,7 @@ class ActionForecastResource extends JsonResource
 
                 // Valeur dynamique (Calculée à la volée via l'Accessor du modèle Action)
                 // On formate ici en pourcentage pour l'affichage
-                'rendement_net_pourcent' => $this->rendement_previsionnel . '%',
+                'rendement_net_pourcent' => $this->rendement_previsionnel.'%',
             ],
             'last_updated' => $forecast ? $forecast->updated_at->toIso8601String() : null,
         ];

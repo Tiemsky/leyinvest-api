@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
-//Implementation de securitee pour eviter les attaques brutes forces, et email spamming, DDOS,
+// Implementation de securitee pour eviter les attaques brutes forces, et email spamming, DDOS,
 class RateLimitServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../../config/rate-limits.php', 'rate-limits');
+        $this->mergeConfigFrom(__DIR__.'/../../config/rate-limits.php', 'rate-limits');
     }
 
     public function boot(): void
@@ -22,7 +22,7 @@ class RateLimitServiceProvider extends ServiceProvider
         RateLimiter::for('global', function (Request $request) {
             return Limit::perMinute(env('RATE_LIMIT_GLOBAL', 1000))
                 ->by($request->ip())
-                ->response(fn() => response()->json([
+                ->response(fn () => response()->json([
                     'success' => false,
                     'message' => 'Protection Anti-DDoS : Trop de requêtes.',
                 ], 429));
@@ -52,6 +52,7 @@ class RateLimitServiceProvider extends ServiceProvider
     private function buildLimit(string $name): Limit
     {
         $config = config("rate-limits.{$name}");
+
         // On utilise perMinutes par défaut pour supporter les fenêtres de 1min ou plus
         return Limit::perMinutes($config['window'], $config['max'])->response(function (Request $request, array $headers) use ($name) {
             return response()->json([
@@ -67,10 +68,10 @@ class RateLimitServiceProvider extends ServiceProvider
     private function getErrorMessage(string $type): string
     {
         return match ($type) {
-            'auth'     => 'Trop de tentatives de connexion.',
-            'otp'      => 'Trop de demandes de code. Réessayez plus tard.',
+            'auth' => 'Trop de tentatives de connexion.',
+            'otp' => 'Trop de demandes de code. Réessayez plus tard.',
             'register' => 'Trop de comptes créés depuis cette IP.',
-            default    => 'Trop de requêtes.',
+            default => 'Trop de requêtes.',
         };
     }
 }

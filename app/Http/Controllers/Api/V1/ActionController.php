@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Controller;
+use App\Http\Resources\ActionDashboardResource;
+use App\Http\Resources\ActionHistoryResource;
+use App\Http\Resources\ActionResource;
+use App\Http\Resources\SectorWithActionsResource;
 use App\Models\Action;
 use App\Models\BrvmSector;
 use App\Models\UserAction;
+use App\Services\FiscalYearService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
-use App\Services\FiscalYearService;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Cache;
-use App\Http\Resources\ActionResource;
-use App\Http\Resources\ActionHistoryResource;
-use App\Http\Resources\ActionDashboardResource;
-use App\Http\Resources\ShowSingleActionResource;
-use App\Http\Resources\SectorWithActionsResource;
 
 /**
  * @tags Actions
@@ -34,9 +33,8 @@ class ActionController extends Controller
         private readonly FiscalYearService $fiscalYearService
     ) {}
 
-
-     /**
-      * Retourne la liste complète des actions y compris les relations nécessaires pour le suivi des utilisateurs.
+    /**
+     * Retourne la liste complète des actions y compris les relations nécessaires pour le suivi des utilisateurs.
      */
     public function index(Request $request): JsonResponse
     {
@@ -51,12 +49,11 @@ class ActionController extends Controller
             'brvmSector',
             'classifiedSector',
             'shareholders',
-            'employees.position'
+            'employees.position',
         ])->latest()->get();
 
         // Crée la resource avec le contexte des actions suivies
-        $data = $actions->map(fn ($action) =>
-            new ActionResource($action, $followedActionIds)
+        $data = $actions->map(fn ($action) => new ActionResource($action, $followedActionIds)
         );
 
         return response()->json([
@@ -82,7 +79,7 @@ class ActionController extends Controller
     }
 
     /**
-    * Retourne les détails d'une action spécifique via son identifiant (key) pour le tableau de bord.
+     * Retourne les détails d'une action spécifique via son identifiant (key) pour le tableau de bord.
      */
     public function show(Action $action): JsonResponse
     {
@@ -102,7 +99,7 @@ class ActionController extends Controller
                 'employees.position',
                 'quarterlyResults',
                 // CRITIQUE : Ne charger que les données financières de l'année de référence
-                'financials' => fn($q) => $q->where('year', $referenceYear)
+                'financials' => fn ($q) => $q->where('year', $referenceYear),
             ]);
 
             return new ActionDashboardResource($action, $referenceYear);
@@ -119,9 +116,9 @@ class ActionController extends Controller
                     'calculated_at' => now()->toIso8601String(),
                     'from_cache' => Cache::has($cacheKey),
                     'cache_key' => $cacheKey,
-                    'version' => '1.0'
+                    'version' => '1.0',
                 ]
-            )
+            ),
         ], Response::HTTP_OK);
     }
 
@@ -133,17 +130,22 @@ class ActionController extends Controller
      *     operationId="historiqueAction",
      *     tags={"Actions"},
      *     security={{"sanctum":{}}},
+     *
      *     @OA\Parameter(
      *         name="key",
      *         in="path",
      *         required=true,
      *         description="Clé de l'action",
+     *
      *         @OA\Schema(type="string", example="act_abc123def")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Historique récupéré avec succès",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object"),
      *             @OA\Property(
@@ -154,6 +156,7 @@ class ActionController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Action introuvable"),
      *     @OA\Response(response=401, description="Non authentifié")
      * )
@@ -166,7 +169,7 @@ class ActionController extends Controller
 
         // Clé de cache dynamique basée sur les années calculées
         // Important : la clé change automatiquement après le 02/03
-        $cacheKey = "actions:{$action->id}:history:" . implode('-', $years);
+        $cacheKey = "actions:{$action->id}:history:".implode('-', $years);
 
         $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($action, $years) {
 
@@ -175,8 +178,8 @@ class ActionController extends Controller
                 'brvmSector',
                 'classifiedSector',
                 // Chargement sélectif : uniquement les 5 années concernées
-                'financials' => fn($q) => $q->whereIn('year', $years)
-                    ->orderBy('year', 'desc')
+                'financials' => fn ($q) => $q->whereIn('year', $years)
+                    ->orderBy('year', 'desc'),
             ]);
 
             return new ActionHistoryResource($action, $years);
@@ -188,7 +191,7 @@ class ActionController extends Controller
             'metadata' => [
                 'years_range' => [
                     'from' => min($years),
-                    'to' => max($years)
+                    'to' => max($years),
                 ],
                 'years_available' => count($years),
                 'years' => $years,
@@ -196,7 +199,7 @@ class ActionController extends Controller
                 'is_consolidation_period' => $this->fiscalYearService->isConsolidationPeriod(),
                 'calculated_at' => now()->toIso8601String(),
                 'from_cache' => Cache::has($cacheKey),
-            ]
+            ],
         ], Response::HTTP_OK);
     }
 }

@@ -4,8 +4,8 @@ namespace App\Models;
 
 use App\Models\Concerns\HasKey;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
@@ -118,7 +118,7 @@ class Invoice extends Model
     /**
      * Marquer comme échouée
      */
-    public function markAsFailed(string $reason = null): bool
+    public function markAsFailed(?string $reason = null): bool
     {
         return $this->update([
             'status' => 'failed',
@@ -148,7 +148,6 @@ class Invoice extends Model
         return sprintf('%s-%s%s-%04d', $prefix, $year, $month, $sequence);
     }
 
-
     public function scopeApplyFilters(\Illuminate\Database\Eloquent\Builder $query, array $filters): \Illuminate\Database\Eloquent\Builder
     {
         if (isset($filters['status'])) {
@@ -160,6 +159,7 @@ class Invoice extends Model
         if (isset($filters['to_date'])) {
             $query->where('issued_at', '<=', $filters['to_date']);
         }
+
         return $query;
     }
 }

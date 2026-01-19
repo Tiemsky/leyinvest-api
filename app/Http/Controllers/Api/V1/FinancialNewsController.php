@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Collections\FinancialNewsCollection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinancialNewsRequest;
-use App\Http\Collections\FinancialNewsCollection;
 use App\Http\Resources\FinancialNewsResource;
 use App\Models\FinancialNews;
 use Illuminate\Http\JsonResponse;
@@ -21,27 +21,35 @@ class FinancialNewsController extends Controller
      */
     public function index(FinancialNewsRequest $request): FinancialNewsCollection
     {
-        $cacheKey = 'financial_news:index:' . md5($request->fullUrl());
+        $cacheKey = 'financial_news:index:'.md5($request->fullUrl());
 
         $news = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($request) {
             $query = FinancialNews::query();
 
             // Filtres via Scopes
-            if ($request->filled('source')) $query->bySource($request->input('source'));
-            if ($request->filled('company')) $query->byCompany($request->input('company'));
+            if ($request->filled('source')) {
+                $query->bySource($request->input('source'));
+            }
+            if ($request->filled('company')) {
+                $query->byCompany($request->input('company'));
+            }
 
             // Filtre de période
-            if ($request->filled('from')) $query->whereDate('published_at', '>=', $request->date('from'));
-            if ($request->filled('to')) $query->whereDate('published_at', '<=', $request->date('to'));
+            if ($request->filled('from')) {
+                $query->whereDate('published_at', '>=', $request->date('from'));
+            }
+            if ($request->filled('to')) {
+                $query->whereDate('published_at', '<=', $request->date('to'));
+            }
 
             // Recherche
             if ($request->filled('search')) {
                 $search = $request->input('search');
-                $query->where(fn($q) => $q->where('title', 'LIKE', "%{$search}%")->orWhere('company', 'LIKE', "%{$search}%"));
+                $query->where(fn ($q) => $q->where('title', 'LIKE', "%{$search}%")->orWhere('company', 'LIKE', "%{$search}%"));
             }
 
             return $query->orderBy($request->input('sort_by', 'published_at'), $request->input('sort_order', 'desc'))
-                         ->paginate($request->input('per_page', 20));
+                ->paginate($request->input('per_page', 20));
         });
 
         return new FinancialNewsCollection($news);
@@ -52,7 +60,8 @@ class FinancialNewsController extends Controller
      */
     public function show(FinancialNews $financialNews): FinancialNewsResource
     {
-        $news = Cache::remember("financial_news:show:{$financialNews->id}", now()->addMinutes(30), fn() => $financialNews);
+        $news = Cache::remember("financial_news:show:{$financialNews->id}", now()->addMinutes(30), fn () => $financialNews);
+
         return new FinancialNewsResource($news);
     }
 
@@ -123,6 +132,7 @@ class FinancialNewsController extends Controller
     {
         $list = Cache::remember($cacheKey, now()->addHours(24), function () use ($column, $sort) {
             $data = FinancialNews::distinct()->pluck($column)->filter()->values();
+
             return $sort ? $data->sort()->values() : $data;
         });
 

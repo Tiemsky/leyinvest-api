@@ -25,7 +25,7 @@ class SectorStatsController extends Controller
             ->where('year', $year)
             ->first();
 
-        if (!$metrics) {
+        if (! $metrics) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucune métrique disponible pour ce secteur et cette année',
@@ -53,7 +53,7 @@ class SectorStatsController extends Controller
             ->where('year', $year)
             ->first();
 
-        if (!$metrics) {
+        if (! $metrics) {
             return response()->json([
                 'success' => false,
                 'message' => 'Aucune métrique disponible pour ce secteur et cette année',
@@ -90,10 +90,10 @@ class SectorStatsController extends Controller
                     'id' => $sector->id,
                     'nom' => $sector->nom,
                     'slug' => $sector->slug,
-                    'type' => 'brvm'
+                    'type' => 'brvm',
                 ],
-                'history' => $metrics->map(fn($m) => new SectorStatsResource($sector, $m, 'brvm'))
-            ]
+                'history' => $metrics->map(fn ($m) => new SectorStatsResource($sector, $m, 'brvm')),
+            ],
         ]);
     }
 
@@ -121,10 +121,10 @@ class SectorStatsController extends Controller
                     'id' => $sector->id,
                     'nom' => $sector->nom,
                     'slug' => $sector->slug,
-                    'type' => 'classified'
+                    'type' => 'classified',
                 ],
-                'history' => $metrics->map(fn($m) => new SectorStatsResource($sector, $m, 'classified'))
-            ]
+                'history' => $metrics->map(fn ($m) => new SectorStatsResource($sector, $m, 'classified')),
+            ],
         ]);
     }
 }

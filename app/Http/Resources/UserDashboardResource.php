@@ -21,6 +21,7 @@ class UserDashboardResource extends JsonResource
                     ->take(5)
                     ->map(function ($userAction) {
                         $action = $userAction->action;
+
                         return [
                             'key' => (string) $action->key,
                             'symbole' => (string) $action->symbole,
@@ -37,6 +38,7 @@ class UserDashboardResource extends JsonResource
             'ma_liste' => $this->whenLoaded('followedActions', function () {
                 return $this->followedActions->map(function ($userAction) {
                     $action = $userAction->action;
+
                     return [
                         'key' => (string) $action->key,
                         'symbole' => (string) $action->symbole,

@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Shareholder extends Model
 {
-     // Champs modifiables en masse
-     protected $guarded = [];
+    // Champs modifiables en masse
+    protected $guarded = [];
 
     // Conversions de types
     protected $casts = [
@@ -16,7 +16,8 @@ class Shareholder extends Model
         'rang' => 'integer',
     ];
 
-    public function action(): BelongsTo{
+    public function action(): BelongsTo
+    {
         return $this->belongsTo(Action::class);
     }
 }

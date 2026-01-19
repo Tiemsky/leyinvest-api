@@ -34,16 +34,16 @@ class ScrapeFinancialNewsJob implements ShouldQueue
             // 1. On prépare le robot (on instancie la classe)
             $robot = app($this->classeDuRobot);
 
-            Log::info("🤖 Le robot [" . class_basename($this->classeDuRobot) . "] commence à chercher des actualités.");
+            Log::info('🤖 Le robot ['.class_basename($this->classeDuRobot).'] commence à chercher des actualités.');
 
             // 2. On lance la récupération
             $robot->scrape();
 
-            Log::info("✅ Mission réussie pour le robot : " . class_basename($this->classeDuRobot));
+            Log::info('✅ Mission réussie pour le robot : '.class_basename($this->classeDuRobot));
 
         } catch (\Exception $erreur) {
             // En cas de problème (site en panne, etc.), on enregistre l'erreur
-            Log::error("❌ Échec du robot [" . class_basename($this->classeDuRobot) . "] : " . $erreur->getMessage());
+            Log::error('❌ Échec du robot ['.class_basename($this->classeDuRobot).'] : '.$erreur->getMessage());
 
             // On peut dire à Laravel de retenter plus tard
             $this->fail($erreur);

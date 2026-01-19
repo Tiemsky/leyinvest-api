@@ -50,7 +50,7 @@ return [
      * On définit clairement le staging et la prod.
      */
     'servers' => [
-        'Local' => config('app.url') . '/api',
+        'Local' => config('app.url').'/api',
         'Staging' => 'https://staging.api.leyinvest.com/api',
         'Production' => 'https://api.leyinvest.com/api',
     ],
@@ -71,7 +71,7 @@ return [
 
     'middleware' => [
         'web',
-        RestrictedDocsAccess::class, // Ta Gate définie dans AppServiceProvider
+        RestrictedDocsAccess::class,
     ],
 
     'extensions' => [

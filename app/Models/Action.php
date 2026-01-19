@@ -3,20 +3,18 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasKey;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-  /**
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
  * Model Action avec double classification sectorielle
  *
  * Classifications:
  * - brvm_sector_id: Secteur officiel BRVM
  * - classified_sector_id: Secteur reclassé personnalisé (SR)
  * */
-
-
 class Action extends Model
 {
     /** @use HasFactory<\Database\Factories\ActionFactory> */
@@ -47,57 +45,64 @@ class Action extends Model
      * Route key name pour Route Model Binding
      * Permet d'utiliser 'key' au lieu de 'id' dans les routes
      */
-    public function getRouteKeyName(): string{
+    public function getRouteKeyName(): string
+    {
         return 'key';
     }
 
     /**
      * Scope pour résolution par key
      */
-    public function scopeByKey($query, string $key){
+    public function scopeByKey($query, string $key)
+    {
         return $query->where('key', $key);
     }
 
     /**
      * Relation avec secteur BRVM officiel
      */
-    public function brvmSector(): BelongsTo{
+    public function brvmSector(): BelongsTo
+    {
         return $this->belongsTo(BrvmSector::class, 'brvm_sector_id');
     }
 
     /**
      * Relation avec secteur reclassé
      */
-    public function classifiedSector(): BelongsTo{
+    public function classifiedSector(): BelongsTo
+    {
         return $this->belongsTo(ClassifiedSector::class, 'classified_sector_id');
     }
 
     /**
      * Relation avec données financières annuelles
      */
-    public function stockFinancials(): HasMany{
+    public function stockFinancials(): HasMany
+    {
         return $this->hasMany(StockFinancial::class);
     }
 
     /**
      * Relation avec résultats trimestriels
      */
-    public function quarterlyResults(): HasMany{
+    public function quarterlyResults(): HasMany
+    {
         return $this->hasMany(QuarterlyResult::class);
     }
-
 
     /**
      * Scope pour résolution par symbole
      */
-    public function scopeBySymbole($query, string $symbole){
+    public function scopeBySymbole($query, string $symbole)
+    {
         return $query->where('symbole', $symbole);
     }
 
     /**
      * Récupère les données financières pour une année
      */
-    public function getFinancialForYear(int $year): ?StockFinancial{
+    public function getFinancialForYear(int $year): ?StockFinancial
+    {
         return $this->stockFinancials()
             ->where('year', $year)
             ->first();
@@ -106,7 +111,8 @@ class Action extends Model
     /**
      * Récupère les données financières pour une plage d'années
      */
-    public function getFinancialsForYears(int $startYear, int $endYear){
+    public function getFinancialsForYears(int $startYear, int $endYear)
+    {
         return $this->stockFinancials()
             ->whereBetween('year', [$startYear, $endYear])
             ->orderBy('year', 'desc')
@@ -116,7 +122,8 @@ class Action extends Model
     /**
      * Vérifie si l'action est dans le secteur services financiers
      */
-    public function isFinancialService(): bool{
+    public function isFinancialService(): bool
+    {
         return $this->brvmSector &&
                $this->brvmSector->slug === 'services-financiers';
     }
@@ -124,40 +131,48 @@ class Action extends Model
     /**
      * Données financières annuelles
      */
-    public function financials(): HasMany{
+    public function financials(): HasMany
+    {
         return $this->hasMany(StockFinancial::class)->orderBy('year', 'desc');
     }
+
     /**
      * Actionnaires
      */
-    public function shareholders(): HasMany{
+    public function shareholders(): HasMany
+    {
         return $this->hasMany(Shareholder::class);
     }
+
     /**
      * Employés / Direction
      */
-    public function employees(): HasMany{
+    public function employees(): HasMany
+    {
         return $this->hasMany(Employee::class);
     }
 
     /**
      * Dernière donnée financière disponible
      */
-    public function latestFinancial(){
+    public function latestFinancial()
+    {
         return $this->hasOne(StockFinancial::class)->latestOfMany('year');
     }
 
     /**
      * Positions des employee à l'action
      */
-    public function positions(): HasMany{
+    public function positions(): HasMany
+    {
         return $this->hasMany(Position::class);
     }
 
     /**
      * Relation avec les prévisions financières | Analyze; prevision de rendements
      */
-    public function forecast(){
+    public function forecast()
+    {
         return $this->hasOne(FinancialForecast::class);
     }
 
@@ -166,7 +181,7 @@ class Action extends Model
     public function getRendementPrevisionnelAttribute()
     {
         // On charge la prévision si elle n'est pas chargée
-        if (!$this->relationLoaded('forecast')) {
+        if (! $this->relationLoaded('forecast')) {
             $this->load('forecast');
         }
 
@@ -176,7 +191,7 @@ class Action extends Model
         if ($cours > 0) {
             return round(($dnpaPrev / $cours) * 100, 2);
         }
+
         return 0;
     }
-
 }

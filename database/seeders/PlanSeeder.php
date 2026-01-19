@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Plan;
-use App\Models\Feature; // Nécessaire pour les constantes et la recherche
-use Illuminate\Support\Str;
+use App\Models\Feature;
+use App\Models\Plan; // Nécessaire pour les constantes et la recherche
 use Illuminate\Database\Seeder;
 
 class PlanSeeder extends Seeder
@@ -29,7 +28,7 @@ class PlanSeeder extends Seeder
                     Feature::KEY_FINANCIAL_INDICATORS => ['enabled' => true],
                     Feature::KEY_CALCULATOR => ['enabled' => true],
                     Feature::KEY_DIVIDEND_CALENDAR => ['enabled' => true],
-                ]
+                ],
             ],
             [
                 'nom' => 'Pro',
@@ -53,7 +52,7 @@ class PlanSeeder extends Seeder
                     Feature::KEY_COMPLETE_INDICATORS => ['enabled' => true],
                     Feature::KEY_COMPANY_HISTORY => ['enabled' => true],
                     Feature::KEY_NOTIFICATIONS => ['enabled' => true],
-                ]
+                ],
             ],
             [
                 'nom' => 'Premium',
@@ -80,8 +79,8 @@ class PlanSeeder extends Seeder
                     // Features Premium (Ajoutées)
                     Feature::KEY_PREMIUM_ARTICLES => ['enabled' => true],
                     Feature::KEY_YIELD_FORECAST => ['enabled' => true],
-                ]
-            ]
+                ],
+            ],
         ];
 
         // Charger toutes les Features existantes en mémoire par leur clé
@@ -101,8 +100,8 @@ class PlanSeeder extends Seeder
             $attributes = ['slug' => $planValues['slug']];
 
             // Si le plan n'existe pas, on génère sa clé unique
-            if (!Plan::where('slug', $planValues['slug'])->exists()) {
-                $planValues['key'] = 'pla_' . time();
+            if (! Plan::where('slug', $planValues['slug'])->exists()) {
+                $planValues['key'] = 'pla_'.time();
             }
 
             // 3. Création ou Mise à jour du Plan

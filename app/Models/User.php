@@ -3,20 +3,17 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasKey;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasKey, SoftDeletes;
+    use HasApiTokens, HasFactory, HasKey, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -47,13 +44,16 @@ class User extends Authenticatable
         ];
     }
 
-    public function getRouteKeyName(): string{
+    public function getRouteKeyName(): string
+    {
         return 'key';
     }
-       /**
+
+    /**
      * Les actions que cet utilisateur suit
      */
-    public function followedActions(): HasMany{
+    public function followedActions(): HasMany
+    {
         return $this->hasMany(UserAction::class, 'user_id');
     }
 
@@ -97,14 +97,16 @@ class User extends Authenticatable
     /**
      * Vérifier si l'OTP a expiré
      */
-    public function isOtpExpired(): bool{
+    public function isOtpExpired(): bool
+    {
         return $this->otp_expires_at === null || $this->otp_expires_at->isPast();
     }
 
     /**
      * Compléter l'inscription
      */
-    public function completeRegistration(array $data): bool{
+    public function completeRegistration(array $data): bool
+    {
         return $this->update([
             'password' => $data['password'],
             'country_id' => $data['country_id'],
@@ -120,99 +122,110 @@ class User extends Authenticatable
     /**
      * Vérifier si l'inscription est complète
      */
-    public function hasCompletedRegistration(): bool{
+    public function hasCompletedRegistration(): bool
+    {
         return $this->registration_completed && $this->password !== null;
     }
 
-       // Relations
-       public function subscriptions(){
-           return $this->hasMany(Subscription::class);
-       }
+    // Relations
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
 
-       public function activeSubscription(){
-           return $this->hasOne(Subscription::class)
-               ->where(function($query) {
-                   $query->where('status', 'active')
-                         ->orWhere('status', 'trialing');
-               })
-               ->where(function($q) {
-                   $q->whereNull('ends_at')
-                     ->orWhere('ends_at', '>', now());
-               })
-               ->with('plan.features')
-               ->latest();
-       }
+    public function activeSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere('status', 'trialing');
+            })
+            ->where(function ($q) {
+                $q->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', now());
+            })
+            ->with('plan.features')
+            ->latest();
+    }
 
-       public function invoices(){
-           return $this->hasMany(\App\Models\Invoice::class);
-       }
+    public function invoices()
+    {
+        return $this->hasMany(\App\Models\Invoice::class);
+    }
 
-       /**
-        * Récupérer le plan actuel de l'utilisateur via sa souscription active
-        */
-       public function currentPlan()
-       {
-           return $this->activeSubscription?->plan;
-       }
+    /**
+     * Récupérer le plan actuel de l'utilisateur via sa souscription active
+     */
+    public function currentPlan()
+    {
+        return $this->activeSubscription?->plan;
+    }
 
-       // Méthodes de vérification
-       public function hasActiveSubscription(){
-           return $this->activeSubscription()->exists();
-       }
+    // Méthodes de vérification
+    public function hasActiveSubscription()
+    {
+        return $this->activeSubscription()->exists();
+    }
 
-       public function onPlan($planSlug): bool
-       {
-           $subscription = $this->activeSubscription;
-           return $subscription && $subscription->plan->slug === $planSlug;
-       }
+    public function onPlan($planSlug): bool
+    {
+        $subscription = $this->activeSubscription;
 
-       public function hasFeature(string $feature): bool
-       {
-           $subscription = $this->activeSubscription;
+        return $subscription && $subscription->plan->slug === $planSlug;
+    }
 
-           if (!$subscription || !$subscription->isValid()) {
-               // Plan gratuit par défaut
-               $freePlan = Plan::free()->first();
-               return $freePlan ? $freePlan->hasFeature($feature) : false;
-           }
+    public function hasFeature(string $feature): bool
+    {
+        $subscription = $this->activeSubscription;
 
-           return $subscription->plan->hasFeature($feature);
-       }
+        if (! $subscription || ! $subscription->isValid()) {
+            // Plan gratuit par défaut
+            $freePlan = Plan::free()->first();
 
-       public function getFeatureLimit(string $featureKey, string $limitKey = 'limit'): ?int
-       {
-           $subscription = $this->activeSubscription;
+            return $freePlan ? $freePlan->hasFeature($feature) : false;
+        }
 
-           if (!$subscription || !$subscription->isValid()) {
-               $freePlan = Plan::free()->first();
-               return $freePlan?->getFeatureLimit($featureKey, $limitKey);
-           }
+        return $subscription->plan->hasFeature($feature);
+    }
 
-           return $subscription->plan->getFeatureLimit($featureKey, $limitKey);
-       }
+    public function getFeatureLimit(string $featureKey, string $limitKey = 'limit'): ?int
+    {
+        $subscription = $this->activeSubscription;
 
-       /**
-        * Souscrire à un plan (utilise maintenant SubscriptionService)
-        * @deprecated Utiliser SubscriptionService::subscribe() à la place
-        */
-       public function subscribeTo(Plan $plan, array $options = [])
-       {
-           $subscriptionService = app(\App\Services\SubscriptionService::class);
-           return $subscriptionService->subscribe($this, $plan, $options);
-       }
+        if (! $subscription || ! $subscription->isValid()) {
+            $freePlan = Plan::free()->first();
 
-       /**
-        * Annuler l'abonnement actif
-        * @deprecated Utiliser SubscriptionService::cancel() à la place
-        */
-       public function cancelSubscription(?string $reason = null): bool
-       {
-           if ($subscription = $this->activeSubscription) {
-               $subscriptionService = app(\App\Services\SubscriptionService::class);
-               return $subscriptionService->cancel($subscription, $reason);
-           }
-           return false;
-       }
+            return $freePlan?->getFeatureLimit($featureKey, $limitKey);
+        }
 
+        return $subscription->plan->getFeatureLimit($featureKey, $limitKey);
+    }
 
+    /**
+     * Souscrire à un plan (utilise maintenant SubscriptionService)
+     *
+     * @deprecated Utiliser SubscriptionService::subscribe() à la place
+     */
+    public function subscribeTo(Plan $plan, array $options = [])
+    {
+        $subscriptionService = app(\App\Services\SubscriptionService::class);
+
+        return $subscriptionService->subscribe($this, $plan, $options);
+    }
+
+    /**
+     * Annuler l'abonnement actif
+     *
+     * @deprecated Utiliser SubscriptionService::cancel() à la place
+     */
+    public function cancelSubscription(?string $reason = null): bool
+    {
+        if ($subscription = $this->activeSubscription) {
+            $subscriptionService = app(\App\Services\SubscriptionService::class);
+
+            return $subscriptionService->cancel($subscription, $reason);
+        }
+
+        return false;
+    }
 }

@@ -55,10 +55,10 @@ return new class extends Migration
 
             $table->timestamps(); // created_at, updated_at = dates de création/modification
 
-              // ========== METADATA ==========
+            // ========== METADATA ==========
 
-              $table->index(['action_id', 'year'], 'idx_action_year');
-              $table->index('year', 'idx_year');
+            $table->index(['action_id', 'year'], 'idx_action_year');
+            $table->index('year', 'idx_year');
         });
     }
 

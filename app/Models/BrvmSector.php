@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasKey;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
  * Model BrvmSector - Secteur officiel BRVM
@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class BrvmSector extends Model
 {
     use HasFactory, HasKey;
+
     protected $fillable = [
         'nom',
         'slug',
@@ -33,21 +34,24 @@ class BrvmSector extends Model
     /**
      * Relation avec actions
      */
-    public function actions(): HasMany{
+    public function actions(): HasMany
+    {
         return $this->hasMany(Action::class, 'brvm_sector_id');
     }
 
     /**
      * Scope pour résolution par slug
      */
-    public function scopeBySlug($query, string $slug){
+    public function scopeBySlug($query, string $slug)
+    {
         return $query->where('slug', $slug);
     }
 
     /**
      * Route key name pour Route Model Binding
      */
-    public function getRouteKeyName(): string{
+    public function getRouteKeyName(): string
+    {
         return 'key';
     }
 }

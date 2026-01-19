@@ -11,9 +11,10 @@ class ForceJsonResponse
     {
         $response = $next($request);
         // Force JSON pour toutes les requêtes API
-        if ($request->is('api/*') && !$response->headers->has('Content-Type')) {
+        if ($request->is('api/*') && ! $response->headers->has('Content-Type')) {
             $response->headers->set('Content-Type', 'application/json');
         }
+
         return $response;
     }
 }

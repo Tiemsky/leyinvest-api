@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Enums\RoleEnum;
 use App\Models\Country;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -17,10 +17,10 @@ class UserSeeder extends Seeder
 
         // USER 1
         User::create([
-            'key' => "use". time(),
+            'key' => 'use'.time(),
             'google_id' => null,
             'country_id' => $countryId,
-            'role' =>  RoleEnum::ADMIN->value,
+            'role' => RoleEnum::ADMIN->value,
             'nom' => 'Doe',
             'prenom' => 'John',
             'email' => 'tiafranck31@yahoo.fr',
@@ -40,10 +40,10 @@ class UserSeeder extends Seeder
 
         // USER 2
         User::create([
-            'key' => "use". (time() + 1),
+            'key' => 'use'.(time() + 1),
             'google_id' => null,
             'country_id' => $countryId,
-            'role' =>  RoleEnum::USER->value,
+            'role' => RoleEnum::USER->value,
             'nom' => 'Smith',
             'prenom' => 'Anna',
             'email' => 'tiemksy@gmail.com',
@@ -62,10 +62,10 @@ class UserSeeder extends Seeder
         ]);
 
         User::create([
-            'key' => "use". (time() + 2),
+            'key' => 'use'.(time() + 2),
             'google_id' => null,
             'country_id' => $countryId,
-            'role' =>  RoleEnum::USER->value,
+            'role' => RoleEnum::USER->value,
             'nom' => 'Pro',
             'prenom' => 'User',
             'email' => 'tiemsky@yahoo.com',

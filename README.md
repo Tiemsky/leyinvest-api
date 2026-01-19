@@ -1,61 +1,118 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+🚀 LeyInvest - Fintech BRVM Sync Engine
+📌 Présentation du Projet
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+LeyInvest est une plateforme Fintech spécialisée dans le suivi des marchés financiers de la BRVM (Bourse Régionale des Valeurs Mobilières).
 
-## About Laravel
+Ce dépôt contient le moteur de synchronisation (Backend). Il orchestre la récupération des données de marché via un scraper FastAPI (Python), traite les données financières complexes (actions, indices sectoriels, indicateurs de marché) et les expose via une API REST sécurisée par Webhooks.
+Architecture Technique
+🛠 Stack Technique
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+    Framework: Laravel 12 (PHP 8.3)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+    Base de données: PostgreSQL 16 (Données financières persistantes)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+    Asynchronisme: Redis (Gestion des Files d'attente / Queues)
 
-## Learning Laravel
+    Infrastructure: Docker & Docker Compose (Environnements Local & Prod)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+    Outils de Dev: pgAdmin (DB), Mailpit (Emails), Redis Commander (Cache)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+🚀 Installation & Démarrage Rapide
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Le projet utilise un Makefile pour simplifier toutes les opérations Docker complexes.
 
-## Laravel Sponsors
+1. Pré-requis
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+    Docker & Docker Compose
 
-### Premium Partners
+    make installé sur votre système
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2. Initialisation complète
+   Bash
 
-## Contributing
+# Clonez le projet
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+git clone [url-du-repo]
+cd leyinvest-backend
 
-## Code of Conduct
+# Setup automatique (Install deps + Docker Up + Migrations + Keys)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+make setup
 
-## Security Vulnerabilities
+3. Accès aux outils (Local)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+    API Laravel: http://localhost:8000
 
-## License
+    pgAdmin (Base de données): http://localhost:8080 (Login: tiafranck@leyinvestcom.ci)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    Mailpit (Tests Emails): http://localhost:8025
+
+    Redis Commander: http://localhost:8081
+
+🕹 Commandes Utiles (Makefile)
+Gestion des Containers
+
+    make up : Démarre l'environnement.
+
+    make down : Arrête tous les services.
+
+    make restart : Redémarre les containers.
+
+    make logs-app : Affiche les logs Laravel en temps réel.
+
+Base de Données
+
+    make migrate : Exécute les migrations.
+
+    make fresh : Réinitialise totalement la base avec les Seeders.
+
+    make shell-db : Accède directement au terminal PostgreSQL.
+
+Queues & Synchronisation
+
+    make logs-queue : Surveille le Worker qui traite les synchronisations BRVM.
+
+    make queue-restart : Redémarre le processeur de tâches après une modification de code.
+
+📡 Synchronisation BRVM (Webhook)
+
+Le système reçoit des signaux de l'API Python pour mettre à jour les cours de la bourse.
+
+Exemple de déclenchement manuel du Webhook :
+Bash
+
+curl -X POST http://localhost:8000/api/webhooks/brvm-sync \
+ -H "X-Webhook-Token: [TON_TOKEN]" \
+ -H "Content-Type: application/json" \
+ -d '{"data_type": "all", "data": {"status": "trigger"}}'
+
+🏗 Structure Docker
+
+Le projet est divisé en plusieurs services optimisés :
+
+    App: Serveur web PHP-FPM / Nginx.
+
+    Worker: Processeur de tâches en arrière-plan (Queue Redis).
+
+    Scheduler: Gère les tâches planifiées (ex: Nettoyage des logs à minuit).
+
+    Postgres: Stockage relationnel haute performance.
+
+    Redis: Broker pour les queues et le cache.
+
+🔐 Sécurité & Permissions
+
+Si vous rencontrez des problèmes de droits sur Linux/WSL :
+Bash
+
+make permissions
+
+# ou pour WSL spécifiquement
+
+make fix-wsl-permissions
+
+👥 Équipe & Support
+
+    Lead Developer: Franck Tia
+
+    Organisation: LeyInvest Fintech

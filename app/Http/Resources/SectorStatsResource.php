@@ -8,7 +8,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class SectorStatsResource extends JsonResource
 {
     private $sector;
+
     private $metrics;
+
     private string $type;
 
     public function __construct($sector, $metrics, string $type)
@@ -124,8 +126,8 @@ class SectorStatsResource extends JsonResource
     private function formatStat(string $field): array
     {
         return [
-            'moy' => $this->metrics->{$field . '_moy'} ?? null,
-            'ecart_type' => $this->metrics->{$field . '_ecart_type'} ?? null,
+            'moy' => $this->metrics->{$field.'_moy'} ?? null,
+            'ecart_type' => $this->metrics->{$field.'_ecart_type'} ?? null,
         ];
     }
 }

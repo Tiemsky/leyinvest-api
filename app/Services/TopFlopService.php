@@ -5,8 +5,9 @@ namespace App\Services;
 use App\Models\Action;
 use Illuminate\Support\Collection;
 
-class TopFlopService {
-  /**
+class TopFlopService
+{
+    /**
      * Récupère le top 5 des actions par variation
      */
     public function getTop(int $limit = 5): Collection

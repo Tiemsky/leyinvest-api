@@ -4,12 +4,12 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Http\Resources\PlanResource;
+
 class InvoiceResource extends JsonResource
 {
     /**
      * Transforme la ressource en tableau.
-     * @param Request $request
+     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -69,6 +69,7 @@ class InvoiceResource extends JsonResource
      *     schema="InvoiceListItem",
      *     type="object",
      *     description="Facture (vue simplifiée pour la liste)",
+     *
      *     @OA\Property(property="id", type="integer", example=45),
      *     @OA\Property(property="invoice_number", type="string", example="INV-2025-00045"),
      *     @OA\Property(property="status", type="string", example="PAID"),
@@ -77,7 +78,6 @@ class InvoiceResource extends JsonResource
      *     @OA\Property(property="issued_at", type="string", format="date-time", example="2025-02-01T10:15:00Z")
      * )
      */
-
     public static function collection(mixed $resource)
     {
         // Surcharge pour retourner une version simplifiée dans la liste (index)

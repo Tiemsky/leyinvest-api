@@ -2,12 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Models\Role;
 use App\Enums\RoleEnum;
 use App\Models\Country;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -28,8 +27,8 @@ class UserFactory extends Factory
     {
 
         return [
-            'key' => 'usr-' . strtolower(Str::random(8)),
-            'country_id' => Country::inRandomOrder()->first()->id?? Country::factory(),
+            'key' => 'usr-'.strtolower(Str::random(8)),
+            'country_id' => Country::inRandomOrder()->first()->id ?? Country::factory(),
             'role' => RoleEnum::USER->value,
             'nom' => $this->faker->lastName,
             'prenom' => $this->faker->firstName,
@@ -48,8 +47,8 @@ class UserFactory extends Factory
             'whatsapp' => $this->faker->optional(0.6)->numerify('+225 ## ## ## ## ##'),
             'email' => $this->faker->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
-            'otp_code'=> null,
-            'otp_expires_at'=> null,
+            'otp_code' => null,
+            'otp_expires_at' => null,
             'avatar' => $this->faker->optional(0.3)->imageUrl(200, 200, 'people', true),
             'remember_token' => Str::random(10),
         ];

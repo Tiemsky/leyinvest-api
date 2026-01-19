@@ -9,8 +9,8 @@ class Employee extends Model
 {
     protected $guarded = [];
 
-    public function position(): BelongsTo{
+    public function position(): BelongsTo
+    {
         return $this->belongsTo(Position::class);
     }
-
 }

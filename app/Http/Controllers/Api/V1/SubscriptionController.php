@@ -6,25 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Plan;
 use App\Models\Subscription;
-use App\Services\SubscriptionService;
 use App\Services\CouponService;
 use App\Services\PaymentService;
+use App\Services\SubscriptionService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Exception;
 
 /**
  * @tags Souscription
-*/
+ */
 class SubscriptionController extends Controller
 {
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected CouponService $couponService,
         protected PaymentService $paymentService
-    ) {
-    }
+    ) {}
 
     // --- HELPER CENTRALISÉ DE GESTION DES EXCEPTIONS (Légèrement nettoyé) ---
     private function handleException(Exception $e, string $defaultMessage): JsonResponse
@@ -39,7 +38,7 @@ class SubscriptionController extends Controller
         return response()->json([
             'success' => false,
             'message' => $message,
-            'debug_error' => config('app.debug') ? $e->getMessage() : null
+            'debug_error' => config('app.debug') ? $e->getMessage() : null,
         ], $status);
     }
 
@@ -51,9 +50,10 @@ class SubscriptionController extends Controller
     {
         // Ajout de 'coupon' pour un Eager Loading complet
         $subscription = $request->user()->activeSubscription()->with('plan', 'coupon')->first();
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['success' => true, 'message' => 'Aucun abonnement actif.', 'data' => null]);
         }
+
         return response()->json(['success' => true, 'data' => new SubscriptionResource($subscription)]);
     }
 
@@ -96,7 +96,6 @@ class SubscriptionController extends Controller
      * POST /api/v1/subscriptions/payment-link
      * Récupère le lien de paiement (URL de redirection) pour une souscription PENDING.
      */
-
     public function getPaymentLink(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -157,7 +156,7 @@ class SubscriptionController extends Controller
         // Eager Loading de la relation 'plan' pour la comparaison de prix
         $currentSubscription = $request->user()->activeSubscription()->with('plan')->first();
 
-        if (!$currentSubscription) {
+        if (! $currentSubscription) {
             return response()->json(['success' => false, 'message' => 'Aucun abonnement actif à modifier.'], 404);
         }
 
@@ -184,7 +183,6 @@ class SubscriptionController extends Controller
     /**
      * POST /api/v1/subscriptions/cancel
      */
-
     public function cancel(Request $request): JsonResponse
     {
         $request->validate([
@@ -194,7 +192,7 @@ class SubscriptionController extends Controller
         ]);
         $subscription = $request->user()->activeSubscription;
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['success' => false, 'message' => 'Aucun abonnement actif.'], 404);
         }
 
@@ -226,7 +224,7 @@ class SubscriptionController extends Controller
             ->latest()
             ->first();
 
-        if (!$subscription || !$subscription->isCanceled()) {
+        if (! $subscription || ! $subscription->isCanceled()) {
             return response()->json(['success' => false, 'message' => 'Aucun abonnement annulé éligible à la reprise.'], 404);
         }
 
@@ -260,7 +258,7 @@ class SubscriptionController extends Controller
             $result = $this->couponService->validate($validated['coupon_code'], $plan->id);
 
             // J'ai gardé votre astuce d'exception, mais idéalement, on devrait utiliser un message d'erreur 400
-            if (!$result['valid']) {
+            if (! $result['valid']) {
                 throw new Exception($result['message'], 400);
             }
 
@@ -280,6 +278,7 @@ class SubscriptionController extends Controller
         } catch (Exception $e) {
             // Utilisation de la gestion centralisée des erreurs
             $defaultMessage = $e->getCode() === 400 ? $e->getMessage() : 'Erreur lors de la validation du coupon.';
+
             return $this->handleException($e, $defaultMessage);
         }
     }

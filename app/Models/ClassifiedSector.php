@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ClassifiedSector extends Model
 {
     use HasFactory, HasKey;
+
     protected $fillable = [
         'nom',
         'slug',
@@ -33,22 +34,24 @@ class ClassifiedSector extends Model
     /**
      * Relation avec actions
      */
-    public function actions(): HasMany{
+    public function actions(): HasMany
+    {
         return $this->hasMany(Action::class, 'classified_sector_id');
     }
-
 
     /**
      * Scope pour résolution par slug
      */
-    public function scopeBySlug($query, string $slug){
+    public function scopeBySlug($query, string $slug)
+    {
         return $query->where('slug', $slug);
     }
 
     /**
      * Route key name pour Route Model Binding
      */
-    public function getRouteKeyName(): string{
+    public function getRouteKeyName(): string
+    {
         return 'key';
     }
 }

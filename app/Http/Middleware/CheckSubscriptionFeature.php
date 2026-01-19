@@ -4,31 +4,28 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class CheckSubscriptionFeature
 {
     /**
      * Vérifie si l'utilisateur a accès à une feature spécifique.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string $featureKey - La clé de la feature à vérifier (ex: 'articles_premium')
-     * @return Response
+     * @param  string  $featureKey  - La clé de la feature à vérifier (ex: 'articles_premium')
      */
     public function handle(Request $request, Closure $next, string $featureKey): Response
     {
         $user = Auth::user();
 
         // 1. Vérification de l'authentification
-        if (!$user) {
+        if (! $user) {
             return $this->unauthorizedResponse($request);
         }
 
         // 2. Vérification de la Feature
         // La logique est déléguée au modèle User/Plan pour vérifier la relation Many-to-Many
-        if (!$user->hasFeature($featureKey)) {
+        if (! $user->hasFeature($featureKey)) {
 
             // Accès refusé : L'utilisateur n'a pas la feature dans son plan
             return $this->forbiddenResponse($request, $user, $featureKey);
@@ -48,7 +45,7 @@ class CheckSubscriptionFeature
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Non authentifié. Veuillez vous connecter.'
+                'message' => 'Non authentifié. Veuillez vous connecter.',
             ], 401);
         }
 
@@ -81,6 +78,6 @@ class CheckSubscriptionFeature
         // Pour les applications Web, rediriger vers la page de tarification
         // Remplacez 'pricing.upgrade' par le nom de votre route de page de tarification
         return redirect()->route('pricing.upgrade')
-                         ->with('error', "La fonctionnalité '{$featureKey}' n'est pas disponible dans votre plan actuel. Veuillez mettre à niveau.");
+            ->with('error', "La fonctionnalité '{$featureKey}' n'est pas disponible dans votre plan actuel. Veuillez mettre à niveau.");
     }
 }

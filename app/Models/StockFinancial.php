@@ -139,7 +139,7 @@ class StockFinancial extends Model
      */
     public function isFinancialService(): bool
     {
-        return !is_null($this->produit_net_bancaire);
+        return ! is_null($this->produit_net_bancaire);
     }
 
     /**
@@ -147,9 +147,10 @@ class StockFinancial extends Model
      */
     public function getCapitalisationAttribute(): ?float
     {
-        if (!$this->cours_31_12 || !$this->nombre_titre) {
+        if (! $this->cours_31_12 || ! $this->nombre_titre) {
             return null;
         }
+
         return $this->cours_31_12 * $this->nombre_titre;
     }
 
@@ -158,9 +159,10 @@ class StockFinancial extends Model
      */
     public function getBnpaAttribute(): ?float
     {
-        if (!$this->resultat_net || !$this->nombre_titre || $this->nombre_titre == 0) {
+        if (! $this->resultat_net || ! $this->nombre_titre || $this->nombre_titre == 0) {
             return null;
         }
+
         return $this->resultat_net / $this->nombre_titre;
     }
 
@@ -170,7 +172,7 @@ class StockFinancial extends Model
      */
     public function isBilanBalanced(): bool
     {
-        if (!$this->total_actif || !$this->capitaux_propres) {
+        if (! $this->total_actif || ! $this->capitaux_propres) {
             return false;
         }
 
@@ -183,6 +185,7 @@ class StockFinancial extends Model
         }
 
         $ecart = abs($this->total_actif - $totalPassif) / $this->total_actif;
+
         return $ecart < 0.01;
     }
 }

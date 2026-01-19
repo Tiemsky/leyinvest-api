@@ -10,7 +10,6 @@ class TopFlopResource extends JsonResource
     /**
      * Transforme la ressource en tableau pour l'API.
      *
-     * @param Request $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

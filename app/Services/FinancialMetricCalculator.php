@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Action;
 use App\Models\StockFinancial;
 use App\Models\StockFinancialMetric;
-use Illuminate\Support\Collection;
 
 class FinancialMetricCalculator
 {
@@ -17,7 +16,7 @@ class FinancialMetricCalculator
         $currentFinancial = $action->financials()->where('year', $year)->first();
         $previousFinancial = $action->financials()->where('year', $year - 1)->first();
 
-        if (!$currentFinancial) {
+        if (! $currentFinancial) {
             return null;
         }
 
@@ -55,7 +54,7 @@ class FinancialMetricCalculator
      */
     private function calculateCroissanceSF(?StockFinancial $current, ?StockFinancial $previous): array
     {
-        if (!$current || !$previous) {
+        if (! $current || ! $previous) {
             return $this->getEmptyCroissanceSF();
         }
 
@@ -70,7 +69,7 @@ class FinancialMetricCalculator
             $croissance_ebit,
             $croissance_ebitda,
             $croissance_rn,
-            $croissance_capex
+            $croissance_capex,
         ]);
 
         return [
@@ -88,7 +87,7 @@ class FinancialMetricCalculator
      */
     private function calculateCroissanceAS(?StockFinancial $current, ?StockFinancial $previous): array
     {
-        if (!$current || !$previous) {
+        if (! $current || ! $previous) {
             return $this->getEmptyCroissanceAS();
         }
 
@@ -103,7 +102,7 @@ class FinancialMetricCalculator
             $croissance_ebit,
             $croissance_ebitda,
             $croissance_rn,
-            $croissance_capex
+            $croissance_capex,
         ]);
 
         return [
@@ -137,7 +136,7 @@ class FinancialMetricCalculator
             $marge_ebitda,
             $marge_operationnelle,
             $roe,
-            $roa
+            $roa,
         ]);
 
         return [
@@ -175,7 +174,7 @@ class FinancialMetricCalculator
 
         $moy_remuneration = $this->calculateAverage([
             $rendement_dividendes,
-            $taux_distribution
+            $taux_distribution,
         ]);
 
         return [
@@ -240,7 +239,7 @@ class FinancialMetricCalculator
             $per,
             $pbr,
             $ratio_ps,
-            $ev_ebitda
+            $ev_ebitda,
         ]);
 
         return [
@@ -285,7 +284,7 @@ class FinancialMetricCalculator
             $autonomie_financiere,
             $ratio_prets_depots,
             $loan_to_deposit,
-            $endettement_general
+            $endettement_general,
         ]);
 
         return [
@@ -319,7 +318,7 @@ class FinancialMetricCalculator
         $moy_solidite = $this->calculateAverage([
             $dette_capitalisation,
             $endettement_actif,
-            $endettement_general
+            $endettement_general,
         ]);
 
         return [
@@ -335,7 +334,7 @@ class FinancialMetricCalculator
      */
     private function calculateGrowth(?float $current, ?float $previous): ?float
     {
-        if (!$current || !$previous || $previous == 0) {
+        if (! $current || ! $previous || $previous == 0) {
             return null;
         }
 
@@ -347,7 +346,7 @@ class FinancialMetricCalculator
      */
     private function safeDivide(?float $numerator, ?float $denominator): ?float
     {
-        if (!$numerator || !$denominator || $denominator == 0) {
+        if (! $numerator || ! $denominator || $denominator == 0) {
             return null;
         }
 
@@ -359,7 +358,7 @@ class FinancialMetricCalculator
      */
     private function calculateAverage(array $values): ?float
     {
-        $filtered = array_filter($values, fn($v) => $v !== null);
+        $filtered = array_filter($values, fn ($v) => $v !== null);
 
         if (empty($filtered)) {
             return null;

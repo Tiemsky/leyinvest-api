@@ -9,20 +9,16 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * @tags Flops
-*/
+ */
 class FlopController extends Controller
 {
     /**
      * Service utilisé pour récupérer les données des flops.
-     *
-     * @var TopFlopService
      */
     protected TopFlopService $topFlopService;
 
     /**
      * Injection du service dans le contrôleur.
-     *
-     * @param TopFlopService $topFlopService
      */
     public function __construct(TopFlopService $topFlopService)
     {
@@ -35,6 +31,7 @@ class FlopController extends Controller
     public function index(): JsonResponse
     {
         $flops = $this->topFlopService->getFlop(5);
+
         return response()->json([
             'success' => true,
             'message' => 'Liste des flops récupérée avec succès',

@@ -3,15 +3,16 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class RefreshTokenService
 {
     private int $accessTokenExpiration;
+
     private int $refreshTokenExpiration;
 
     public function __construct()
@@ -56,7 +57,7 @@ class RefreshTokenService
     {
         $token = $this->findTokenRecord($refreshToken);
 
-        if (!$token || now()->parse($token->refresh_token_expires_at)->isPast()) {
+        if (! $token || now()->parse($token->refresh_token_expires_at)->isPast()) {
             throw ValidationException::withMessages([
                 'refresh_token' => ['Session expirée ou invalide.'],
             ]);
@@ -74,7 +75,9 @@ class RefreshTokenService
     {
         $token = $this->findTokenRecord($refreshToken);
 
-        if (!$token) return null;
+        if (! $token) {
+            return null;
+        }
 
         return [
             'user_id' => $token->tokenable_id,

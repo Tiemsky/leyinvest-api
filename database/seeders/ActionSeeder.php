@@ -4,10 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Action;
 use App\Models\BrvmSector;
-use Illuminate\Support\Str;
+use App\Models\ClassifiedSector;
 use App\Support\BrvmMapping;
 use Illuminate\Database\Seeder;
-use App\Models\ClassifiedSector;
 use Illuminate\Support\Facades\DB;
 
 class ActionSeeder extends Seeder
@@ -38,7 +37,7 @@ class ActionSeeder extends Seeder
             ['symbole' => 'ABJC', 'nom' => "SERVAIR ABIDJAN COTE D'IVOIRE", 'volume' => 613, 'cours_veille' => 2365, 'cours_ouverture' => 2370, 'cours_cloture' => 2365, 'variation' => 4.65],
             ['symbole' => 'BNBC', 'nom' => "BERNABE COTE D'IVOIRE", 'volume' => 825, 'cours_veille' => 1325, 'cours_ouverture' => 1325, 'cours_cloture' => 1325, 'variation' => -7.34],
             ['symbole' => 'CFAC', 'nom' => "CFAO MOTORS COTE D'IVOIRE", 'volume' => 3108, 'cours_veille' => 1600, 'cours_ouverture' => 1600, 'cours_cloture' => 1575, 'variation' => -7.35],
-            ['symbole' => 'LNBB', 'nom' => "LOTERIE NATIONALE DU BENIN", 'volume' => 47, 'cours_veille' => 3875, 'cours_ouverture' => 3875, 'cours_cloture' => 3875, 'variation' => 4.31],
+            ['symbole' => 'LNBB', 'nom' => 'LOTERIE NATIONALE DU BENIN', 'volume' => 47, 'cours_veille' => 3875, 'cours_ouverture' => 3875, 'cours_cloture' => 3875, 'variation' => 4.31],
             ['symbole' => 'NEIC', 'nom' => "NEI-CEDA COTE D'IVOIRE", 'volume' => 7364, 'cours_veille' => 1020, 'cours_ouverture' => 1020, 'cours_cloture' => 1015, 'variation' => -7.31],
             ['symbole' => 'PRSC', 'nom' => "TRACTAFRIC MOTORS COTE D'IVOIRE", 'volume' => 74, 'cours_veille' => 3455, 'cours_ouverture' => 3455, 'cours_cloture' => 3670, 'variation' => -0.27],
             ['symbole' => 'UNXC', 'nom' => "UNIWAX COTE D'IVOIRE", 'volume' => 3109, 'cours_veille' => 1460, 'cours_ouverture' => 1450, 'cours_cloture' => 1460, 'variation' => 0.00],
@@ -46,7 +45,7 @@ class ActionSeeder extends Seeder
             ['symbole' => 'SHEC', 'nom' => "VIVO ENERGY COTE D'IVOIRE", 'volume' => 2512, 'cours_veille' => 1105, 'cours_ouverture' => 1150, 'cours_cloture' => 1100, 'variation' => 0.92],
             ['symbole' => 'SMBC', 'nom' => "SMB COTE D'IVOIRE", 'volume' => 56, 'cours_veille' => 9500, 'cours_ouverture' => 9650, 'cours_cloture' => 9500, 'variation' => -3.06],
             ['symbole' => 'TTLC', 'nom' => "TOTALENERGIES MARKETING COTE D'IVOIRE", 'volume' => 700, 'cours_veille' => 2335, 'cours_ouverture' => 2320, 'cours_cloture' => 2320, 'variation' => -0.64],
-            ['symbole' => 'TTLS', 'nom' => "TOTALENERGIES MARKETING SENEGAL", 'volume' => 33, 'cours_veille' => 2480, 'cours_ouverture' => 2480, 'cours_cloture' => 2480, 'variation' => 0.00],
+            ['symbole' => 'TTLS', 'nom' => 'TOTALENERGIES MARKETING SENEGAL', 'volume' => 33, 'cours_veille' => 2480, 'cours_ouverture' => 2480, 'cours_cloture' => 2480, 'variation' => 0.00],
 
             ['symbole' => 'CABC', 'nom' => "SICABLE COTE D'IVOIRE", 'volume' => 113, 'cours_veille' => 1930, 'cours_ouverture' => 1860, 'cours_cloture' => 1930, 'variation' => 3.76],
             ['symbole' => 'FTSC', 'nom' => "FILTISAC COTE D'IVOIRE", 'volume' => 88, 'cours_veille' => 2200, 'cours_ouverture' => 2200, 'cours_cloture' => 2200, 'variation' => 7.32],
@@ -57,17 +56,17 @@ class ActionSeeder extends Seeder
 
             ['symbole' => 'BICB', 'nom' => "BANQUE INTERNATIONALE POUR L'INDUSTRIE ET LE COMMERCE DU BENIN", 'volume' => 952, 'cours_veille' => 5245, 'cours_ouverture' => 5245, 'cours_cloture' => 5245, 'variation' => 0.00],
             ['symbole' => 'BICC', 'nom' => "BICI COTE D'IVOIRE", 'volume' => 597, 'cours_veille' => 19490, 'cours_ouverture' => 19500, 'cours_cloture' => 19600, 'variation' => 0.56],
-            ['symbole' => 'BOAB', 'nom' => "BANK OF AFRICA BENIN", 'volume' => 1447, 'cours_veille' => 4945, 'cours_ouverture' => 4945, 'cours_cloture' => 5000, 'variation' => 1.11],
-            ['symbole' => 'BOABF', 'nom' => "BANK OF AFRICA BURKINA FASO", 'volume' => 2883, 'cours_veille' => 3450, 'cours_ouverture' => 3460, 'cours_cloture' => 3450, 'variation' => 0.00],
+            ['symbole' => 'BOAB', 'nom' => 'BANK OF AFRICA BENIN', 'volume' => 1447, 'cours_veille' => 4945, 'cours_ouverture' => 4945, 'cours_cloture' => 5000, 'variation' => 1.11],
+            ['symbole' => 'BOABF', 'nom' => 'BANK OF AFRICA BURKINA FASO', 'volume' => 2883, 'cours_veille' => 3450, 'cours_ouverture' => 3460, 'cours_cloture' => 3450, 'variation' => 0.00],
             ['symbole' => 'BOAC', 'nom' => "BANK OF AFRICA COTE D'IVOIRE", 'volume' => 3627, 'cours_veille' => 7005, 'cours_ouverture' => 7100, 'cours_cloture' => 7095, 'variation' => -1.46],
-            ['symbole' => 'BOAM', 'nom' => "BANK OF AFRICA MALI", 'volume' => 1678, 'cours_veille' => 3800, 'cours_ouverture' => 3750, 'cours_cloture' => 3800, 'variation' => 4.11],
-            ['symbole' => 'BOAN', 'nom' => "BANK OF AFRICA NIGER", 'volume' => 2277, 'cours_veille' => 2500, 'cours_ouverture' => 2500, 'cours_cloture' => 2550, 'variation' => -0.39],
-            ['symbole' => 'BOAS', 'nom' => "BANK OF AFRICA SENEGAL", 'volume' => 735, 'cours_veille' => 5250, 'cours_ouverture' => 5290, 'cours_cloture' => 5290, 'variation' => 0.76],
-            ['symbole' => 'CBIBF', 'nom' => "CORIS BANK INTERNATIONAL BURKINA FASO", 'volume' => 2911, 'cours_veille' => 10000, 'cours_ouverture' => 10000, 'cours_cloture' => 9995, 'variation' => -0.05],
+            ['symbole' => 'BOAM', 'nom' => 'BANK OF AFRICA MALI', 'volume' => 1678, 'cours_veille' => 3800, 'cours_ouverture' => 3750, 'cours_cloture' => 3800, 'variation' => 4.11],
+            ['symbole' => 'BOAN', 'nom' => 'BANK OF AFRICA NIGER', 'volume' => 2277, 'cours_veille' => 2500, 'cours_ouverture' => 2500, 'cours_cloture' => 2550, 'variation' => -0.39],
+            ['symbole' => 'BOAS', 'nom' => 'BANK OF AFRICA SENEGAL', 'volume' => 735, 'cours_veille' => 5250, 'cours_ouverture' => 5290, 'cours_cloture' => 5290, 'variation' => 0.76],
+            ['symbole' => 'CBIBF', 'nom' => 'CORIS BANK INTERNATIONAL BURKINA FASO', 'volume' => 2911, 'cours_veille' => 10000, 'cours_ouverture' => 10000, 'cours_cloture' => 9995, 'variation' => -0.05],
             ['symbole' => 'ECOC', 'nom' => "ECOBANK COTE D'IVOIRE", 'volume' => 33, 'cours_veille' => 15700, 'cours_ouverture' => 15700, 'cours_cloture' => 15700, 'variation' => 0.00],
-            ['symbole' => 'ETIT', 'nom' => "Ecobank Transnational Incorporated TOGO", 'volume' => 1338295, 'cours_veille' => 23, 'cours_ouverture' => 24, 'cours_cloture' => 23, 'variation' => -4.17],
+            ['symbole' => 'ETIT', 'nom' => 'Ecobank Transnational Incorporated TOGO', 'volume' => 1338295, 'cours_veille' => 23, 'cours_ouverture' => 24, 'cours_cloture' => 23, 'variation' => -4.17],
             ['symbole' => 'NSBC', 'nom' => "NSIA BANQUE COTE D'IVOIRE", 'volume' => 261, 'cours_veille' => 11995, 'cours_ouverture' => 11995, 'cours_cloture' => 11995, 'variation' => 0.00],
-            ['symbole' => 'ORGT', 'nom' => "ORAGROUP TOGO", 'volume' => 403, 'cours_veille' => 2495, 'cours_ouverture' => 2500, 'cours_cloture' => 2500, 'variation' => 0.20],
+            ['symbole' => 'ORGT', 'nom' => 'ORAGROUP TOGO', 'volume' => 403, 'cours_veille' => 2495, 'cours_ouverture' => 2500, 'cours_cloture' => 2500, 'variation' => 0.20],
             ['symbole' => 'SAFC', 'nom' => "SAFCA COTE D'IVOIRE", 'volume' => 9082, 'cours_veille' => 2270, 'cours_ouverture' => 2270, 'cours_cloture' => 2270, 'variation' => -7.35],
             ['symbole' => 'SGBC', 'nom' => "SOCIETE GENERALE COTE D'IVOIRE", 'volume' => 142, 'cours_veille' => 26955, 'cours_ouverture' => 26955, 'cours_cloture' => 27000, 'variation' => 0.17],
             ['symbole' => 'SIBC', 'nom' => "SOCIETE IVOIRIENNE DE BANQUE COTE D'IVOIRE", 'volume' => 392, 'cours_veille' => 5600, 'cours_ouverture' => 5630, 'cours_cloture' => 5630, 'variation' => 0.54],
@@ -75,18 +74,20 @@ class ActionSeeder extends Seeder
             ['symbole' => 'CIEC', 'nom' => "CIE COTE D'IVOIRE", 'volume' => 1672, 'cours_veille' => 2620, 'cours_ouverture' => 2620, 'cours_cloture' => 2600, 'variation' => -0.76],
             ['symbole' => 'SDCC', 'nom' => "SODE COTE D'IVOIRE", 'volume' => 215, 'cours_veille' => 5945, 'cours_ouverture' => 5945, 'cours_cloture' => 5945, 'variation' => 0.00],
 
-            ['symbole' => 'ONTBF', 'nom' => "ONATEL BURKINA FASO", 'volume' => 420, 'cours_veille' => 2500, 'cours_ouverture' => 2490, 'cours_cloture' => 2490, 'variation' => -0.40],
+            ['symbole' => 'ONTBF', 'nom' => 'ONATEL BURKINA FASO', 'volume' => 420, 'cours_veille' => 2500, 'cours_ouverture' => 2490, 'cours_cloture' => 2490, 'variation' => -0.40],
             ['symbole' => 'ORAC', 'nom' => "ORANGE COTE D'IVOIRE", 'volume' => 53, 'cours_veille' => 14605, 'cours_ouverture' => 14495, 'cours_cloture' => 14550, 'variation' => -0.38],
-            ['symbole' => 'SNTS', 'nom' => "SONATEL SENEGAL", 'volume' => 182, 'cours_veille' => 25990, 'cours_ouverture' => 25995, 'cours_cloture' => 26000, 'variation' => 0.04],
+            ['symbole' => 'SNTS', 'nom' => 'SONATEL SENEGAL', 'volume' => 182, 'cours_veille' => 25990, 'cours_ouverture' => 25995, 'cours_cloture' => 26000, 'variation' => 0.04],
         ];
 
         foreach ($rawActions as $data) {
             $sectors = $mapping[$data['symbole']] ?? null;
 
-            if (!$sectors) continue;
+            if (! $sectors) {
+                continue;
+            }
 
             Action::create(array_merge($data, [
-                'key' => 'act_' . strtolower($data['symbole']),
+                'key' => 'act_'.strtolower($data['symbole']),
                 'brvm_sector_id' => $brvmSectors[$sectors[0]] ?? 1,
                 'classified_sector_id' => $classifiedSectors[$sectors[1]] ?? 1,
             ]));

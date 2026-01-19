@@ -43,10 +43,12 @@ class CalculateSectorMetrics extends Command
             }
 
             $this->info('✅ Calcul terminé avec succès !');
+
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
             $this->error("❌ Erreur : {$e->getMessage()}");
+
             return Command::FAILURE;
         }
     }
@@ -54,12 +56,12 @@ class CalculateSectorMetrics extends Command
     private function calculateForYear(int $year, string $type): void
     {
         if ($type === 'brvm' || $type === 'all') {
-            $this->info("  → Calcul des secteurs BRVM...");
+            $this->info('  → Calcul des secteurs BRVM...');
             $this->aggregator->calculateBrvmSectors($year);
         }
 
         if ($type === 'classified' || $type === 'all') {
-            $this->info("  → Calcul des secteurs classifiés...");
+            $this->info('  → Calcul des secteurs classifiés...');
             $this->aggregator->calculateClassifiedSectors($year);
         }
     }

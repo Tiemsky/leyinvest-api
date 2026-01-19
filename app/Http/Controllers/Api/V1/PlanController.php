@@ -10,12 +10,12 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * @tags Plans de souscription
-*/
+ */
 class PlanController extends Controller
 {
     /**
-    * Retourne la liste des plans actifs et visibles avec leurs fonctionnalités actives
-    */
+     * Retourne la liste des plans actifs et visibles avec leurs fonctionnalités actives
+     */
     public function index(): JsonResponse
     {
         // Utilisation des scopes 'active' et 'visible' pour masquer la logique de requête

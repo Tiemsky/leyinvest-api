@@ -8,8 +8,9 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class VerifyWebhookSignature
 {
-    public function handle(Request $request, Closure $next, string $provider = 'default') {
-        $header = match($provider) {
+    public function handle(Request $request, Closure $next, string $provider = 'default')
+    {
+        $header = match ($provider) {
             'stripe' => 'Stripe-Signature',
             'fedapay' => 'X-FedaPay-Signature',
             default => 'X-Webhook-Signature',
@@ -18,14 +19,15 @@ class VerifyWebhookSignature
         $signature = $request->header($header);
         $secret = config("services.$provider.webhook_secret");
 
-        if (!$signature || !$this->validate($request->getContent(), $signature, $secret)) {
+        if (! $signature || ! $this->validate($request->getContent(), $signature, $secret)) {
             throw new AccessDeniedHttpException('Signature Webhook Invalide.');
         }
 
         return $next($request);
     }
 
-    private function validate($payload, $signature, $secret): bool {
+    private function validate($payload, $signature, $secret): bool
+    {
         return hash_equals(hash_hmac('sha256', $payload, $secret), $signature);
     }
 }

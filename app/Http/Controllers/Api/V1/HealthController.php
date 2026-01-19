@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
 /**
  * @tags Health Check
-*/
+ */
 class HealthController extends Controller
 {
     /**
@@ -36,7 +36,7 @@ class HealthController extends Controller
             'redis' => $this->checkRedis(),
         ];
 
-        $allHealthy = collect($checks)->every(fn($check) => $check['status'] === 'healthy');
+        $allHealthy = collect($checks)->every(fn ($check) => $check['status'] === 'healthy');
         $statusCode = $allHealthy ? 200 : 503;
 
         return response()->json([
@@ -62,8 +62,8 @@ class HealthController extends Controller
                 'status' => 'healthy',
                 'details' => [
                     'version' => config('app.version', '1.0.0'),
-                    'disk_usage' => round($usedPercentage, 2) . '%',
-                    'memory_usage' => round(memory_get_usage(true) / 1024 / 1024, 2) . ' MB',
+                    'disk_usage' => round($usedPercentage, 2).'%',
+                    'memory_usage' => round(memory_get_usage(true) / 1024 / 1024, 2).' MB',
                 ],
             ];
         } catch (\Exception $e) {
@@ -91,7 +91,7 @@ class HealthController extends Controller
                 'status' => 'healthy',
                 'details' => [
                     'connection' => DB::connection()->getDatabaseName(),
-                    'latency' => $latency . ' ms',
+                    'latency' => $latency.' ms',
                 ],
             ];
         } catch (\Exception $e) {
@@ -108,7 +108,7 @@ class HealthController extends Controller
     private function checkCache(): array
     {
         try {
-            $key = 'health_check_' . time();
+            $key = 'health_check_'.time();
             $value = 'test_value';
 
             // Test cache write
@@ -158,7 +158,7 @@ class HealthController extends Controller
             return [
                 'status' => 'healthy',
                 'details' => [
-                    'latency' => $latency . ' ms',
+                    'latency' => $latency.' ms',
                     'version' => $info['redis_version'] ?? 'unknown',
                     'connected_clients' => $info['connected_clients'] ?? 'unknown',
                 ],

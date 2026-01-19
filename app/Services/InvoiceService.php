@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Coupon;
 use App\Models\Invoice;
 use App\Models\Subscription;
-use App\Models\Coupon;
 use App\Models\User;
-use Carbon\Carbon;
 
 class InvoiceService
 {
@@ -64,11 +63,13 @@ class InvoiceService
     /**
      * Obtenir les statistiques des factures
      */
-    public function getStats(array $filters = []): array{
+    public function getStats(array $filters = []): array
+    {
         $query = Invoice::query()->applyFilters($filters); // Utilisation du Scope
 
         $paidQuery = (clone $query)->where('status', 'paid');
         $pendingQuery = (clone $query)->where('status', 'pending');
+
         return [
             'total_invoices' => $query->count(),
             'paid_invoices' => $paidQuery->count(),
@@ -86,14 +87,16 @@ class InvoiceService
     /**
      * Marquer une facture comme payée
      */
-    public function markAsPaid(Invoice $invoice, array $paymentData = []): bool{
+    public function markAsPaid(Invoice $invoice, array $paymentData = []): bool
+    {
         return $invoice->markAsPaid($paymentData);
     }
 
     /**
      * Marquer une facture comme échouée
      */
-    public function markAsFailed(Invoice $invoice, ?string $reason = null): bool{
+    public function markAsFailed(Invoice $invoice, ?string $reason = null): bool
+    {
         return $invoice->markAsFailed($reason);
     }
 
@@ -107,7 +110,7 @@ class InvoiceService
         array $options = []
     ): Invoice {
         return Invoice::create([
-            'invoice_number' => 'PROFORMA-' . Invoice::generateInvoiceNumber(),
+            'invoice_number' => 'PROFORMA-'.Invoice::generateInvoiceNumber(),
             'user_id' => $user->id,
             'subscription_id' => $options['subscription_id'] ?? null,
             'coupon_id' => $options['coupon_id'] ?? null,
@@ -129,7 +132,8 @@ class InvoiceService
     /**
      * Envoyer une facture par email (à implémenter avec Mail)
      */
-    public function send(Invoice $invoice): bool{
+    public function send(Invoice $invoice): bool
+    {
         // À implémenter avec le système de mail
         // Mail::to($invoice->user->email)->send(new InvoiceMail($invoice));
 
@@ -139,23 +143,26 @@ class InvoiceService
                 'sent_at' => now()->toISOString(),
             ]),
         ]);
+
         return true;
     }
 
     /**
      * Générer un PDF de facture (à implémenter)
      */
-    public function generatePdf(Invoice $invoice): string{
+    public function generatePdf(Invoice $invoice): string
+    {
         // À implémenter avec une lib comme dompdf ou snappy
         // return PDF::loadView('invoices.pdf', compact('invoice'))->output();
         // Pour l'instant, retourner juste un placeholder
-        return "PDF generation not implemented yet";
+        return 'PDF generation not implemented yet';
     }
 
     /**
      * Rembourser une facture
      */
-    public function refund(Invoice $invoice, ?string $reason = null): bool{
+    public function refund(Invoice $invoice, ?string $reason = null): bool
+    {
         if ($invoice->status !== 'paid') {
             return false;
         }
@@ -172,7 +179,8 @@ class InvoiceService
     /**
      * Obtenir les factures en retard
      */
-    public function getOverdueInvoices(){
+    public function getOverdueInvoices()
+    {
         return Invoice::where('status', 'pending')
             ->where('due_at', '<', now())
             ->with(['user', 'subscription.plan'])
@@ -182,7 +190,8 @@ class InvoiceService
     /**
      * Calculer le total des revenus sur une période
      */
-    public function calculateRevenue(\Carbon\Carbon $startDate, \Carbon\Carbon $endDate): array{
+    public function calculateRevenue(\Carbon\Carbon $startDate, \Carbon\Carbon $endDate): array
+    {
         $invoices = Invoice::where('status', 'paid')
             ->whereBetween('paid_at', [$startDate, $endDate])
             ->get();

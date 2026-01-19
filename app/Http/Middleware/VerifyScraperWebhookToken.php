@@ -13,11 +13,12 @@ class VerifyScraperWebhookToken
         $token = $request->header('X-Webhook-Token');
         $expectedToken = config('services.scraper.webhook_token');
 
-        if (!$token || $token !== $expectedToken) {
+        if (! $token || $token !== $expectedToken) {
             Log::warning("Tentative d'accès Webhook échouée", [
                 'ip' => $request->ip(),
                 'token_recu' => $token ? 'Présent' : 'Manquant',
             ]);
+
             return response()->json(['message' => 'Unauthorized. Invalid Token.'], 401);
         }
 

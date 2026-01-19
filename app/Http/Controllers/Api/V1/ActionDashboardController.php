@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Controller;
+use App\Http\Resources\ActionDashboardResource;
+use App\Http\Resources\ActionHistoryResource;
 use App\Models\Action;
 use App\Services\FiscalYearService;
 use Illuminate\Http\JsonResponse;
-use App\Http\Controllers\Controller;
-use App\Http\Resources\ActionHistoryResource;
-use App\Http\Resources\ActionDashboardResource;
 
 /**
  * @tags Tableau de bord des actions
  */
 class ActionDashboardController extends Controller
 {
-
     public function __construct(
         private readonly FiscalYearService $fiscalYearService
     ) {}
@@ -41,8 +40,8 @@ class ActionDashboardController extends Controller
 
         // Chargement des données financières de l'année de référence
         $action->load([
-            'financials' => fn($q) => $q->where('year', $referenceYear)
-                ->orderBy('year', 'desc')
+            'financials' => fn ($q) => $q->where('year', $referenceYear)
+                ->orderBy('year', 'desc'),
         ]);
 
         return response()->json([
@@ -53,9 +52,9 @@ class ActionDashboardController extends Controller
                 [
                     'calculated_at' => now()->toIso8601String(),
                     'data_source' => 'stock_financials',
-                    'calculation_version' => '1.0'
+                    'calculation_version' => '1.0',
                 ]
-            )
+            ),
         ]);
     }
 
@@ -76,8 +75,8 @@ class ActionDashboardController extends Controller
 
         // Chargement des données financières pour ces années
         $action->load([
-            'financials' => fn($q) => $q->whereIn('year', $years)
-                ->orderBy('year', 'desc')
+            'financials' => fn ($q) => $q->whereIn('year', $years)
+                ->orderBy('year', 'desc'),
         ]);
 
         return response()->json([
@@ -86,12 +85,12 @@ class ActionDashboardController extends Controller
             'metadata' => [
                 'years_range' => [
                     'from' => min($years),
-                    'to' => max($years)
+                    'to' => max($years),
                 ],
                 'years_available' => count($years),
                 'fiscal_period' => $this->fiscalYearService->getFiscalPeriodLabel(),
                 'calculated_at' => now()->toIso8601String(),
-            ]
+            ],
         ]);
     }
 }

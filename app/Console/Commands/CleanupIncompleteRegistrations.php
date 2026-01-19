@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\User;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -47,22 +47,24 @@ class CleanupIncompleteRegistrations extends Command
 
         if ($count === 0) {
             $this->info("✅ Aucune inscription incomplète à nettoyer (seuil: {$hours}h).");
+
             return Command::SUCCESS;
         }
 
         if ($dryRun) {
-            $sample = $query->limit(10)->get(['id','key', 'nom', 'prenom', 'email', 'created_at']);
+            $sample = $query->limit(10)->get(['id', 'key', 'nom', 'prenom', 'email', 'created_at']);
             $this->info("🔍 Mode dry-run : {$count} inscription(s) incomplète(s) trouvée(s).");
-            $this->table(['ID','key', 'Nom', 'Prénom', 'Email', 'Créé il y a'], $sample->map(function ($user) {
+            $this->table(['ID', 'key', 'Nom', 'Prénom', 'Email', 'Créé il y a'], $sample->map(function ($user) {
                 return [
                     $user->id,
                     $user->key,
                     $user->nom,
                     $user->prenom,
                     $user->email,
-                    now()->diffForHumans($user->created_at, true)
+                    now()->diffForHumans($user->created_at, true),
                 ];
             })->toArray());
+
             return Command::SUCCESS;
         }
 

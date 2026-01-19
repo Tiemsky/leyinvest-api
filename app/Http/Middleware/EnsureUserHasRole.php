@@ -15,7 +15,7 @@ class EnsureUserHasRole
             return response()->json([
                 'status' => 'error',
                 'message' => 'Authentification requise.',
-                'code' => 401
+                'code' => 401,
             ], 401);
         }
 
@@ -23,9 +23,10 @@ class EnsureUserHasRole
             return response()->json([
                 'status' => 'error',
                 'message' => 'Accès refusé. Rôle insuffisant.',
-                'code' => 403
+                'code' => 403,
             ], 403);
         }
+
         return $next($request);
     }
 }

@@ -20,6 +20,7 @@ class UserDashboardController extends Controller
         $user = Auth::user()->load([
             'followedActions.action',
         ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Données du tableau de bord utilisateur récupérées avec succès',

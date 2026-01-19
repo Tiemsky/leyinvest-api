@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\FinancialNews;
 use App\Http\Controllers\Controller;
+use App\Models\FinancialNews;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DocumentController extends Controller
 {
@@ -14,8 +14,7 @@ class DocumentController extends Controller
      * Sert le fichier PDF stocké localement ou redirige/sert l'URL distante,
      * en fonction du nom de la route (download ou view).
      *
-     * @param Request $request
-     * @param FinancialNews $document (Route Model Binding par 'key')
+     * @param  FinancialNews  $document  (Route Model Binding par 'key')
      */
     public function servePdf(Request $request, FinancialNews $document)
     {
@@ -34,8 +33,9 @@ class DocumentController extends Controller
         // 3. Cas n°2 : Le fichier est local (RichBourse)
         $disk = 'local';
 
-        if (!Storage::disk($disk)->exists($filePath)) {
-            \Log::error("❌ Fichier local introuvable", ['key' => $document->key, 'path' => $filePath]);
+        if (! Storage::disk($disk)->exists($filePath)) {
+            \Log::error('❌ Fichier local introuvable', ['key' => $document->key, 'path' => $filePath]);
+
             return response()->json(['message' => 'Fichier introuvable sur le serveur.'], 404);
         }
 
@@ -45,13 +45,13 @@ class DocumentController extends Controller
 
         // 5. Préparation du nom de fichier
         // On s'assure que le nom du fichier est propre pour le client (évite les noms avec hash)
-        $filenameForClient = Str::slug($document->company . ' ' . $document->title) . '.pdf';
+        $filenameForClient = Str::slug($document->company.' '.$document->title).'.pdf';
 
         // 6. Définition des headers
         $headers = [
             'Content-Type' => 'application/pdf',
             // Le header Content-Disposition est la clé qui force le mode
-            'Content-Disposition' => $disposition . '; filename="' . $filenameForClient . '"',
+            'Content-Disposition' => $disposition.'; filename="'.$filenameForClient.'"',
         ];
 
         // 7. Servir le fichier local avec les headers appropriés

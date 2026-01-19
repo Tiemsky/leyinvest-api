@@ -54,15 +54,15 @@ class Coupon extends Model
         return $query->where('is_active', true)
             ->where(function ($q) {
                 $q->whereNull('starts_at')
-                  ->orWhere('starts_at', '<=', now());
+                    ->orWhere('starts_at', '<=', now());
             })
             ->where(function ($q) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>', now());
+                    ->orWhere('expires_at', '>', now());
             })
             ->where(function ($q) {
                 $q->whereNull('max_uses')
-                  ->orWhereRaw('times_used < max_uses');
+                    ->orWhereRaw('times_used < max_uses');
             });
     }
 
@@ -72,7 +72,7 @@ class Coupon extends Model
     public function isValid(): bool
     {
         // Vérifier si actif
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 

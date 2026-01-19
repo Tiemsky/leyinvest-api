@@ -4,8 +4,8 @@ namespace Database\Factories;
 
 use App\Models\User;
 use App\Models\Wallet;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Sale>
@@ -24,7 +24,7 @@ class SaleFactory extends Factory
         $montantVente = $quantite * $prixParAction;
 
         return [
-            'key' => 'sal-' . strtolower(Str::random(8)),
+            'key' => 'sal-'.strtolower(Str::random(8)),
             'wallet_id' => Wallet::factory(),
             'user_id' => User::factory(),
             'quantite' => $quantite,

@@ -54,7 +54,7 @@ class EvaluationParameterSeeder extends Seeder
             DB::table('evaluation_parameters')->updateOrInsert(
                 ['nom' => $parameter['nom']],
                 [
-                    'key' => 'eva_' . time() . '_' . Str::slug($parameter['nom']),
+                    'key' => 'eva_'.time().'_'.Str::slug($parameter['nom']),
                     'value' => $parameter['value'],
                     'description' => $parameter['description'],
                     'created_at' => $now,

@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Action;
+use App\Models\Employee;
+use App\Models\Position;
+use App\Models\Shareholder;
+use App\Models\StockFinancial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Action;
-use App\Models\StockFinancial;
-use App\Models\Shareholder;
-use App\Models\Position;
-use App\Models\Employee;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ImportFinancialDataFromExcel extends Command
@@ -49,14 +49,16 @@ class ImportFinancialDataFromExcel extends Command
     {
         $filePath = $this->argument('file');
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             $this->error("❌ Fichier introuvable : $filePath");
+
             return;
         }
 
         $sheets = Excel::toArray([], $filePath);
         if (empty($sheets)) {
             $this->error("❌ Le fichier n'a aucune feuille.");
+
             return;
         }
 
@@ -64,7 +66,7 @@ class ImportFinancialDataFromExcel extends Command
         $truncate = $this->option('truncate');
         $logErrors = $this->option('log-errors');
 
-        if ($truncate && !$dryRun) {
+        if ($truncate && ! $dryRun) {
             DB::table('shareholders')->truncate();
             DB::table('stock_financials')->truncate();
             DB::table('employees')->truncate();
@@ -72,28 +74,30 @@ class ImportFinancialDataFromExcel extends Command
 
         foreach ($sheets as $sheetName => $rows) {
 
-            $rows = array_values(array_filter($rows, fn($r) =>
-                is_array($r) && !empty(array_filter($r, fn($c) => trim((string)$c) !== ''))
+            $rows = array_values(array_filter($rows, fn ($r) => is_array($r) && ! empty(array_filter($r, fn ($c) => trim((string) $c) !== ''))
             ));
 
             if (empty($rows)) {
                 $this->warn("⚠️ Feuille vide : $sheetName");
+
                 continue;
             }
 
             // Symbole = cellule B1
-            $symbol = trim((string)($rows[0][1] ?? ''));
+            $symbol = trim((string) ($rows[0][1] ?? ''));
             $symbol = preg_replace('/[«»\"\']/', '', $symbol);
 
-            if (!preg_match('/^[A-Z]{3,6}$/', $symbol)) {
+            if (! preg_match('/^[A-Z]{3,6}$/', $symbol)) {
                 $this->warn("⚠️ Symbole invalide '$symbol'.");
+
                 continue;
             }
 
             // --- Votre recommandation : Récupération de l'Action ---
             $action = Action::where('symbole', $symbol)->first();
-            if (!$action) {
+            if (! $action) {
                 $this->warn("⚠️ Action '$symbol' non trouvée.");
+
                 continue;
             }
             // --------------------------------------------------------
@@ -102,13 +106,13 @@ class ImportFinancialDataFromExcel extends Command
                 if ($dryRun) {
                     $this->processSheet($rows, $action, true);
                 } else {
-                    DB::transaction(fn() => $this->processSheet($rows, $action, false));
+                    DB::transaction(fn () => $this->processSheet($rows, $action, false));
                 }
 
                 $this->info("✓ Import réussi pour $symbol");
 
             } catch (\Exception $e) {
-                $msg = "Échec import $symbol : " . $e->getMessage();
+                $msg = "Échec import $symbol : ".$e->getMessage();
                 $this->error("✗ $msg");
 
                 if ($logErrors) {
@@ -117,7 +121,7 @@ class ImportFinancialDataFromExcel extends Command
             }
         }
 
-        $this->info($dryRun ? "Simulation terminée." : "Import terminé.");
+        $this->info($dryRun ? 'Simulation terminée.' : 'Import terminé.');
     }
 
     /**
@@ -132,7 +136,7 @@ class ImportFinancialDataFromExcel extends Command
         $years = $this->extractYears($rows);
         $financialData = $this->extractFinancialData($rows, $years);
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             foreach ($financialData as $data) {
                 // --- FIX 1: Injection de l'action_id avant updateOrCreate ---
                 $data['action_id'] = $action->id;
@@ -168,9 +172,10 @@ class ImportFinancialDataFromExcel extends Command
 
                 // S'assurer que la description a une taille suffisante pour être valide
                 if (strlen($desc) > 20) {
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $action->update(['description' => $desc]);
                     }
+
                     return;
                 }
             }
@@ -188,14 +193,14 @@ class ImportFinancialDataFromExcel extends Command
                 $years = [];
                 // Commence à l'index 1 pour lire les années
                 for ($i = 1; $i < count($r); $i++) {
-                    $val = trim((string)$r[$i]);
+                    $val = trim((string) $r[$i]);
                     if (is_numeric($val) && strlen($val) === 4) { // Vérifie que c'est bien une année (4 chiffres)
-                        $years[] = (int)$val;
+                        $years[] = (int) $val;
                     }
                 }
 
                 if (empty($years)) {
-                    throw new \Exception("Aucune année détectée.");
+                    throw new \Exception('Aucune année détectée.');
                 }
 
                 return $years;
@@ -256,25 +261,27 @@ class ImportFinancialDataFromExcel extends Command
                 // Tente de trouver la ligne d'en-tête (e.g., "Nom" ou "Pourcentage") et commence après
                 $start = $i + 1;
                 // Assumer que la première colonne de la ligne suivante est l'en-tête.
-                if (isset($rows[$i+1]) && strtolower(trim($rows[$i+1][0] ?? '')) !== 'fonction' && strtolower(trim($rows[$i+1][0] ?? '')) !== 'actionnaires' && strtolower(trim($rows[$i+1][0] ?? '')) !== 'presentation' && !empty(trim($rows[$i+1][0] ?? ''))) {
-                   // Si la ligne suivante n'est pas un nouveau marqueur, c'est probablement l'en-tête ou la première donnée.
-                   // On va tester la première ligne d'actionnaires.
-                   $start = $i + 1;
+                if (isset($rows[$i + 1]) && strtolower(trim($rows[$i + 1][0] ?? '')) !== 'fonction' && strtolower(trim($rows[$i + 1][0] ?? '')) !== 'actionnaires' && strtolower(trim($rows[$i + 1][0] ?? '')) !== 'presentation' && ! empty(trim($rows[$i + 1][0] ?? ''))) {
+                    // Si la ligne suivante n'est pas un nouveau marqueur, c'est probablement l'en-tête ou la première donnée.
+                    // On va tester la première ligne d'actionnaires.
+                    $start = $i + 1;
                 } else {
                     $start = $i + 1; // Commence directement après "Actionnaires"
                 }
 
                 // Ajustement pour sauter l'en-tête s'il y en a un (e.g. "Nom" et "Pourcentage")
-                if (isset($rows[$i+1][1]) && is_string($rows[$i+1][1]) && strtolower(trim($rows[$i+1][1])) === 'pourcentage') {
-                     $start = $i + 2; // Saute l'en-tête explicite
+                if (isset($rows[$i + 1][1]) && is_string($rows[$i + 1][1]) && strtolower(trim($rows[$i + 1][1])) === 'pourcentage') {
+                    $start = $i + 2; // Saute l'en-tête explicite
                 }
                 break;
             }
         }
 
-        if (!$start) return;
+        if (! $start) {
+            return;
+        }
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             Shareholder::where('action_id', $action->id)->delete();
         }
 
@@ -284,21 +291,27 @@ class ImportFinancialDataFromExcel extends Command
             $name = trim($rows[$i][0] ?? '');
 
             // Si on rencontre un marqueur de section suivant ou une ligne de fin de liste vide
-            if ($name === 'Fonction' || $name === 'Indicateurs' || $name === 'Presentation' || $name === 'Présentation') break;
+            if ($name === 'Fonction' || $name === 'Indicateurs' || $name === 'Presentation' || $name === 'Présentation') {
+                break;
+            }
 
             // Si la première colonne est vide, on s'arrête (fin de section)
             if ($name === '') {
                 // On pourrait encore avoir des lignes vides, vérifions la colonne 1 aussi
-                if (trim($rows[$i][1] ?? '') === '') break;
+                if (trim($rows[$i][1] ?? '') === '') {
+                    break;
+                }
             }
 
             $pctRaw = trim($rows[$i][1] ?? '');
 
             // Si le nom est là mais le pourcentage est vide, on ignore cette ligne (e.g. ligne de séparateur)
-            if ($name !== '' && $pctRaw === '') continue;
+            if ($name !== '' && $pctRaw === '') {
+                continue;
+            }
 
             if ($name !== '' && $pctRaw !== '') {
-                if (!$dryRun) {
+                if (! $dryRun) {
                     Shareholder::create([
                         'action_id' => $action->id,
                         'nom' => $name,
@@ -309,7 +322,6 @@ class ImportFinancialDataFromExcel extends Command
             }
         }
     }
-
 
     /**
      * 5. EMPLOYÉS (DIRIGEANTS)
@@ -330,14 +342,16 @@ class ImportFinancialDataFromExcel extends Command
             }
         }
 
-        if ($index === null) return;
+        if ($index === null) {
+            return;
+        }
 
         // La ligne des libellés de fonction (e.g., "PCA", "DG") est $index + 1
         $funcRow = $rows[$index + 1] ?? [];
         // La ligne des noms de personnes (e.g., "M. DUPONT") est $index + 2
         $nameRow = $rows[$index + 2] ?? [];
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             Employee::where('action_id', $action->id)->delete();
         }
 
@@ -348,7 +362,9 @@ class ImportFinancialDataFromExcel extends Command
             $func = trim($funcRow[$col] ?? '');
             $name = trim($nameRow[$col] ?? '');
 
-            if ($func === '' || $name === '') continue;
+            if ($func === '' || $name === '') {
+                continue;
+            }
 
             // Mapping intelligent (normalisation)
             $mappedFunc = match ($func) {
@@ -358,13 +374,14 @@ class ImportFinancialDataFromExcel extends Command
 
             $position = Position::where('nom', $mappedFunc)->first();
 
-            if (!$position) {
+            if (! $position) {
                 // Utiliser $func, qui est la valeur réelle du fichier Excel pour le log
                 Log::warning("Position inconnue : '$func' (action {$action->symbole}). Vérifiez votre table 'positions'.");
+
                 continue;
             }
 
-            if (!$dryRun) {
+            if (! $dryRun) {
                 Employee::create([
                     'nom' => $name,
                     'position_id' => $position->id,
@@ -379,16 +396,20 @@ class ImportFinancialDataFromExcel extends Command
      */
     protected function parseNumeric($value): ?float
     {
-        if ($value === null || $value === '' || in_array((string)$value, ['-', 'ND'], true)) return null;
+        if ($value === null || $value === '' || in_array((string) $value, ['-', 'ND'], true)) {
+            return null;
+        }
         // Supprime les espaces insécables et remplace la virgule par un point
-        $clean = str_replace([' ', "\xc2\xa0", ','], ['', '', '.'], (string)$value);
-        return is_numeric($clean) ? (float)$clean : null;
+        $clean = str_replace([' ', "\xc2\xa0", ','], ['', '', '.'], (string) $value);
+
+        return is_numeric($clean) ? (float) $clean : null;
     }
 
     protected function parsePercentage($value): float
     {
         // Supprime %, espaces, et remplace la virgule par un point
-        $clean = str_replace(['%', ' ', "\xc2\xa0", ','], ['', '', '', '.'], (string)$value);
-        return is_numeric($clean) ? (float)$clean : 0.0;
+        $clean = str_replace(['%', ' ', "\xc2\xa0", ','], ['', '', '', '.'], (string) $value);
+
+        return is_numeric($clean) ? (float) $clean : 0.0;
     }
 }

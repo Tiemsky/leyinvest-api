@@ -1,21 +1,20 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        api: __DIR__ . '/../routes/api.php',
-        commands: __DIR__ . '/../routes/console.php',
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
 
@@ -51,9 +50,9 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $apiResponse = function (string $message, int $code, array $extra = []) {
             return response()->json(array_merge([
-                'success'   => false,
-                'message'   => $message,
-                'code'      => $code,
+                'success' => false,
+                'message' => $message,
+                'code' => $code,
                 'timestamp' => now()->toIso8601String(), // Format ISO pour Nuxt/JS
             ], $extra), $code);
         };
@@ -72,7 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $firstErrorMessage = collect($e->errors())->flatten()->first();
 
                 return $apiResponse($firstErrorMessage ?? 'Données invalides.', 422, [
-                    'errors' => $e->errors()
+                    'errors' => $e->errors(),
                 ]);
             }
         });
@@ -95,7 +94,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $message = $isModel ? 'La ressource demandée n\'existe pas.' : 'L\'endpoint demandé est introuvable.';
 
                 return $apiResponse($message, 404, [
-                    'requested_url' => $request->fullUrl()
+                    'requested_url' => $request->fullUrl(),
                 ]);
             }
         });
@@ -115,7 +114,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
                 return $apiResponse('Trop de tentatives. Veuillez patienter un instant.', 429, [
-                    'retry_after_seconds' => $e->getHeaders()['Retry-After'] ?? 60
+                    'retry_after_seconds' => $e->getHeaders()['Retry-After'] ?? 60,
                 ]);
             }
         });
@@ -136,8 +135,8 @@ return Application::configure(basePath: dirname(__DIR__))
                     'debug' => app()->isProduction() ? null : [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),
-                        'trace' => collect($e->getTrace())->take(5)
-                    ]
+                        'trace' => collect($e->getTrace())->take(5),
+                    ],
                 ]);
             }
         });

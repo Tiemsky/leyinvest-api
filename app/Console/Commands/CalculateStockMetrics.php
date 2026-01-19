@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Action;
 use App\Services\FinancialMetricCalculator;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class CalculateStockMetrics extends Command
 {
@@ -55,10 +54,12 @@ class CalculateStockMetrics extends Command
             }
 
             $this->info('✅ Calcul terminé avec succès !');
+
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
             $this->error("❌ Erreur : {$e->getMessage()}");
+
             return Command::FAILURE;
         }
     }

@@ -13,21 +13,21 @@ class EnsureEmailIsVerified
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non authentifié.',
             ], 401);
         }
 
-        if (!$request->user()->email_verified) {
+        if (! $request->user()->email_verified) {
             return response()->json([
                 'success' => false,
                 'message' => 'Votre email doit être vérifié pour accéder à cette ressource.',
             ], 403);
         }
 
-        if (!$request->user()->hasCompletedRegistration()) {
+        if (! $request->user()->hasCompletedRegistration()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous devez compléter votre inscription pour accéder à cette ressource.',

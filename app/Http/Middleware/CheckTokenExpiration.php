@@ -2,10 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Carbon\Carbon;
 
 class CheckTokenExpiration
 {
@@ -40,6 +40,7 @@ class CheckTokenExpiration
                     $response = $next($request);
                     $response->headers->set('X-Token-Expires-Soon', 'true');
                     $response->headers->set('X-Token-Expires-In', $minutesUntilExpiration * 60); // en secondes
+
                     return $response;
                 }
             }

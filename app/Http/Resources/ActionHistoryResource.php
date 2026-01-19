@@ -27,7 +27,7 @@ class ActionHistoryResource extends JsonResource
         foreach ($this->years as $year) {
             $financial = $action->financials()->where('year', $year)->first();
 
-            if (!$financial) {
+            if (! $financial) {
                 continue;
             }
 
@@ -72,10 +72,10 @@ class ActionHistoryResource extends JsonResource
 
         return [
             'action' => [
-                'id'        => $action->id,
-                'nom'       => $action->nom,
-                'key'       => $action->key,
-                'symbole'   => $action->symbole,
+                'id' => $action->id,
+                'nom' => $action->nom,
+                'key' => $action->key,
+                'symbole' => $action->symbole,
                 'brvm_sector' => [
                     'nom' => $action->brvmSector->nom,
                     'slug' => $action->brvmSector->slug,

@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *     schema="VerifyOtpRequest",
  *     type="object",
  *     required={"email","otp"},
+ *
  *     @OA\Property(
  *         property="email",
  *         type="string",

@@ -14,7 +14,7 @@ class BocIndicatorResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return  [
+        return [
             'id' => (int) $this->id,
             'date_rapport' => (string) $this->date_rapport,
             'taux_rendement_moyen' => (float) $this->taux_rendement_moyen,

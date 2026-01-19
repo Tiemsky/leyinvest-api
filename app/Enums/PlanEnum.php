@@ -21,7 +21,7 @@ enum PlanEnum: string
      */
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::GRATUIT => 'gratuit',
             self::PRO => 'pro',
             self::PREMIUM => 'premium',

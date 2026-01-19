@@ -52,7 +52,7 @@ class SubscriptionResource extends JsonResource
                 'currency' => (string) $this->currency ?? 'XOF',
                 'payment_status' => (string) $this->payment_status,
                 'payment_method' => (string) $this->payment_method,
-                'coupon_code' => $this->whenLoaded('coupon', fn() => $this->coupon->code),
+                'coupon_code' => $this->whenLoaded('coupon', fn () => $this->coupon->code),
             ],
             // 6. Métadonnées
             'details' => $this->metadata ?? [],

@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
-use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\DB;
+use Laravel\Socialite\Facades\Socialite;
 
 class GoogleAuthService
 {
@@ -49,6 +49,7 @@ class GoogleAuthService
 
             if ($user) {
                 $this->updateExistingUser($user, $googleUser, $googleId);
+
                 return $user->fresh();
             }
 
@@ -69,7 +70,7 @@ class GoogleAuthService
         }
 
         // Google certifie l'email, donc on valide automatiquement
-        if (!$user->email_verified) {
+        if (! $user->email_verified) {
             $updates['email_verified'] = true;
         }
 
@@ -86,7 +87,7 @@ class GoogleAuthService
             $updates['prenom'] = $googleUser->user['given_name'] ?? ($user->prenom ?? '');
         }
 
-        if (!empty($updates)) {
+        if (! empty($updates)) {
             $user->update($updates);
         }
     }

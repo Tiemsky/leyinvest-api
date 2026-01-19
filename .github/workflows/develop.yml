@@ -2,9 +2,9 @@ name: Deploy to LeyInvest Environment (Hostinger)
 
 on:
   push:
-    branches: [ develop, feature/* ]
+    branches: [develop, feature/*]
   pull_request:
-    branches: [ develop ]
+    branches: [develop]
 
 jobs:
   deploy:
@@ -12,273 +12,267 @@ jobs:
     environment: beta
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.3'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
 
-    - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader --no-interaction
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
 
-    - name: Generate Swagger Documentation
-      run: |
-        echo "📚 Generating Swagger documentation..."
-        php artisan l5-swagger:generate
-        echo "✅ Swagger documentation generated successfully"
-
-    - name: Create deployment archive
-      run: |
-        set -e
-        echo "📦 Creating deployment archive..."
-
-        # Create a clean directory structure
-        mkdir -p deploy-temp
-
-        # Copy files excluding unnecessary directories
-        shopt -s dotglob
-        for item in *; do
-          if [[ "$item" != "deploy-temp" ]] && \
-             [[ "$item" != ".github" ]] && \
-             [[ "$item" != "tests" ]] && \
-             [[ "$item" != "node_modules" ]] && \
-             [[ "$item" != ".git" ]]; then
-            cp -r "$item" deploy-temp/ 2>/dev/null || true
-          fi
-        done
-
-        # Ensure vendor directory is included
-        if [ -d "vendor" ]; then
-          cp -r vendor deploy-temp/vendor
-        fi
-
-        # Ensure Swagger documentation is included
-        if [ -d "storage/api-docs" ]; then
-          mkdir -p deploy-temp/storage/api-docs
-          cp -r storage/api-docs/* deploy-temp/storage/api-docs/
-        fi
-
-        # Create the archive
-        cd deploy-temp
-        tar -czf ../deploy-leyinvest.tar.gz . 2>/dev/null || tar -czf ../deploy-leyinvest.tar.gz .
-        cd ..
-
-        # Cleanup
-        rm -rf deploy-temp
-
-        echo "✅ Deployment archive created: $(ls -lh deploy-leyinvest.tar.gz | awk '{print $5}')"
-
-    - name: Create backup on server
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 65002
-        script: |
+      - name: Create deployment archive
+        run: |
           set -e
-          BACKUP_DIR="/home/u258421289/leyinvest/backups"
-          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
-          BACKUP_NAME="backup_leyinvest_$(date +%Y%m%d_%H%M%S)"
+          echo "📦 Creating deployment archive..."
 
-          mkdir -p "$BACKUP_DIR"
+          # Create a clean directory structure
+          mkdir -p deploy-temp
 
-          if [ -d "$LEYINVEST_DIR" ] && [ "$(ls -A $LEYINVEST_DIR)" ]; then
-            echo "📦 Creating backup: $BACKUP_NAME"
-            tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$LEYINVEST_DIR" . 2>/dev/null || true
-            echo "$BACKUP_NAME" > /tmp/latest_backup.txt
-
-            # Keep only last 5 backups
-            cd "$BACKUP_DIR"
-            ls -t backup_leyinvest_*.tar.gz | tail -n +6 | xargs -r rm -f
-            echo "✅ Backup created successfully"
-          else
-            echo "ℹ️ No existing installation to backup"
-            echo "none" > /tmp/latest_backup.txt
-          fi
-
-    - name: Upload deployment archive
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 65002
-        source: "deploy-leyinvest.tar.gz"
-        target: "/tmp/"
-
-    - name: Deploy to LeyInvest Server
-      id: deploy
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 65002
-        script: |
-          set -e
-          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
-
-          echo "🚀 Starting deployment..."
-          TEMP_DIR="/tmp/deploy-leyinvest-$(date +%Y%m%d_%H%M%S)"
-          mkdir -p "$TEMP_DIR"
-
-          echo "📦 Extracting archive..."
-          tar -xzf /tmp/deploy-leyinvest.tar.gz -C "$TEMP_DIR"
-
-          # Backup .env and .htaccess
-          [ -f "$LEYINVEST_DIR/.env" ] && cp "$LEYINVEST_DIR/.env" /tmp/backup_env
-          [ -f "$LEYINVEST_DIR/public/.htaccess" ] && cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
-          [ -f "$LEYINVEST_DIR/.htaccess" ] && cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
-
-          cd "$LEYINVEST_DIR"
-          find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
-
-          echo "📋 Copying new files..."
-          cp -rf "$TEMP_DIR"/* "$LEYINVEST_DIR"/
-          cp -rf "$TEMP_DIR"/.[!.]* "$LEYINVEST_DIR"/ 2>/dev/null || true
-
-          [ -f /tmp/backup_env ] && cp /tmp/backup_env "$LEYINVEST_DIR/.env" && rm /tmp/backup_env
-          [ -f /tmp/backup_htaccess_public ] && cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess" && rm /tmp/backup_htaccess_public
-          [ -f /tmp/backup_htaccess_root ] && cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess" && rm /tmp/backup_htaccess_root
-
-          rm -rf "$TEMP_DIR" /tmp/deploy-leyinvest.tar.gz
-
-          echo "✅ Files deployed successfully"
-
-    - name: Finalize deployment
-      id: finalize
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 65002
-        script: |
-          set -e
-          LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
-          BACKUP_DIR="/home/u258421289/leyinvest/backups"
-
-          cd "$LEYINVEST_DIR"
-          mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public storage/api-docs bootstrap/cache
-
-          php artisan down --render="errors::503" --retry=60 2>/dev/null || true
-
-          chmod -R 755 storage bootstrap/cache 2>/dev/null || true
-          chmod -R 775 storage/logs storage/framework storage/api-docs 2>/dev/null || true
-
-          rm -rf bootstrap/cache/*.php 2>/dev/null || true
-          find storage/framework/cache -type f -name "*.php" -delete 2>/dev/null || true
-          find storage/framework/views -type f -name "*.php" -delete 2>/dev/null || true
-
-          if command -v composer >/dev/null 2>&1; then
-            echo "📦 Installing Composer dependencies..."
-            composer install --no-dev --optimize-autoloader --no-interaction
-          fi
-
-          MIGRATION_SUCCESS=true
-          if command -v php >/dev/null 2>&1; then
-            echo "🔄 Running migrations..."
-            if ! php artisan migrate --force --no-interaction; then
-              echo "❌ Migration failed"
-              MIGRATION_SUCCESS=false
+          # Copy files excluding unnecessary directories
+          shopt -s dotglob
+          for item in *; do
+            if [[ "$item" != "deploy-temp" ]] && \
+               [[ "$item" != ".github" ]] && \
+               [[ "$item" != "tests" ]] && \
+               [[ "$item" != "node_modules" ]] && \
+               [[ "$item" != ".git" ]]; then
+              cp -r "$item" deploy-temp/ 2>/dev/null || true
             fi
+          done
+
+          # Ensure vendor directory is included
+          if [ -d "vendor" ]; then
+            cp -r vendor deploy-temp/vendor
           fi
 
-          if [ "$MIGRATION_SUCCESS" = false ]; then
-            LATEST_BACKUP=$(cat /tmp/latest_backup.txt 2>/dev/null || echo "none")
-            if [ "$LATEST_BACKUP" != "none" ] && [ -f "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" ]; then
-              echo "🔙 Rolling back to: $LATEST_BACKUP"
-              cd "$LEYINVEST_DIR"
-              find . -maxdepth 1 ! -name '.' ! -name '..' -exec rm -rf {} +
-              tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$LEYINVEST_DIR"
-              echo "ROLLBACK=true" > /tmp/deployment_status.txt
-              echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
+          # Ensure Swagger documentation is included
+          if [ -d "storage/api-docs" ]; then
+            mkdir -p deploy-temp/storage/api-docs
+            cp -r storage/api-docs/* deploy-temp/storage/api-docs/
+          fi
+
+          # Create the archive
+          cd deploy-temp
+          tar -czf ../deploy-leyinvest.tar.gz . 2>/dev/null || tar -czf ../deploy-leyinvest.tar.gz .
+          cd ..
+
+          # Cleanup
+          rm -rf deploy-temp
+
+          echo "✅ Deployment archive created: $(ls -lh deploy-leyinvest.tar.gz | awk '{print $5}')"
+
+      - name: Create backup on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
+          script: |
+            set -e
+            BACKUP_DIR="/home/u258421289/leyinvest/backups"
+            LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
+            BACKUP_NAME="backup_leyinvest_$(date +%Y%m%d_%H%M%S)"
+
+            mkdir -p "$BACKUP_DIR"
+
+            if [ -d "$LEYINVEST_DIR" ] && [ "$(ls -A $LEYINVEST_DIR)" ]; then
+              echo "📦 Creating backup: $BACKUP_NAME"
+              tar -czf "$BACKUP_DIR/$BACKUP_NAME.tar.gz" -C "$LEYINVEST_DIR" . 2>/dev/null || true
+              echo "$BACKUP_NAME" > /tmp/latest_backup.txt
+
+              # Keep only last 5 backups
+              cd "$BACKUP_DIR"
+              ls -t backup_leyinvest_*.tar.gz | tail -n +6 | xargs -r rm -f
+              echo "✅ Backup created successfully"
             else
-              echo "⚠️ No backup found"
-              echo "ROLLBACK=failed" > /tmp/deployment_status.txt
+              echo "ℹ️ No existing installation to backup"
+              echo "none" > /tmp/latest_backup.txt
             fi
-            exit 1
-          fi
 
-          echo "📚 Regenerating Swagger documentation on server..."
-          php artisan l5-swagger:generate 2>/dev/null || echo "⚠️ Swagger generation failed, but continuing..."
+      - name: Upload deployment archive
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
+          source: "deploy-leyinvest.tar.gz"
+          target: "/tmp/"
 
-          php artisan up 2>/dev/null || true
-          echo "ROLLBACK=false" > /tmp/deployment_status.txt
+      - name: Deploy to LeyInvest Server
+        id: deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
+          script: |
+            set -e
+            LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
 
-    - name: Check deployment status
-      id: check_status
-      if: always()
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 65002
-        script: |
-          if [ -f /tmp/deployment_status.txt ]; then
-            cat /tmp/deployment_status.txt
-          else
-            echo "ROLLBACK=false"
-          fi
-      continue-on-error: true
+            echo "🚀 Starting deployment..."
+            TEMP_DIR="/tmp/deploy-leyinvest-$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$TEMP_DIR"
 
-    - name: Send success notification
-      if: success()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.hostinger.com
-        server_port: 465
-        secure: true
-        username: eservice@efournisseurskygroups.ci
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "✅ Déploiement LeyInvest réussi"
-        to: tiafranck31@yahoo.fr
-        from: eservice@efournisseurskygroups.ci
-        body: |
-          Bonjour Franck,
-          Le déploiement sur l'environnement Beta a été effectué avec succès.
-          📦 Projet : ${{ github.repository }}
-          🔖 Branche : ${{ github.ref_name }}
-          📝 Commit : ${{ github.sha }}
-          👤 Auteur : ${{ github.actor }}
-          🔗 URL Beta : https://leyinvest.skygroups.ci
-          📚 Documentation API : https://leyinvest.skygroups.ci/api/documentation
+            echo "📦 Extracting archive..."
+            tar -xzf /tmp/deploy-leyinvest.tar.gz -C "$TEMP_DIR"
 
-    - name: Send rollback notification
-      if: failure() && contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.hostinger.com
-        server_port: 465
-        secure: true
-        username: eservice@efournisseurskygroups.ci
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "🚨 Rollback déclenché - Déploiement Beta échoué"
-        to: tiafranck31@yahoo.fr
-        from: eservice@efournisseurskygroups.ci
-        body: |
-          Bonjour Franck,
-          ⚠️ Le déploiement LeyInvest sur Hostinger a échoué.
-          Un rollback automatique a été effectué pour restaurer la dernière version stable.
-          🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            # Backup .env and .htaccess
+            [ -f "$LEYINVEST_DIR/.env" ] && cp "$LEYINVEST_DIR/.env" /tmp/backup_env
+            [ -f "$LEYINVEST_DIR/public/.htaccess" ] && cp "$LEYINVEST_DIR/public/.htaccess" /tmp/backup_htaccess_public
+            [ -f "$LEYINVEST_DIR/.htaccess" ] && cp "$LEYINVEST_DIR/.htaccess" /tmp/backup_htaccess_root
 
-    - name: Send failure notification
-      if: failure() && !contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.hostinger.com
-        server_port: 465
-        secure: true
-        username: eservice@efournisseurskygroups.ci
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "❌ Déploiement Leyinvest échoué"
-        to: tiafranck31@yahoo.fr
-        from: eservice@efournisseurskygroups.ci
-        body: |
-          Bonjour Franck,
-          ❌ Le déploiement Beta sur Hostinger a échoué.
-          🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            cd "$LEYINVEST_DIR"
+            find . -maxdepth 1 ! -name 'storage' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
+
+            echo "📋 Copying new files..."
+            cp -rf "$TEMP_DIR"/* "$LEYINVEST_DIR"/
+            cp -rf "$TEMP_DIR"/.[!.]* "$LEYINVEST_DIR"/ 2>/dev/null || true
+
+            [ -f /tmp/backup_env ] && cp /tmp/backup_env "$LEYINVEST_DIR/.env" && rm /tmp/backup_env
+            [ -f /tmp/backup_htaccess_public ] && cp /tmp/backup_htaccess_public "$LEYINVEST_DIR/public/.htaccess" && rm /tmp/backup_htaccess_public
+            [ -f /tmp/backup_htaccess_root ] && cp /tmp/backup_htaccess_root "$LEYINVEST_DIR/.htaccess" && rm /tmp/backup_htaccess_root
+
+            rm -rf "$TEMP_DIR" /tmp/deploy-leyinvest.tar.gz
+
+            echo "✅ Files deployed successfully"
+
+      - name: Finalize deployment
+        id: finalize
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
+          script: |
+            set -e
+            LEYINVEST_DIR="${{ secrets.REMOTE_PATH_LEYINVEST }}"
+            BACKUP_DIR="/home/u258421289/leyinvest/backups"
+
+            cd "$LEYINVEST_DIR"
+            mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public storage/api-docs bootstrap/cache
+
+            php artisan down --render="errors::503" --retry=60 2>/dev/null || true
+
+            chmod -R 755 storage bootstrap/cache 2>/dev/null || true
+            chmod -R 775 storage/logs storage/framework storage/api-docs 2>/dev/null || true
+
+            rm -rf bootstrap/cache/*.php 2>/dev/null || true
+            find storage/framework/cache -type f -name "*.php" -delete 2>/dev/null || true
+            find storage/framework/views -type f -name "*.php" -delete 2>/dev/null || true
+
+            if command -v composer >/dev/null 2>&1; then
+              echo "📦 Installing Composer dependencies..."
+              composer install --no-dev --optimize-autoloader --no-interaction
+            fi
+
+            MIGRATION_SUCCESS=true
+            if command -v php >/dev/null 2>&1; then
+              echo "🔄 Running migrations..."
+              if ! php artisan migrate --force --no-interaction; then
+                echo "❌ Migration failed"
+                MIGRATION_SUCCESS=false
+              fi
+            fi
+
+            if [ "$MIGRATION_SUCCESS" = false ]; then
+              LATEST_BACKUP=$(cat /tmp/latest_backup.txt 2>/dev/null || echo "none")
+              if [ "$LATEST_BACKUP" != "none" ] && [ -f "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" ]; then
+                echo "🔙 Rolling back to: $LATEST_BACKUP"
+                cd "$LEYINVEST_DIR"
+                find . -maxdepth 1 ! -name '.' ! -name '..' -exec rm -rf {} +
+                tar -xzf "$BACKUP_DIR/$LATEST_BACKUP.tar.gz" -C "$LEYINVEST_DIR"
+                echo "ROLLBACK=true" > /tmp/deployment_status.txt
+                echo "BACKUP_NAME=$LATEST_BACKUP" >> /tmp/deployment_status.txt
+              else
+                echo "⚠️ No backup found"
+                echo "ROLLBACK=failed" > /tmp/deployment_status.txt
+              fi
+              exit 1
+            fi
+
+            echo "📚 Regenerating Swagger documentation on server..."
+            php artisan l5-swagger:generate 2>/dev/null || echo "⚠️ Swagger generation failed, but continuing..."
+
+            php artisan up 2>/dev/null || true
+            echo "ROLLBACK=false" > /tmp/deployment_status.txt
+
+      - name: Check deployment status
+        id: check_status
+        if: always()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
+          script: |
+            if [ -f /tmp/deployment_status.txt ]; then
+              cat /tmp/deployment_status.txt
+            else
+              echo "ROLLBACK=false"
+            fi
+        continue-on-error: true
+
+      - name: Send success notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.hostinger.com
+          server_port: 465
+          secure: true
+          username: eservice@efournisseurskygroups.ci
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Déploiement LeyInvest réussi"
+          to: tiafranck31@yahoo.fr
+          from: eservice@efournisseurskygroups.ci
+          body: |
+            Bonjour Franck,
+            Le déploiement sur l'environnement Beta a été effectué avec succès.
+            📦 Projet : ${{ github.repository }}
+            🔖 Branche : ${{ github.ref_name }}
+            📝 Commit : ${{ github.sha }}
+            👤 Auteur : ${{ github.actor }}
+            🔗 URL Beta : https://leyinvest.skygroups.ci
+            📚 Documentation API : https://leyinvest.skygroups.ci/api/documentation
+
+      - name: Send rollback notification
+        if: failure() && contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.hostinger.com
+          server_port: 465
+          secure: true
+          username: eservice@efournisseurskygroups.ci
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🚨 Rollback déclenché - Déploiement Beta échoué"
+          to: tiafranck31@yahoo.fr
+          from: eservice@efournisseurskygroups.ci
+          body: |
+            Bonjour Franck,
+            ⚠️ Le déploiement LeyInvest sur Hostinger a échoué.
+            Un rollback automatique a été effectué pour restaurer la dernière version stable.
+            🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Send failure notification
+        if: failure() && !contains(steps.check_status.outputs.stdout, 'ROLLBACK=true')
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.hostinger.com
+          server_port: 465
+          secure: true
+          username: eservice@efournisseurskygroups.ci
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ Déploiement Leyinvest échoué"
+          to: tiafranck31@yahoo.fr
+          from: eservice@efournisseurskygroups.ci
+          body: |
+            Bonjour Franck,
+            ❌ Le déploiement Beta sur Hostinger a échoué.
+            🔍 Merci de vérifier les logs GitHub Actions : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

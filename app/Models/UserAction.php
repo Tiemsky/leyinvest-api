@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasKey;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class UserAction extends Model
 {
@@ -22,34 +22,40 @@ class UserAction extends Model
     /**
      * Relation avec l'utilisateur qui suit
      */
-    public function user(): BelongsTo{
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'user_id');
     }
+
     /**
      * Relation avec l'action suivie
      */
-    public function action(): BelongsTo{
+    public function action(): BelongsTo
+    {
         return $this->belongsTo(Action::class, 'action_id');
     }
 
     /**
      * Relation avec l'utilisateur suivi (l'action)
      */
-    public function followedUser(): BelongsTo{
+    public function followedUser(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'action_id');
     }
 
     /**
      * Scope pour obtenir les actions d'un utilisateur
      */
-    public function scopeForUser($query, int $userId){
+    public function scopeForUser($query, int $userId)
+    {
         return $query->where('user_id', $userId);
     }
 
     /**
      * Scope pour obtenir les followers d'une action
      */
-    public function scopeForAction($query, int $actionId){
+    public function scopeForAction($query, int $actionId)
+    {
         return $query->where('action_id', $actionId);
     }
 }

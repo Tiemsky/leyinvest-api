@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Action;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
 class FollowService
@@ -17,6 +17,7 @@ class FollowService
 
         if ($existing) {
             $user->actions()->detach($action->id);
+
             return 'unfollowed';
         }
 
@@ -33,7 +34,7 @@ class FollowService
      */
     public function updateFollowParams(User $user, Action $action, ?float $stopLoss = null, ?float $takeProfit = null): bool
     {
-        if (!$user->actions()->where('action_id', $action->id)->exists()) {
+        if (! $user->actions()->where('action_id', $action->id)->exists()) {
             return false;
         }
 

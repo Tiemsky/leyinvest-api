@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 class FinancialNewsResource extends JsonResource
 {
@@ -16,7 +16,7 @@ class FinancialNewsResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Détermine si pdf_url est un chemin local (commence par http/https ?)
-        $isLocalFile = !Str::startsWith($this->pdf_url, ['http://', 'https://']);
+        $isLocalFile = ! Str::startsWith($this->pdf_url, ['http://', 'https://']);
 
         return [
             'key' => $this->key,
@@ -40,11 +40,11 @@ class FinancialNewsResource extends JsonResource
      */
     protected function getDownloadLink(bool $isLocalFile, string $routeName): string
     {
-        if (!$this->pdf_url) {
+        if (! $this->pdf_url) {
             return '';
         }
 
-        if (!$isLocalFile) {
+        if (! $isLocalFile) {
             // Pour les URL distantes (BRVM), l'URL est la même pour les deux options
             return $this->pdf_url;
         }

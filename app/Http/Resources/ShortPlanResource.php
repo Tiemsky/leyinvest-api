@@ -21,14 +21,16 @@ class ShortPlanResource extends JsonResource
             // NOTE: C'est une vérification simplifiée. Dans un système complet,
             // vous devriez vérifier si le plan correspond à l'activeSubscription de l'utilisateur.
             $user = $request->user();
+
             return $user->activeSubscription?->plan_id === $this->id;
         });
+
         return [
-            'name'        => (string) $this->nom,
-            'slug'        => (string) $this->slug,
-            'price'       => (float) $this->prix,
-            'is_active'   => (bool) $this->is_active,
-            'is_current'  => (bool) $isCurrentLogic, // Booléen ou absent
+            'name' => (string) $this->nom,
+            'slug' => (string) $this->slug,
+            'price' => (float) $this->prix,
+            'is_active' => (bool) $this->is_active,
+            'is_current' => (bool) $isCurrentLogic, // Booléen ou absent
         ];
     }
 }

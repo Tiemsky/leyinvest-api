@@ -11,14 +11,15 @@ class CouponService
     /**
      * Valider un code coupon
      */
-    public function validate(string $code, ?int $planId = null, ?int $userId = null): array{
+    public function validate(string $code, ?int $planId = null, ?int $userId = null): array
+    {
         $coupon = Coupon::where('code', strtoupper($code))->first();
 
-        if (!$coupon) {
+        if (! $coupon) {
             throw new NotFoundHttpException('Code coupon invalide.');
         }
         // 1. Validation Générale (Actif, Dates, Utilisation Globale)
-        if (!$coupon->isValid()) {
+        if (! $coupon->isValid()) {
             return [
                 'valid' => false,
                 'message' => $this->getInvalidReason($coupon),
@@ -27,7 +28,7 @@ class CouponService
         }
 
         // 2. Validation Spécifique au Plan
-        if ($planId && !$coupon->isApplicableToPlan($planId)) {
+        if ($planId && ! $coupon->isApplicableToPlan($planId)) {
             return [
                 'valid' => false,
                 'message' => 'Ce coupon n\'est pas applicable à ce plan.',
@@ -52,11 +53,11 @@ class CouponService
         ];
     }
 
-
     /**
      * Calculer la réduction pour un montant
      */
-    public function calculateDiscount(Coupon $coupon, float $amount): array{
+    public function calculateDiscount(Coupon $coupon, float $amount): array
+    {
         $discount = $coupon->calculateDiscount($amount);
         $finalAmount = max(0, $amount - $discount);
 
@@ -71,10 +72,11 @@ class CouponService
     /**
      * Appliquer un coupon à un montant
      */
-    public function apply(string $code, float $amount, ?int $planId = null): array{
+    public function apply(string $code, float $amount, ?int $planId = null): array
+    {
         $validation = $this->validate($code, $planId);
 
-        if (!$validation['valid']) {
+        if (! $validation['valid']) {
             return $validation;
         }
 
@@ -87,7 +89,8 @@ class CouponService
     /**
      * Créer un nouveau coupon
      */
-    public function create(array $data): Coupon{
+    public function create(array $data): Coupon
+    {
         // Assurer que le code est en majuscules
         $data['code'] = strtoupper($data['code']);
 
@@ -95,27 +98,31 @@ class CouponService
         if (Coupon::where('code', $data['code'])->exists()) {
             throw new \Exception('Ce code coupon existe déjà.');
         }
+
         return Coupon::create($data);
     }
 
     /**
      * Désactiver un coupon
      */
-    public function deactivate(Coupon $coupon): bool{
+    public function deactivate(Coupon $coupon): bool
+    {
         return $coupon->update(['is_active' => false]);
     }
 
     /**
      * Activer un coupon
      */
-    public function activate(Coupon $coupon): bool{
+    public function activate(Coupon $coupon): bool
+    {
         return $coupon->update(['is_active' => true]);
     }
 
     /**
      * Obtenir les statistiques d'utilisation d'un coupon
      */
-    public function getUsageStats(Coupon $coupon): array{
+    public function getUsageStats(Coupon $coupon): array
+    {
         $subscriptions = $coupon->subscriptions()->count();
         $totalRevenue = $coupon->subscriptions()->sum('amount_paid');
         $totalDiscount = $coupon->subscriptions()
@@ -141,8 +148,9 @@ class CouponService
     /**
      * Obtenir la raison pour laquelle un coupon est invalide
      */
-    protected function getInvalidReason(Coupon $coupon): string{
-        if (!$coupon->is_active) {
+    protected function getInvalidReason(Coupon $coupon): string
+    {
+        if (! $coupon->is_active) {
             return 'Ce coupon a été désactivé.';
         }
 
@@ -164,7 +172,8 @@ class CouponService
     /**
      * Générer un code coupon unique
      */
-    public function generateUniqueCode(int $length = 8): string{
+    public function generateUniqueCode(int $length = 8): string
+    {
         do {
             $code = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, $length));
         } while (Coupon::where('code', $code)->exists());
@@ -175,7 +184,8 @@ class CouponService
     /**
      * Vérifier si un utilisateur a déjà utilisé un coupon
      */
-    public function hasUserUsedCoupon(int $userId, int $couponId): bool{
+    public function hasUserUsedCoupon(int $userId, int $couponId): bool
+    {
         return Subscription::where('user_id', $userId)
             ->where('coupon_id', $couponId)
             ->exists();

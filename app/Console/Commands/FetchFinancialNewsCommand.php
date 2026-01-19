@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class FetchFinancialNewsCommand extends Command
 {
     protected $signature = 'news:fetch';
+
     protected $description = 'Dispatch scraping jobs for financial news services';
 
     public function handle(): void
@@ -24,7 +25,7 @@ class FetchFinancialNewsCommand extends Command
 
         foreach ($scrapers as $scraperClass) {
             dispatch(new ScrapeFinancialNewsJob($scraperClass));
-            $this->info("✅ Job dispatched for: " . class_basename($scraperClass));
+            $this->info('✅ Job dispatched for: '.class_basename($scraperClass));
         }
 
         $this->newLine();

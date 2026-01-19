@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # ============================================
@@ -141,7 +141,7 @@ services:
   # 6. MAILPIT (Capture d'emails locale)
   # ============================================
   mailpit:
-    image: 'axllent/mailpit:latest'
+    image: "axllent/mailpit:latest"
     container_name: leyinvest_mailpit
     restart: unless-stopped
     ports:

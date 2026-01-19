@@ -2,15 +2,16 @@
 
 namespace App\Services\Scrapers;
 
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 abstract class BaseScraper
 {
     protected $client;
+
     protected $debugMode = false;
 
     public function __construct()
@@ -58,7 +59,8 @@ abstract class BaseScraper
 
                 // Si 403, essayer avec un autre User-Agent
                 if ($statusCode === 403) {
-                    \Log::info("🔄 Retrying with different User-Agent...");
+                    \Log::info('🔄 Retrying with different User-Agent...');
+
                     return $this->retryWithDifferentHeaders($url);
                 }
 
@@ -80,14 +82,16 @@ abstract class BaseScraper
         } catch (ExceptionInterface $e) {
             \Log::error("❌ HTTP error for {$url}", [
                 'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return null;
         } catch (\Exception $e) {
             \Log::error("❌ Unexpected error for {$url}", [
                 'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return null;
         }
     }
@@ -118,7 +122,8 @@ abstract class BaseScraper
 
             if ($response->getStatusCode() === 200) {
                 $html = $response->getContent();
-                \Log::info("✅ Retry successful!");
+                \Log::info('✅ Retry successful!');
+
                 return new Crawler($html, $url);
             }
 
@@ -135,8 +140,8 @@ abstract class BaseScraper
     protected function saveDebugHtml(string $url, string $html): void
     {
         try {
-            $filename = 'debug_' . md5($url) . '_' . date('YmdHis') . '.html';
-            $path = 'scraper_debug/' . $filename;
+            $filename = 'debug_'.md5($url).'_'.date('YmdHis').'.html';
+            $path = 'scraper_debug/'.$filename;
 
             Storage::put($path, $html);
 
@@ -151,7 +156,7 @@ abstract class BaseScraper
      */
     protected function parseDate(?string $dateString): ?Carbon
     {
-        if (!$dateString) {
+        if (! $dateString) {
             return null;
         }
 
@@ -162,8 +167,9 @@ abstract class BaseScraper
             return Carbon::createFromFormat('d/m/Y', $dateString);
         } catch (\Exception $e) {
             \Log::warning("Failed to parse date: '{$dateString}'", [
-                'exception' => $e->getMessage()
+                'exception' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -174,6 +180,7 @@ abstract class BaseScraper
     protected function isWithinWindow(Carbon $date, int $days): bool
     {
         $cutoffDate = Carbon::today()->subDays($days);
+
         return $date->gte($cutoffDate);
     }
 

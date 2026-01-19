@@ -14,7 +14,9 @@ class SendWelcomeNotification extends Notification implements ShouldQueue
 
     // Configuration de la file d'attente
     public $tries = 3;
+
     public $timeout = 120;
+
     public $retryAfter = 60;
 
     public function __construct()
@@ -39,7 +41,7 @@ class SendWelcomeNotification extends Notification implements ShouldQueue
         $userId = $isRealUser ? (string) $notifiable->id : 'anonymous';
 
         return (new MailMessage)
-            ->subject('Bienvenue sur ' . config('app.name') . ' !')
+            ->subject('Bienvenue sur '.config('app.name').' !')
             ->view('emails.welcome', [
                 'user' => $notifiable,
                 'appName' => config('app.name'),
@@ -54,9 +56,9 @@ class SendWelcomeNotification extends Notification implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("Échec envoi email de bienvenue", [
+        Log::error('Échec envoi email de bienvenue', [
             'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
     }
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 class RecalculateFinancialMetrics implements ShouldQueue
 {
     private FinancialMetricCalculator $calculator;
+
     private SectorMetricAggregator $aggregator;
 
     public function __construct(

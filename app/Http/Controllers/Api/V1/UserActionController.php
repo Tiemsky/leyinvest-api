@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use App\Services\UserActionService;
-use App\Http\Controllers\Controller;
-use App\Exceptions\NotFollowingException;
-use App\Http\Requests\FollowActionRequest;
-use App\Http\Resources\UserActionResource;
 use App\Exceptions\AlreadyFollowingException;
+use App\Exceptions\NotFollowingException;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\FollowActionRequest;
 use App\Http\Requests\UpdateUserActionRequest;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use App\Http\Resources\UserActionResource;
+use App\Services\UserActionService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @tags User Actions - Follow & Unfollow
@@ -28,6 +27,7 @@ class UserActionController extends Controller
     public function index(): JsonResponse
     {
         $actions = $this->userActionService->getUserFollowedActions(auth()->id());
+
         return response()->json([
             'success' => true,
             'message' => 'Liste des actions suivies récupérée avec succès',
@@ -35,7 +35,7 @@ class UserActionController extends Controller
         ], 200);
     }
 
-      /**
+    /**
      * Suivre une action
      */
     public function follow(FollowActionRequest $request): JsonResponse
@@ -68,6 +68,7 @@ class UserActionController extends Controller
     {
         try {
             $this->userActionService->unfollow(auth()->id(), $actionId);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Action retirée avec succès',
@@ -80,27 +81,27 @@ class UserActionController extends Controller
         }
     }
 
-/**
- * Ne plus suivre plusieurs actions
- */
-public function unfollowMultiple(Request $request): JsonResponse
-{
-    $validated = $request->validate([
-        'action_ids' => 'required|array|min:1',
-        'action_ids.*' => 'required|integer|exists:actions,id'
-    ]);
+    /**
+     * Ne plus suivre plusieurs actions
+     */
+    public function unfollowMultiple(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'action_ids' => 'required|array|min:1',
+            'action_ids.*' => 'required|integer|exists:actions,id',
+        ]);
 
-    $result = $this->userActionService->unfollowMultiple(
-        auth()->id(),
-        $validated['action_ids']
-    );
+        $result = $this->userActionService->unfollowMultiple(
+            auth()->id(),
+            $validated['action_ids']
+        );
 
-    return response()->json([
-        'success' => true,
-        'message' => "{$result['unfollowed_count']} action(s) retirée(s) avec succès",
-        'unfollowed_count' => $result['unfollowed_count'],
-    ], 200);
-}
+        return response()->json([
+            'success' => true,
+            'message' => "{$result['unfollowed_count']} action(s) retirée(s) avec succès",
+            'unfollowed_count' => $result['unfollowed_count'],
+        ], 200);
+    }
 
     /**
      * Mettre à jour les paramètres (stop_loss, take_profit)

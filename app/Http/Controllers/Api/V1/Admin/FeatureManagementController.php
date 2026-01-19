@@ -19,7 +19,7 @@ class FeatureManagementController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $features->map(function($feature) {
+            'data' => $features->map(function ($feature) {
                 return [
                     'id' => $feature->id,
                     'key' => $feature->key,
@@ -71,7 +71,7 @@ class FeatureManagementController extends Controller
             'success' => true,
             'data' => [
                 'feature' => $feature,
-                'plans' => $feature->plans->map(fn($p) => [
+                'plans' => $feature->plans->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->nom,
                     'slug' => $p->slug,
@@ -88,7 +88,7 @@ class FeatureManagementController extends Controller
     public function update(Request $request, Feature $feature)
     {
         $validated = $request->validate([
-            'key' => 'sometimes|string|unique:features,key,' . $feature->id . '|regex:/^[a-z_]+$/',
+            'key' => 'sometimes|string|unique:features,key,'.$feature->id.'|regex:/^[a-z_]+$/',
             'name' => 'sometimes|string|max:255',
             'is_active' => 'sometimes|boolean',
         ]);

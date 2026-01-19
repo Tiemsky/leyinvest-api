@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Subscription extends Model
 {
@@ -43,10 +42,15 @@ class Subscription extends Model
 
     // Constantes pour les statuts
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_TRIALING = 'trialing';
+
     public const STATUS_CANCELED = 'canceled';
+
     public const STATUS_EXPIRED = 'expired';
+
     public const STATUS_PAUSED = 'paused';
+
     public const STATUS_PENDING = 'pending';
 
     /**
@@ -82,7 +86,7 @@ class Subscription extends Model
             // L'abonnement actif doit être dans sa période payée, ou n'avoir aucune date de fin définie.
             ->where(function ($q) {
                 $q->whereNull('ends_at')
-                  ->orWhere('ends_at', '>', now());
+                    ->orWhere('ends_at', '>', now());
             });
     }
 
@@ -95,11 +99,11 @@ class Subscription extends Model
     public function scopeExpired(Builder $query): Builder
     {
         // Une souscription est expirée si son statut est explicitement 'expired' ou si sa période est passée.
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->where('status', self::STATUS_EXPIRED)
-              ->orWhere(function($subQ) {
-                  $subQ->whereNotNull('ends_at')->where('ends_at', '<', now());
-              });
+                ->orWhere(function ($subQ) {
+                    $subQ->whereNotNull('ends_at')->where('ends_at', '<', now());
+                });
         });
     }
 
@@ -110,7 +114,7 @@ class Subscription extends Model
 
     public function scopeCanceled(Builder $query): Builder
     {
-         // Canceled ne signifie pas nécessairement Expired (peut être en période de grâce)
+        // Canceled ne signifie pas nécessairement Expired (peut être en période de grâce)
         return $query->whereNotNull('canceled_at');
     }
 
@@ -120,14 +124,13 @@ class Subscription extends Model
         return $query->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_TRIALING])
             ->where(function ($q) {
                 $q->whereNull('ends_at')
-                  ->orWhere('ends_at', '>', now());
+                    ->orWhere('ends_at', '>', now());
             })
             ->orWhere(function ($q) {
                 $q->where('status', self::STATUS_TRIALING)
-                  ->where('trial_ends_at', '>', now());
+                    ->where('trial_ends_at', '>', now());
             });
     }
-
 
     /**
      * Vérifications d'état (Helpers du Modèle)
@@ -135,8 +138,8 @@ class Subscription extends Model
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE &&
-               !$this->hasEnded() &&
-               !$this->isPaused();
+               ! $this->hasEnded() &&
+               ! $this->isPaused();
     }
 
     public function isTrialing(): bool
@@ -154,7 +157,7 @@ class Subscription extends Model
     public function isCanceled(): bool
     {
         // Vrai si une annulation a été initiée (canceled_at est rempli)
-        return !is_null($this->canceled_at);
+        return ! is_null($this->canceled_at);
     }
 
     public function isPaused(): bool
@@ -189,14 +192,16 @@ class Subscription extends Model
     /**
      * Vrai si l'abonnement est annulé mais toujours dans sa période payée/d'essai.
      */
-    public function onGracePeriod(): bool{
+    public function onGracePeriod(): bool
+    {
         return $this->isCanceled() && $this->ends_at && $this->ends_at->isFuture();
     }
 
     /**
      * Annule l'abonnement à la fin de la période actuelle (grace period).
      */
-    public function cancelAtPeriodEnd(string $reason = null): bool{
+    public function cancelAtPeriodEnd(?string $reason = null): bool
+    {
         return $this->update([
             // Le statut reste 'active' ou 'trialing' jusqu'à ends_at
             'canceled_at' => now(),
@@ -208,7 +213,8 @@ class Subscription extends Model
      * Annule l'abonnement immédiatement et le marque comme expiré.
      * Utilisé notamment pour les proratas/upgrades.
      */
-    public function cancelImmediately(string $reason = null): bool{
+    public function cancelImmediately(?string $reason = null): bool
+    {
         return $this->update([
             'status' => self::STATUS_EXPIRED,
             'canceled_at' => now(),
@@ -217,11 +223,13 @@ class Subscription extends Model
         ]);
     }
 
-    public function resume(): bool{
+    public function resume(): bool
+    {
         // Ne peut résumer que si annulé ou en pause
-        if (!$this->isCanceled() && !$this->isPaused()) {
+        if (! $this->isCanceled() && ! $this->isPaused()) {
             return false;
         }
+
         return $this->update([
             'status' => self::STATUS_ACTIVE,
             'canceled_at' => null,
@@ -231,7 +239,8 @@ class Subscription extends Model
         ]);
     }
 
-    public function pause(): bool{
+    public function pause(): bool
+    {
         if ($this->status !== self::STATUS_ACTIVE && $this->status !== self::STATUS_TRIALING) {
             return false;
         }
@@ -242,10 +251,12 @@ class Subscription extends Model
         ]);
     }
 
-    public function unpause(): bool{
-        if (!$this->isPaused()) {
+    public function unpause(): bool
+    {
+        if (! $this->isPaused()) {
             return false;
         }
+
         return $this->update([
             'status' => self::STATUS_ACTIVE,
             'paused_at' => null,

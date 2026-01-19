@@ -61,7 +61,7 @@ class FinancialNews extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('title', 'LIKE', "%{$search}%")
-              ->orWhere('company', 'LIKE', "%{$search}%");
+                ->orWhere('company', 'LIKE', "%{$search}%");
         });
     }
 
@@ -76,7 +76,7 @@ class FinancialNews extends Model
     public function isLocalFile(): Attribute
     {
         return Attribute::make(
-            get: fn () => !str_starts_with($this->pdf_url, 'http')
+            get: fn () => ! str_starts_with($this->pdf_url, 'http')
         );
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
 namespace App\Http\Collections;
-use Illuminate\Http\Request;
+
 use App\Http\Resources\FinancialNewsResource;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class FinancialNewsCollection extends ResourceCollection

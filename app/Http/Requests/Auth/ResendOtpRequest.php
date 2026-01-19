@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *     schema="ResendOtpRequest",
  *     type="object",
  *     required={"email"},
+ *
  *     @OA\Property(
  *         property="email",
  *         type="string",

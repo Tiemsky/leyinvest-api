@@ -2,14 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Action;
 use App\Models\QuarterlyResult;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class ImportQuarterlyResults extends Command
 {
     protected $signature = 'import:import-quarterly-results';
+
     protected $description = 'Importe l’intégralité des résultats trimestriels 2025 extraits du PDF';
 
     public function handle()
@@ -86,8 +87,9 @@ class ImportQuarterlyResults extends Command
                 // Utilisation du scopeBySymbole défini dans le modèle Action [cite: 39]
                 $action = Action::bySymbole($symbole)->first();
 
-                if (!$action) {
+                if (! $action) {
                     $this->error("Action {$symbole} absente de la base de données.");
+
                     continue;
                 }
 
@@ -95,14 +97,14 @@ class ImportQuarterlyResults extends Command
                     QuarterlyResult::updateOrCreate(
                         [
                             'action_id' => $action->id, // [cite: 50, 76]
-                            'year'      => 2025,       // [cite: 51, 78]
+                            'year' => 2025,       // [cite: 51, 78]
                             'trimestre' => $res['trimestre'], // [cite: 52, 79]
                         ],
                         [
                             'chiffre_affaires' => $res['ca'],    // [cite: 53, 82]
-                            'evolution_ca'     => $res['ev_ca'], // [cite: 54, 84]
-                            'resultat_net'     => $res['rn'],    // [cite: 55, 87]
-                            'evolution_rn'     => $res['ev_rn'], // [cite: 56, 89]
+                            'evolution_ca' => $res['ev_ca'], // [cite: 54, 84]
+                            'resultat_net' => $res['rn'],    // [cite: 55, 87]
+                            'evolution_rn' => $res['ev_rn'], // [cite: 56, 89]
                         ]
                     );
                 }

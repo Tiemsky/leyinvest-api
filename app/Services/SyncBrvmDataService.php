@@ -2,21 +2,22 @@
 
 namespace App\Services;
 
-use App\Models\Action;
-use App\Models\BrvmSector;
-use Illuminate\Support\Str;
-use App\Models\BocIndicator;
-use App\Support\BrvmMapping;
-use App\Models\ClassifiedSector;
 use App\Jobs\ProcessForecastsJob;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Action;
+use App\Models\BocIndicator;
+use App\Models\BrvmSector;
+use App\Models\ClassifiedSector;
+use App\Support\BrvmMapping;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SyncBrvmDataService
 {
     protected string $baseUrl;
+
     protected string $token;
 
     public function __construct()
@@ -32,7 +33,8 @@ class SyncBrvmDataService
     public function syncAllData(): bool
     {
         if (empty($this->token)) {
-            Log::error("Configuration manquante : FASTAPI_WEBHOOK_TOKEN");
+            Log::error('Configuration manquante : FASTAPI_WEBHOOK_TOKEN');
+
             return false;
         }
 
@@ -49,13 +51,14 @@ class SyncBrvmDataService
 
             if ($response->failed()) {
                 $this->logErrorResponse($response);
+
                 return false;
             }
 
             $payload = $response->json('payload');
 
-            if (!is_array($payload)) {
-                throw new \Exception("Le format du payload reçu est invalide.");
+            if (! is_array($payload)) {
+                throw new \Exception('Le format du payload reçu est invalide.');
             }
 
             // Utilisation d'une transaction pour garantir la cohérence des données
@@ -68,17 +71,22 @@ class SyncBrvmDataService
                 $this->syncMarketIndicator($payload['indicateur_marche'] ?? null);
             });
             ProcessForecastsJob::dispatch();
-            Log::info(" Synchronisation BRVM terminée avec succès.");
+            Log::info(' Synchronisation BRVM terminée avec succès.');
+
             return true;
 
         } catch (\Exception $e) {
-            Log::error("Erreur critique lors de la synchro BRVM : " . $e->getMessage());
+            Log::error('Erreur critique lors de la synchro BRVM : '.$e->getMessage());
+
             return false;
         }
     }
+
     protected function syncActions(array $actions): void
     {
-        if (empty($actions)) return;
+        if (empty($actions)) {
+            return;
+        }
 
         $brvmSectors = BrvmSector::pluck('id', 'nom')->toArray();
         $classifiedSectors = ClassifiedSector::pluck('id', 'nom')->toArray();
@@ -89,14 +97,16 @@ class SyncBrvmDataService
         foreach ($actions as $item) {
             $symbole = $item['symbole'];
             $sectors = $mapping[$symbole] ?? null;
-            if (!$sectors) continue;
+            if (! $sectors) {
+                continue;
+            }
 
             $records[] = [
-                'key' => 'act_' . strtolower($symbole),                'symbole' => $symbole,
+                'key' => 'act_'.strtolower($symbole),                'symbole' => $symbole,
                 'nom' => $item['nom'] ?? 'Inconnu',
                 'brvm_sector_id' => $brvmSectors[$sectors[0]] ?? 1,
                 'classified_sector_id' => $classifiedSectors[$sectors[1]] ?? 1,
-                'volume' => (string)($item['volume'] ?? '0'),
+                'volume' => (string) ($item['volume'] ?? '0'),
                 'cours_veille' => $item['cours_veille'] ?? 0,
                 'cours_ouverture' => $item['cours_ouverture'] ?? 0,
                 'cours_cloture' => $item['cours_cloture'] ?? 0,
@@ -111,11 +121,12 @@ class SyncBrvmDataService
 
     protected function syncIndices(array $indices): void
     {
-        if (empty($indices))
+        if (empty($indices)) {
             return;
+        }
 
-        $records = array_map(fn($item) => [
-            'key' => 'brv_' . Str::random(config('key.length', 10)),
+        $records = array_map(fn ($item) => [
+            'key' => 'brv_'.Str::random(config('key.length', 10)),
             'slug' => $item['slug'],
             'nom' => $item['nom'],
             'variation' => $item['variation'] ?? 0,
@@ -128,8 +139,9 @@ class SyncBrvmDataService
 
     protected function syncMarketIndicator(?array $indicator): void
     {
-        if (!$indicator)
+        if (! $indicator) {
             return;
+        }
         BocIndicator::updateOrCreate(
             ['date_rapport' => $indicator['date_rapport']],
             array_merge($indicator, ['updated_at' => now()])
@@ -138,10 +150,10 @@ class SyncBrvmDataService
 
     private function logErrorResponse(Response $response): void
     {
-        Log::error("API Scraper Error", [
+        Log::error('API Scraper Error', [
             'status' => $response->status(),
             'body' => $response->json() ?? $response->body(),
-            'url' => $this->baseUrl
+            'url' => $this->baseUrl,
         ]);
     }
 }

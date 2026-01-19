@@ -2,17 +2,17 @@
 
 namespace Routes\Api;
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SectorStatsController;
 use App\Http\Controllers\Api\V1\ActionController;
-use App\Http\Controllers\Api\V1\BocIndicatorController;
-use App\Http\Controllers\Api\V1\ActionForecastController;
 use App\Http\Controllers\Api\V1\ActionDashboardController;
+use App\Http\Controllers\Api\V1\ActionForecastController;
+use App\Http\Controllers\Api\V1\BocIndicatorController;
+use App\Http\Controllers\SectorStatsController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'check.token.expiration', 'throttle:api'])->group(function () {
 
     // ========== ACTIONS - BOC INDICATOR ==========
-    //Recuperations de tous les indicateurs qui proviennt du PDF BOC sur le site de la Bvrm
+    // Recuperations de tous les indicateurs qui proviennt du PDF BOC sur le site de la Bvrm
     Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
     // ========== ACTIONS - ANALYZE - DASHBOARD & HISTORIQUE ==========
@@ -23,18 +23,18 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'check.token.expiration', 'thro
 
         Route::get('analyze', [ActionController::class, 'analyze']);
 
-        //Afficher les détails complet d’une action avec les indicateurs boursiers
+        // Afficher les détails complet d’une action avec les indicateurs boursiers
         Route::get('analyze/{action}', [ActionController::class, 'show']);
 
         // Analyze - Dashboard Complet de l'année N-1 avec comparaisons sectorielles
         Route::get('{action}/dashboard', [ActionDashboardController::class, 'dashboard'])
             ->name('actions.dashboard');
 
-        //Analyze -  Historique complet sur 5 ans
+        // Analyze -  Historique complet sur 5 ans
         Route::get('{action}/history', [ActionDashboardController::class, 'history'])
             ->name('actions.history');
 
-        //Analyze Prevision de rendement
+        // Analyze Prevision de rendement
         Route::get('forecast', [ActionForecastController::class, 'index'])->name('actions.forecasts');
     });
 

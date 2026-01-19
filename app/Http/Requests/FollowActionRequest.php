@@ -9,12 +9,12 @@ use Illuminate\Foundation\Http\FormRequest;
  *     schema="FollowActionRequest",
  *     type="object",
  *     required={"action_id"},
+ *
  *     @OA\Property(property="action_id", type="integer", example=1, description="ID de l'action à suivre"),
  *     @OA\Property(property="stop_loss", type="number", format="float", nullable=true, example=950.5, description="Valeur optionnelle de stop loss"),
  *     @OA\Property(property="take_profit", type="number", format="float", nullable=true, example=1200.0, description="Valeur optionnelle de take profit")
  * )
  */
-
 class FollowActionRequest extends FormRequest
 {
     public function authorize(): bool

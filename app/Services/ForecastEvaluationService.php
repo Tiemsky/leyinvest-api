@@ -36,15 +36,15 @@ class ForecastEvaluationService
         $action->forecast()->updateOrCreate(
             ['action_id' => $action->id],
             [
-                'rn_previsionnel'   => $beneficeNetEsperé,
-                'dnpa_previsionnel' => $dividendeNetEsperé
+                'rn_previsionnel' => $beneficeNetEsperé,
+                'dnpa_previsionnel' => $dividendeNetEsperé,
             ]
         );
 
         return $action->forecast;
     }
 
-/**
+    /**
      * LOGIQUE A : Estimer le bénéfice de l'année en cours.
      */
     private function estimerProchainBeneficeNet(Action $action, Collection $historiqueAnnuel)
@@ -61,8 +61,8 @@ class ForecastEvaluationService
 
         // A. Calcul de la tendance passée (Moyenne pondérée des 4 dernières années)
         $quatreDernieresAnnees = $historiqueAnnuel->where('year', '<', $anneeEnCours)
-                                                ->whereNotNull('resultat_net')
-                                                ->take(4);
+            ->whereNotNull('resultat_net')
+            ->take(4);
 
         $beneficeMoyenDuPasse = 0;
         if ($quatreDernieresAnnees->isNotEmpty()) {
@@ -80,9 +80,9 @@ class ForecastEvaluationService
 
         // B. Calcul de la forme actuelle (Moyenne des performances des derniers trimestres)
         $resultatsTrimestriels = $action->quarterlyResults()
-                                       ->where('year', $anneeEnCours)
-                                       ->whereIn('trimestre', [1, 2, 3])
-                                       ->get();
+            ->where('year', $anneeEnCours)
+            ->whereIn('trimestre', [1, 2, 3])
+            ->get();
 
         $performanceT1 = $resultatsTrimestriels->firstWhere('trimestre', 1)->evolution_rn ?? 0;
         $performanceT2 = $resultatsTrimestriels->firstWhere('trimestre', 2)->evolution_rn ?? 0;
@@ -104,10 +104,12 @@ class ForecastEvaluationService
     {
         // On analyse les 5 dernières années pour voir si l'entreprise est régulière
         $historiqueRecent = $historiqueAnnuel->whereNotNull('resultat_net')
-                                             ->where('resultat_net', '!=', 0)
-                                             ->take(5);
+            ->where('resultat_net', '!=', 0)
+            ->take(5);
 
-        if ($historiqueRecent->count() < 3) return 0;
+        if ($historiqueRecent->count() < 3) {
+            return 0;
+        }
 
         // On calcule deux choses :
         // 1. La part du bénéfice reversée (Taux de Distribution - TD)
@@ -115,7 +117,7 @@ class ForecastEvaluationService
         $analysesSaisies = $historiqueRecent->map(function ($bilan) {
             return [
                 'taux_reversé' => $bilan->dividendes_bruts / $bilan->resultat_net,
-                'montant_cash' => $bilan->dnpa
+                'montant_cash' => $bilan->dnpa,
             ];
         });
 
@@ -146,35 +148,40 @@ class ForecastEvaluationService
         // On retire l'impôt (IRVM) pour avoir le Net qui va dans la poche de l'investisseur
         $taxeEtat = $this->reglages['irvm'] ?? 0.15;
 
-        if ($nombreTotalTitres == 0) return 0;
+        if ($nombreTotalTitres == 0) {
+            return 0;
+        }
 
         $dividendeGlobalNet = $enveloppeDividendesBruts * (1 - $taxeEtat);
+
         return $dividendeGlobalNet / $nombreTotalTitres;
     }
 
-
     /**
- * Calcule la volatilité (l'écart-type) d'une liste de nombres.
- * En clair : mesure à quel point les chiffres s'éloignent de la moyenne.
- */
-private function calculerEcartType(array $listeDeNombres)
-{
-    $nombreElements = count($listeDeNombres);
-    // Si la liste est vide, on ne peut rien calculer
-    if ($nombreElements === 0) return 0;
-    // 1. Calculer la moyenne de tous les nombres
-    $somme = array_sum($listeDeNombres);
-    $moyenne = $somme / $nombreElements;
-    // 2. Calculer l'écart de chaque nombre par rapport à cette moyenne
-    $sommeDesEcartsAuCarre = 0.0;
-    foreach ($listeDeNombres as $nombre) {
-        // On regarde la distance entre le nombre et la moyenne
-        $distanceDeLaMoyenne = (double)$nombre - $moyenne;
-        // On multiplie cette distance par elle-même (pour que ce soit toujours positif)
-        $sommeDesEcartsAuCarre += $distanceDeLaMoyenne * $distanceDeLaMoyenne;
+     * Calcule la volatilité (l'écart-type) d'une liste de nombres.
+     * En clair : mesure à quel point les chiffres s'éloignent de la moyenne.
+     */
+    private function calculerEcartType(array $listeDeNombres)
+    {
+        $nombreElements = count($listeDeNombres);
+        // Si la liste est vide, on ne peut rien calculer
+        if ($nombreElements === 0) {
+            return 0;
+        }
+        // 1. Calculer la moyenne de tous les nombres
+        $somme = array_sum($listeDeNombres);
+        $moyenne = $somme / $nombreElements;
+        // 2. Calculer l'écart de chaque nombre par rapport à cette moyenne
+        $sommeDesEcartsAuCarre = 0.0;
+        foreach ($listeDeNombres as $nombre) {
+            // On regarde la distance entre le nombre et la moyenne
+            $distanceDeLaMoyenne = (float) $nombre - $moyenne;
+            // On multiplie cette distance par elle-même (pour que ce soit toujours positif)
+            $sommeDesEcartsAuCarre += $distanceDeLaMoyenne * $distanceDeLaMoyenne;
+        }
+        // 3. Faire la moyenne de ces écarts et prendre la racine carrée
+        $variance = $sommeDesEcartsAuCarre / $nombreElements;
+
+        return sqrt($variance);
     }
-    // 3. Faire la moyenne de ces écarts et prendre la racine carrée
-    $variance = $sommeDesEcartsAuCarre / $nombreElements;
-    return sqrt($variance);
-}
 }

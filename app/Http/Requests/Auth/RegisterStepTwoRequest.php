@@ -15,12 +15,12 @@ class RegisterStepTwoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email'         => ['required', 'email', 'exists:users,email'],
-            'password'      => ['required', Password::defaults()],
-            'country_id'    => ['nullable', 'integer', 'max:255'],
-            'numero'        => ['nullable', 'string', 'max:20'],
-            'whatsapp'      => ['nullable', 'string', 'max:20'],
-            'age'           => ['nullable', 'integer', 'min:16'],
+            'email' => ['required', 'email', 'exists:users,email'],
+            'password' => ['required', Password::defaults()],
+            'country_id' => ['nullable', 'integer', 'max:255'],
+            'numero' => ['nullable', 'string', 'max:20'],
+            'whatsapp' => ['nullable', 'string', 'max:20'],
+            'age' => ['nullable', 'integer', 'min:16'],
             'situation_professionnelle' => ['nullable', 'string'],
             'genre' => ['nullable', 'string'],
         ];

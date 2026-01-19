@@ -1,14 +1,14 @@
 <?php
 
 namespace Database\Seeders;
-use App\Models\Role;
+
 use App\Enums\RoleEnum;
-use Illuminate\Support\Str;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class RoleSeeder extends Seeder
 {
-
     public function run(): void
     {
         $roles = [
@@ -18,11 +18,10 @@ class RoleSeeder extends Seeder
         ];
 
         Role::truncate();
-        foreach($roles as $role){
+        foreach ($roles as $role) {
             Role::create(array_merge($role, [
-                'key' => 'rol-' . strtolower(Str::random(8)),
+                'key' => 'rol-'.strtolower(Str::random(8)),
             ]));
         }
     }
-
 }

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\PlanEnum;
 use App\Enums\RoleEnum;
 use App\Models\Country;
 use Illuminate\Database\Migrations\Migration;

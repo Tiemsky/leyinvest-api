@@ -5,15 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InvoiceResource;
 use App\Services\InvoiceService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
     public function __construct(
         protected InvoiceService $invoiceService
-    ) {
-    }
+    ) {}
 
     /**
      * Liste des factures de l'utilisateur
@@ -32,12 +31,15 @@ class InvoiceController extends Controller
      *     @OA\Response(
      *         response=200,
      *         description="Factures récupérées avec succès",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Factures récupérées avec succès."),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/InvoiceListItem")
      *             )
      *         )
@@ -46,7 +48,6 @@ class InvoiceController extends Controller
      *     @OA\Response(response=401, description="Non authentifié")
      * )
      */
-
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -80,13 +81,16 @@ class InvoiceController extends Controller
      *         in="path",
      *         required=true,
      *         description="Numéro unique de la facture",
+     *
      *         @OA\Schema(type="string", example="INV-2025-00045")
      *     ),
      *
      *     @OA\Response(
      *         response=200,
      *         description="Facture récupérée avec succès",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Facture récupérée avec succès."),
      *             @OA\Property(
@@ -100,7 +104,6 @@ class InvoiceController extends Controller
      *     @OA\Response(response=401, description="Non authentifié")
      * )
      */
-
     public function show(Request $request, string $invoiceNumber): JsonResponse
     {
         $user = $request->user();

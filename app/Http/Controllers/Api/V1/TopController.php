@@ -14,15 +14,11 @@ class TopController extends Controller
 {
     /**
      * Service utilisé pour récupérer les tops.
-     *
-     * @var TopFlopService
      */
     protected TopFlopService $topFlopService;
 
     /**
      * Injection du service TopFlopService.
-     *
-     * @param TopFlopService $topFlopService
      */
     public function __construct(TopFlopService $topFlopService)
     {
@@ -35,6 +31,7 @@ class TopController extends Controller
     public function index(): JsonResponse
     {
         $tops = $this->topFlopService->getTop(5);
+
         return response()->json([
             'success' => true,
             'message' => 'Liste des tops récupérée avec succès',

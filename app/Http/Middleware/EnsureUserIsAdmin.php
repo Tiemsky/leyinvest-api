@@ -16,7 +16,7 @@ class EnsureUserIsAdmin
             return response()->json([
                 'success' => 'false',
                 'message' => 'Utilisateur non authentifié.',
-                'code' => 401
+                'code' => 401,
             ], 401);
         }
 
@@ -24,7 +24,7 @@ class EnsureUserIsAdmin
             return response()->json([
                 'success' => 'false',
                 'message' => 'Accès refusé. Rôle insuffisant.',
-                'code' => 403
+                'code' => 403,
             ], 403);
         }
 

@@ -16,7 +16,8 @@ class AuthUserResource extends JsonResource
     {
         // On récupère l'abonnement actif s'il est chargé
         $activeSubscription = $this->whenLoaded('activeSubscription');
-         return [
+
+        return [
             'id' => (int) $this->id,
             'nom' => (string) $this->nom,
             'prenom' => (string) $this->prenom,

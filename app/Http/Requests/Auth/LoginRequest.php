@@ -8,17 +8,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+
 /**
  * @OA\Schema(
  *     schema="LoginRequest",
  *     type="object",
  *     title="Login Request",
  *     required={"email", "password"},
+ *
  *     @OA\Property(property="email", type="string", format="email", example="john.doe@example.com"),
  *     @OA\Property(property="password", type="string", format="password", example="password123")
  * )
  */
-
 class LoginRequest extends FormRequest
 {
     /**

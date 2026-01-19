@@ -21,24 +21,25 @@ class PlanResource extends JsonResource
             // NOTE: C'est une vérification simplifiée. Dans un système complet,
             // vous devriez vérifier si le plan correspond à l'activeSubscription de l'utilisateur.
             $user = $request->user();
+
             return $user->activeSubscription?->plan_id === $this->id;
         });
 
         return [
-            'id'    => (int) $this->id,
-            'key'   => (string) $this->key,
-            'name'  => (string) $this->nom,
-            'slug'  => (string) $this->slug,
+            'id' => (int) $this->id,
+            'key' => (string) $this->key,
+            'name' => (string) $this->nom,
+            'slug' => (string) $this->slug,
             // 3. Tarification
-            'price'           => (float) $this->prix,
-            'billing_cycle'   => (string) $this->billing_cycle,
-            'trial_days'      => (int) $this->trial_days,
+            'price' => (float) $this->prix,
+            'billing_cycle' => (string) $this->billing_cycle,
+            'trial_days' => (int) $this->trial_days,
 
             // 4. Statut et Contexte Utilisateur
             'status' => [
-                'is_active'   => (bool) $this->is_active,
+                'is_active' => (bool) $this->is_active,
                 'is_visible' => (bool) $this->is_visible,
-                'is_free'    => (bool) $this->isFree(),
+                'is_free' => (bool) $this->isFree(),
                 'is_current' => (bool) $isCurrentLogic, // Booléen ou absent
             ],
 

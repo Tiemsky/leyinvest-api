@@ -4,8 +4,6 @@ namespace App\Services\Scrapers;
 
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
-use Illuminate\Support\Facades\Storage;
 
 class BrvmBaseScraper
 {
@@ -46,7 +44,7 @@ class BrvmBaseScraper
         try {
             // Visite de la homepage d'abord si ce n'est pas déjà fait
             static $sessionInitialized = false;
-            if (!$sessionInitialized) {
+            if (! $sessionInitialized) {
                 $this->client->request('GET', 'https://www.brvm.org/fr');
                 usleep(1000000);
                 $sessionInitialized = true;
@@ -55,15 +53,17 @@ class BrvmBaseScraper
             $response = $this->client->request('GET', $url);
             if ($response->getStatusCode() !== 200) {
                 \Log::warning("⚠️ BRVM HTTP {$response->getStatusCode()} for {$url}");
+
                 return null;
             }
 
             $html = $response->getContent();
-            \Log::debug("✅ BRVM: Received " . strlen($html) . " bytes");
+            \Log::debug('✅ BRVM: Received '.strlen($html).' bytes');
 
             return $html;
         } catch (\Exception $e) {
             \Log::error("❌ BRVM fetch error: {$e->getMessage()}");
+
             return null;
         }
     }
@@ -78,26 +78,27 @@ class BrvmBaseScraper
         // ✅ Cibler la section principale comme dans FastAPI
         $mainSection = $crawler->filterXPath('//section[@id="block-system-main"]');
 
-        if (!$mainSection->count()) {
-            \Log::warning("⚠️ BRVM: #block-system-main non trouvé");
+        if (! $mainSection->count()) {
+            \Log::warning('⚠️ BRVM: #block-system-main non trouvé');
             // Fallback: utiliser toute la page
             $mainSection = $crawler;
         }
 
         // ✅ Extraire le tableau principal
         $table = $mainSection->filter('table.views-table');
-        if (!$table->count()) {
-            \Log::warning("⚠️ BRVM: Aucun tableau trouvé");
+        if (! $table->count()) {
+            \Log::warning('⚠️ BRVM: Aucun tableau trouvé');
+
             return [];
         }
 
         // ✅ Extraire les lignes avec ou sans <tbody>
         $rows = $table->filter('tbody tr');
-        if (!$rows->count()) {
+        if (! $rows->count()) {
             // Fallback: toutes les lignes sauf celles contenant <th>
             $allRows = $table->filter('tr');
             $rows = $allRows->reduce(function (Crawler $row) {
-                return !$row->filter('th')->count();
+                return ! $row->filter('th')->count();
             });
         }
 
@@ -109,7 +110,9 @@ class BrvmBaseScraper
 
             // Colonne Date
             $dateNode = $rowCrawler->filter('td.views-field-field-date-annonce span.date-display-single');
-            if (!$dateNode->count()) continue;
+            if (! $dateNode->count()) {
+                continue;
+            }
             $dateStr = trim($dateNode->text());
 
             // Colonne Société
@@ -118,15 +121,19 @@ class BrvmBaseScraper
 
             // Colonne Titre
             $titleNode = $rowCrawler->filter('td.views-field-title');
-            if (!$titleNode->count()) continue;
+            if (! $titleNode->count()) {
+                continue;
+            }
             $title = trim($titleNode->text());
 
             // Lien PDF
             $linkNode = $rowCrawler->filter('td.views-field-field-fichier-annonce a.btn-download');
-            if (!$linkNode->count()) continue;
+            if (! $linkNode->count()) {
+                continue;
+            }
             $pdfUrl = trim($linkNode->attr('href'));
-            if (empty($pdfUrl) || !str_starts_with($pdfUrl, 'http')) {
-                $pdfUrl = 'https://www.brvm.org' . ltrim($pdfUrl, '/');
+            if (empty($pdfUrl) || ! str_starts_with($pdfUrl, 'http')) {
+                $pdfUrl = 'https://www.brvm.org'.ltrim($pdfUrl, '/');
             }
 
             $results[] = compact('dateStr', 'company', 'title', 'pdfUrl');

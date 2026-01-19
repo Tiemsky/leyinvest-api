@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Action;
-use App\Models\StockFinancialMetric;
 use App\Models\SectorFinancialMetric;
+use App\Models\StockFinancialMetric;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -71,11 +71,11 @@ class SectorMetricAggregator
         $indicators = $this->getIndicatorsList($isFinancialSector);
 
         foreach ($indicators as $indicator) {
-            $values = $metrics->pluck($indicator)->filter(fn($v) => $v !== null);
+            $values = $metrics->pluck($indicator)->filter(fn ($v) => $v !== null);
 
             if ($values->isNotEmpty()) {
-                $aggregatedData[$indicator . '_moy'] = round($values->avg(), 2);
-                $aggregatedData[$indicator . '_ecart_type'] = round($this->calculateStdDev($values), 2);
+                $aggregatedData[$indicator.'_moy'] = round($values->avg(), 2);
+                $aggregatedData[$indicator.'_ecart_type'] = round($this->calculateStdDev($values), 2);
             }
         }
 
@@ -177,7 +177,7 @@ class SectorMetricAggregator
         }
 
         $mean = $values->avg();
-        $variance = $values->map(fn($v) => pow($v - $mean, 2))->avg();
+        $variance = $values->map(fn ($v) => pow($v - $mean, 2))->avg();
 
         return sqrt($variance);
     }

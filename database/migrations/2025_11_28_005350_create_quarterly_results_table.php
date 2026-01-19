@@ -1,9 +1,9 @@
 <?php
 
+use App\Models\Action;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Models\Action;
 
 return new class extends Migration
 {
@@ -27,7 +27,6 @@ return new class extends Migration
             $table->decimal('evolution_rn', 10, 2)->nullable()->comment('Evolution du RN en %');
 
             $table->timestamps();
-
 
             // Contraintes et index
             $table->index(['action_id', 'year'], 'quarterly_results_action_year_index');

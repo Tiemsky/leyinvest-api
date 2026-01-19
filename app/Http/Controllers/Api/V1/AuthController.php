@@ -3,30 +3,24 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\{
-    RegisterStepOneRequest,
-    RegisterStepTwoRequest,
-    LoginRequest,
-    VerifyOtpRequest,
-    ForgotPasswordRequest,
-    ResetPasswordRequest
-};
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterStepOneRequest;
+use App\Http\Requests\Auth\RegisterStepTwoRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Resources\AuthUserResource;
 use App\Services\AuthService;
 use App\Services\CookieService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 
 /**
  * @tags Authentification
  */
 class AuthController extends Controller
 {
-
-    public function __construct(private AuthService $authService, private CookieService $cookieService) {
-    }
+    public function __construct(private AuthService $authService, private CookieService $cookieService) {}
 
     /**
      * Étape 1 : Inscription - Nom, Prénom, Email
@@ -34,6 +28,7 @@ class AuthController extends Controller
     public function registerStepOne(RegisterStepOneRequest $request): JsonResponse
     {
         $user = $this->authService->registerStepOne($request->validated());
+
         return response()->json([
             'success' => true,
             'message' => 'Inscription initiée. Un code de vérification a été envoyé à votre email.',
@@ -84,7 +79,6 @@ class AuthController extends Controller
     /**
      * Étape 4 : Connexion utilisateur
      */
-
     public function login(LoginRequest $request): JsonResponse
     {
         // 1. Appel au service pour la logique métier
@@ -99,7 +93,7 @@ class AuthController extends Controller
         if ($request->hasHeader('Origin')) {
             $response = response()->json([
                 'success' => true,
-                'data' => collect($data)->except(['refresh_token', 'refresh_expires_in'])->toArray()
+                'data' => collect($data)->except(['refresh_token', 'refresh_expires_in'])->toArray(),
             ], 200);
 
             // On ajoute le cookie (en utilisant la clé qui existe maintenant !)
@@ -111,7 +105,7 @@ class AuthController extends Controller
         // 3. Si c'est Mobile, on laisse tout dans le JSON
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => $data,
         ], 200);
     }
 
@@ -122,7 +116,7 @@ class AuthController extends Controller
     {
         $token = $request->cookie('refresh_token') ?? $request->input('refresh_token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -133,7 +127,7 @@ class AuthController extends Controller
             $response = response()->json([
                 'success' => true,
                 'message' => 'Token rafraîchi avec succès',
-                'data' => collect($result)->except(['refresh_token', 'refresh_expires_in'])->toArray()
+                'data' => collect($result)->except(['refresh_token', 'refresh_expires_in'])->toArray(),
             ]);
 
             return $response->withCookie(
@@ -173,7 +167,7 @@ class AuthController extends Controller
     //     ]);
     // }
 
-     /**
+    /**
      * Vérifier le code OTP pour la réinitialisation du mot de passe
      */
     public function verifyResetOtp(VerifyOtpRequest $request): JsonResponse
@@ -210,7 +204,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Mot de passe réinitialisé avec succès.',
             'data' => ['user' => new AuthUserResource($user)],
-          ], 200);
+        ], 200);
     }
 
     /**
@@ -221,6 +215,7 @@ class AuthController extends Controller
         // On récupère le token pour le révoquer aussi en BDD
         $token = $request->cookie('refresh_token') ?? $request->input('refresh_token');
         $this->authService->logout($request->user(), $token);
+
         return response()->json([
             'success' => true,
             'message' => 'Déconnexion réussie.',
@@ -230,10 +225,10 @@ class AuthController extends Controller
     /**
      * Déconnexion de tous les appareils
      */
-
     public function logoutAll(Request $request): JsonResponse
     {
         $this->authService->logoutAll($request->user());
+
         return response()->json([
             'success' => true,
             'message' => 'Déconnexion de tous les appareils réussie.',
@@ -250,6 +245,7 @@ class AuthController extends Controller
             'data' => ['user' => new AuthUserResource($request->user())],
         ]);
     }
+
     /**
      * Changer le mot de passe utilisateur
      */
@@ -304,7 +300,6 @@ class AuthController extends Controller
         ]);
     }
 
-
     /**  * Mettre à jour ou supprimer l'avatar de l'utilisateur
      */
     public function manageAvatar(Request $request): void
@@ -313,6 +308,7 @@ class AuthController extends Controller
         // Update Avatar
         if ($request->hasFile('avatar')) {
             $this->authService->updateAvatar($user, $request->file('avatar'));
+
             return;
         }
     }
@@ -325,6 +321,7 @@ class AuthController extends Controller
         $this->authService->deleteUser($request->user());
         // On supprime aussi le cookie lors de la suppression du compte
         $cookie = $this->cookieService->forgetRefreshTokenCookie();
+
         return response()->json([
             'success' => true,
             'message' => 'Compte utilisateur supprimé avec succès.',

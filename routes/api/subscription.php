@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\PlanController;
-use App\Http\Middleware\VerifyWebhookSignature;
 use App\Http\Controllers\Api\V1\InvoiceController;
-use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\PaymentWebhookController;
+use App\Http\Controllers\Api\V1\PlanController;
+use App\Http\Controllers\Api\V1\SubscriptionController;
+use App\Http\Middleware\VerifyWebhookSignature;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
@@ -18,7 +18,6 @@ Route::prefix('v1')->group(function () {
         // [GET] /api/v1/plans/{slug} : Détails d'un plan spécifique
         Route::get('/{slug}', [PlanController::class, 'show']);
     });
-
 
     // ============================================
     // 2. WEBHOOKS PAIEMENT (pas d'authentification)
@@ -55,7 +54,6 @@ Route::prefix('v1')->group(function () {
             // [POST] /api/v1/subscriptions/resume : Réactive un abonnement annulé/en pause.
             Route::post('/resume', [SubscriptionController::class, 'resume']);
         });
-
 
         // ============================================
         // FACTURE (INVOICE)

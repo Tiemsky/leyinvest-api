@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\Plan;
-use App\Models\User;
 use App\Models\Coupon;
+use App\Models\Plan;
 use App\Models\Subscription;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 use Carbon\Carbon;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Exception;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class SubscriptionService
 {
@@ -17,8 +17,7 @@ class SubscriptionService
     public function __construct(
         protected CouponService $couponService,
         protected InvoiceService $invoiceService
-    ) {
-    }
+    ) {}
 
     /**
      * Crée une nouvelle souscription pour un utilisateur (première fois).
@@ -73,10 +72,10 @@ class SubscriptionService
             }
 
             // Créer une facture uniquement si ce n'est pas gratuit ET pas en essai
-            if (!$plan->isFree() && $status !== 'trialing') {
+            if (! $plan->isFree() && $status !== 'trialing') {
                 $this->invoiceService->createForSubscription($subscription, $subtotal, $discount, $coupon, [
                     'currency' => $options['currency'] ?? 'XOF',
-                    'status' => $subscription->payment_status // Statut hérité de l'abonnement
+                    'status' => $subscription->payment_status, // Statut hérité de l'abonnement
                 ]);
             }
 
@@ -90,7 +89,7 @@ class SubscriptionService
     public function changePlan(Subscription $currentSubscription, Plan $newPlan, array $options = []): Subscription
     {
         if ($currentSubscription->plan_id === $newPlan->id) {
-            throw new ConflictHttpException("Vous êtes déjà abonné à ce plan.");
+            throw new ConflictHttpException('Vous êtes déjà abonné à ce plan.');
         }
 
         // La logique d'Upgrade vs Downgrade devrait comparer les prix TTC ou la valeur
@@ -119,7 +118,7 @@ class SubscriptionService
                 $currentSubscription->cancelAtPeriodEnd($cancelReason);
                 // Si Downgrade, on ne crée pas la nouvelle souscription immédiatement,
                 // on ne fait qu'annuler l'ancienne pour la fin de période.
-                if (!$isUpgrade) {
+                if (! $isUpgrade) {
                     throw new ConflictHttpException("Downgrade planifié. Le plan changera le {$currentSubscription->ends_at->toDateString()}.");
                 }
             }
@@ -128,6 +127,7 @@ class SubscriptionService
             // Pour le Downgrade, la logique de subscription->cancelAtPeriodEnd() gère le futur
             if ($isUpgrade) {
                 $newSubscription = $this->subscribe($user, $newPlan, $options);
+
                 return $newSubscription;
             }
 
@@ -140,7 +140,7 @@ class SubscriptionService
     {
         $validationResult = $this->couponService->validate($couponCode, $planId, $userId);
 
-        if (!$validationResult['valid']) {
+        if (! $validationResult['valid']) {
             // Utilisation du message du service coupon
             throw new Exception($validationResult['message'], 422);
         }
@@ -152,7 +152,7 @@ class SubscriptionService
     protected function calculateProrataCredit(Subscription $subscription): float
     {
         // Si l'abonnement est gratuit ou n'a pas de date de fin, pas de crédit
-        if ($subscription->plan->isFree() || !$subscription->ends_at) {
+        if ($subscription->plan->isFree() || ! $subscription->ends_at) {
             return 0.00;
         }
 
@@ -202,6 +202,7 @@ class SubscriptionService
         if ($plan->isFree()) {
             return 'active';
         }
+
         return 'pending';
     }
 }

@@ -14,7 +14,9 @@ class SendOtpNotification extends Notification implements ShouldQueue
 
     // Configuration de la file d'attente
     public $tries = 3;
+
     public $timeout = 120;
+
     public $retryAfter = 60;
 
     public function __construct(
@@ -68,9 +70,9 @@ class SendOtpNotification extends Notification implements ShouldQueue
     {
         $prefix = $this->isTest ? '[TEST] ' : '';
 
-        return $prefix . match ($this->type) {
-            'reset' => '🔐 Réinitialisation de mot de passe - ' . config('app.name'),
-            default => '✅ Vérification de votre compte - ' . config('app.name'),
+        return $prefix.match ($this->type) {
+            'reset' => '🔐 Réinitialisation de mot de passe - '.config('app.name'),
+            default => '✅ Vérification de votre compte - '.config('app.name'),
         };
     }
 
@@ -79,7 +81,7 @@ class SendOtpNotification extends Notification implements ShouldQueue
         Log::error("Échec envoi OTP ({$this->type})", [
             'is_test' => $this->isTest,
             'error' => $exception->getMessage(),
-            'otp_prefix' => substr($this->otpCode, 0, 2) . '***'
+            'otp_prefix' => substr($this->otpCode, 0, 2).'***',
         ]);
     }
 
@@ -90,6 +92,7 @@ class SendOtpNotification extends Notification implements ShouldQueue
         if ($this->isTest) {
             $tags[] = 'test';
         }
+
         return $tags;
     }
 }

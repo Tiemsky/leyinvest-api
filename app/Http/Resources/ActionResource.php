@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ActionResource extends JsonResource
@@ -39,8 +38,8 @@ class ActionResource extends JsonResource
             'cours_cloture' => (float) $this->resource->cours_cloture,
             'variation' => (float) $variation,
             'variation_formatted' => $variation >= 0
-                ? '+' . number_format($variation, 2) . '%'
-                : number_format($variation, 2) . '%',
+                ? '+'.number_format($variation, 2).'%'
+                : number_format($variation, 2).'%',
             'couleur_variation' => $couleur,
             'isAuthUserFollow' => $isAuthUserFollow,
 
@@ -57,20 +56,18 @@ class ActionResource extends JsonResource
                 'slug' => (string) $this->classifiedSector->slug,
             ]),
 
-            'actionnaires' => $this->whenLoaded('shareholders', fn () =>
-                $this->shareholders->map(fn ($shareholder) => [
-                    'id' => (int) $shareholder->id ?? null,
-                    'nom' => (string) $shareholder->nom ?? '',
-                    'pourcentage' => (float) ($shareholder->percentage ?? 0),
-                    'rang' => (int) $shareholder->rang ?? null,
-                ])->values()->all()
+            'actionnaires' => $this->whenLoaded('shareholders', fn () => $this->shareholders->map(fn ($shareholder) => [
+                'id' => (int) $shareholder->id ?? null,
+                'nom' => (string) $shareholder->nom ?? '',
+                'pourcentage' => (float) ($shareholder->percentage ?? 0),
+                'rang' => (int) $shareholder->rang ?? null,
+            ])->values()->all()
             ),
 
-            'employees' => $this->whenLoaded('employees', fn () =>
-                $this->employees->map(fn ($employee) => [
-                    'position' => (string) $employee->position ? strtoupper($employee->position->nom) : '',
-                    'nom' => (string) $employee->nom ?? '',
-                ])->values()->all()
+            'employees' => $this->whenLoaded('employees', fn () => $this->employees->map(fn ($employee) => [
+                'position' => (string) $employee->position ? strtoupper($employee->position->nom) : '',
+                'nom' => (string) $employee->nom ?? '',
+            ])->values()->all()
             ),
         ];
     }

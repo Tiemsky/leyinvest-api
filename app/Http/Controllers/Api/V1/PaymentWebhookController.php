@@ -39,7 +39,7 @@ class PaymentWebhookController extends Controller
         ]);
 
         // Routage selon le provider
-        return match($provider) {
+        return match ($provider) {
             'stripe' => $this->handleStripeWebhook($request),
             'fedapay' => $this->handleFedapayWebhook($request),
             'paypal' => $this->handlePaypalWebhook($request),
@@ -83,11 +83,13 @@ class PaymentWebhookController extends Controller
 
                 default:
                     Log::info("Stripe event non géré: {$event['type']}");
+
                     return response()->json(['status' => 'ignored']);
             }
 
         } catch (\Exception $e) {
             Log::error('Erreur webhook Stripe', ['error' => $e->getMessage()]);
+
             return response()->json(['error' => 'Webhook invalide'], 400);
         }
     }
@@ -104,8 +106,9 @@ class PaymentWebhookController extends Controller
 
         $computedSignature = hash_hmac('sha256', $request->getContent(), $webhookSecret);
 
-        if (!hash_equals($computedSignature, $signature ?? '')) {
+        if (! hash_equals($computedSignature, $signature ?? '')) {
             Log::warning('Signature Fedapay invalide');
+
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 
@@ -206,8 +209,9 @@ class PaymentWebhookController extends Controller
                              $paymentData['metadata'] ??
                              null;
 
-            if (!$subscriptionId) {
+            if (! $subscriptionId) {
                 Log::error('Subscription ID manquant dans le paiement', $paymentData);
+
                 return response()->json(['error' => 'Subscription ID manquant'], 400);
             }
 

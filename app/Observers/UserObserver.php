@@ -3,8 +3,8 @@
 namespace App\Observers;
 
 use App\Enums\RoleEnum;
-use App\Models\User;
 use App\Models\Plan;
+use App\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Log;
 
@@ -22,14 +22,17 @@ class UserObserver
         // --- SÉCURITÉ : Restriction par rôle ---
         // Seuls les utilisateurs "standards" reçoivent un abonnement automatique.
         // Les admins, modérateurs, etc. sont ignorés.
-        if ($user->role !== RoleEnum::USER->value) { return; }
+        if ($user->role !== RoleEnum::USER->value) {
+            return;
+        }
 
         try {
             // 1. Récupérer le plan gratuit (via Scope ou Slug)
             $freePlan = Plan::where('slug', 'gratuit')->where('is_active', true)->first();
 
-            if (!$freePlan) {
+            if (! $freePlan) {
                 Log::warning("Observer: Plan gratuit introuvable pour l'utilisateur {$user->id}.");
+
                 return;
             }
 
@@ -44,7 +47,7 @@ class UserObserver
 
         } catch (\Exception $e) {
             Log::error("Observer: Échec de l'assignation du plan gratuit pour {$user->id}", [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

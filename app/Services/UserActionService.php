@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\UserAction;
 use App\Exceptions\AlreadyFollowingException;
 use App\Exceptions\NotFollowingException;
+use App\Models\UserAction;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +21,7 @@ class UserActionService
             ->first();
 
         if ($existing) {
-            throw new AlreadyFollowingException("Vous suivez déjà cette action");
+            throw new AlreadyFollowingException('Vous suivez déjà cette action');
         }
 
         return UserAction::create([
@@ -41,35 +41,34 @@ class UserActionService
             ->where('action_id', $actionId)
             ->first();
 
-        if (!$userAction) {
-            throw new NotFollowingException("Vous ne suivez pas cette action");
+        if (! $userAction) {
+            throw new NotFollowingException('Vous ne suivez pas cette action');
         }
 
         return $userAction->delete();
     }
 
-
     public function unfollowMultiple(int $userId, array $actionIds): array
-{
-    // Récupérer toutes les actions suivies par l'utilisateur parmi celles demandées
-    $userActions = UserAction::where('user_id', $userId)
-        ->whereIn('action_id', $actionIds)
-        ->get();
+    {
+        // Récupérer toutes les actions suivies par l'utilisateur parmi celles demandées
+        $userActions = UserAction::where('user_id', $userId)
+            ->whereIn('action_id', $actionIds)
+            ->get();
 
-    $foundActionIds = $userActions->pluck('action_id')->toArray();
-    $notFoundActionIds = array_diff($actionIds, $foundActionIds);
+        $foundActionIds = $userActions->pluck('action_id')->toArray();
+        $notFoundActionIds = array_diff($actionIds, $foundActionIds);
 
-    // Supprimer toutes les actions trouvées
-    $unfollowedCount = UserAction::where('user_id', $userId)
-        ->whereIn('action_id', $foundActionIds)
-        ->delete();
+        // Supprimer toutes les actions trouvées
+        $unfollowedCount = UserAction::where('user_id', $userId)
+            ->whereIn('action_id', $foundActionIds)
+            ->delete();
 
-    return [
-        'unfollowed_count' => $unfollowedCount,
-        'not_found_count' => count($notFoundActionIds),
-        'not_found_ids' => array_values($notFoundActionIds)
-    ];
-}
+        return [
+            'unfollowed_count' => $unfollowedCount,
+            'not_found_count' => count($notFoundActionIds),
+            'not_found_ids' => array_values($notFoundActionIds),
+        ];
+    }
 
     /**
      * Mettre à jour les valeurs stop_loss et take_profit
@@ -93,7 +92,7 @@ class UserActionService
      */
     public function getUserFollowedActions(int $userId): Collection
     {
-        return UserAction::with(['user','action'])
+        return UserAction::with(['user', 'action'])
             ->forUser($userId)
             ->get();
     }
@@ -146,6 +145,7 @@ class UserActionService
 
             if ($existing) {
                 $existing->delete();
+
                 return [
                     'action' => 'unfollowed',
                     'data' => null,
@@ -153,6 +153,7 @@ class UserActionService
             }
 
             $userAction = $this->follow($userId, $actionId, $stopLoss, $takeProfit);
+
             return [
                 'action' => 'followed',
                 'data' => $userAction,

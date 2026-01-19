@@ -1,12 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\TopController;
-use App\Http\Controllers\Api\V1\FlopController;
 use App\Http\Controllers\Api\V1\CountryController;
+use App\Http\Controllers\Api\V1\FlopController;
+use App\Http\Controllers\Api\V1\TopController;
 use App\Http\Controllers\Api\V1\UserActionController;
 use App\Http\Controllers\Api\V1\UserDashboardController;
-
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
@@ -20,10 +19,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/tops', [TopController::class, 'index']);
     });
 
-
-
     Route::middleware(['auth:sanctum', 'check.token.expiration', 'throttle:api'])->group(function () {
-        //Dashboard de l'utilisateur authentifié
+        // Dashboard de l'utilisateur authentifié
         Route::get('/user/dashboard', [UserDashboardController::class, 'index']);
 
         // Routes pour les actions suivies
@@ -68,11 +65,11 @@ Route::prefix('v1')->group(function () {
 });
 
 // Chargement des modules (routes externes)
-require __DIR__ . '/api/auth.php';
-require __DIR__ . '/api/analyze.php';      // Contient ActionController, BocIndicator, etc.
-require __DIR__ . '/api/news.php';         // Contient FinancialNewsController
-require __DIR__ . '/api/subscription.php'; // Plans, Invoices
-require __DIR__ . '/api/admin.php';        // Administration
-require __DIR__ . '/api/health.php';       // Monitoring (Pas de throttle)
-require __DIR__ . '/api/documents.php';    // Téléchargements
-require __DIR__ . '/scraper.php';         // Webhooks pour le scraper
+require __DIR__.'/api/auth.php';
+require __DIR__.'/api/analyze.php';      // Contient ActionController, BocIndicator, etc.
+require __DIR__.'/api/news.php';         // Contient FinancialNewsController
+require __DIR__.'/api/subscription.php'; // Plans, Invoices
+require __DIR__.'/api/admin.php';        // Administration
+require __DIR__.'/api/health.php';       // Monitoring (Pas de throttle)
+require __DIR__.'/api/documents.php';    // Téléchargements
+require __DIR__.'/scraper.php';         // Webhooks pour le scraper

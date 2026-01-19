@@ -3,9 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Flop;
-use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Str;
 
 class FlopSeeder extends Seeder
 {
@@ -23,9 +22,9 @@ class FlopSeeder extends Seeder
         ];
 
         Flop::truncate();
-        foreach($flops as $flop){
+        foreach ($flops as $flop) {
             Flop::create(array_merge($flop, [
-                'key' => 'flop_' . strtolower(Str::random(8)),
+                'key' => 'flop_'.strtolower(Str::random(8)),
             ]));
         }
     }
