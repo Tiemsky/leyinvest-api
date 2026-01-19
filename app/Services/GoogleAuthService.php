@@ -10,13 +10,17 @@ class GoogleAuthService
 {
     /**
      * Générer l'URL d'authentification Google
+     * On accepte un paramètre $state pour la redirection dynamique (ex: frontend_url=...)
      */
-    public function getAuthUrl(): string
+    public function getAuthUrl(?string $state = null): string
     {
-        return Socialite::driver('google')
-            ->stateless()
-            ->redirect()
-            ->getTargetUrl();
+        $driver = Socialite::driver('google')->stateless();
+
+        if ($state) {
+            $driver->with(['state' => $state]);
+        }
+
+        return $driver->redirect()->getTargetUrl();
     }
 
     /**
@@ -24,12 +28,11 @@ class GoogleAuthService
      */
     public function getGoogleUser()
     {
-        // On utilise stateless() car on est en mode API (sans session Laravel classique)
         return Socialite::driver('google')->stateless()->user();
     }
 
     /**
-     * Créer ou mettre à jour un utilisateur via Google
+     * Créer ou mettre à jour un utilisateur via Google (Fintech Ready)
      */
     public function getOrCreateUser($googleUser): User
     {
@@ -37,11 +40,11 @@ class GoogleAuthService
         $googleId = $googleUser->getId();
 
         if (empty($email) || empty($googleId)) {
-            throw new \Exception('Données Google incomplètes (Email ou ID manquant).');
+            throw new \Exception('Données Google incomplètes.');
         }
 
         return DB::transaction(function () use ($email, $googleId, $googleUser) {
-            // Recherche par email ou google_id avec verrouillage pour éviter les doublons
+            // lockForUpdate empêche la création de doublons lors de clics simultanés
             $user = User::where('email', $email)
                 ->orWhere('google_id', $googleId)
                 ->lockForUpdate()
@@ -57,34 +60,25 @@ class GoogleAuthService
         });
     }
 
-    /**
-     * Met à jour les informations si l'utilisateur existe déjà
-     */
     private function updateExistingUser(User $user, $googleUser, string $googleId): void
     {
         $updates = [];
-
-        // Si l'utilisateur s'était inscrit par email, on lie son compte Google
         if (empty($user->google_id)) {
             $updates['google_id'] = $googleId;
         }
-
-        // Google certifie l'email, donc on valide automatiquement
         if (! $user->email_verified) {
             $updates['email_verified'] = true;
         }
 
-        // On ne met à jour l'avatar que s'il n'en a pas déjà un personnalisé
-        if (empty($user->avatar) && $googleUser->getAvatar()) {
-            $updates['avatar'] = $googleUser->getAvatar();
-        }
-
-        // On remplit nom/prénom s'ils sont manquants
+        // Mise à jour des infos de base si vides
         if (empty($user->nom)) {
-            $updates['nom'] = $googleUser->user['family_name'] ?? ($user->nom ?? '');
+            $updates['nom'] = $googleUser->user['family_name'] ?? '';
         }
         if (empty($user->prenom)) {
-            $updates['prenom'] = $googleUser->user['given_name'] ?? ($user->prenom ?? '');
+            $updates['prenom'] = $googleUser->user['given_name'] ?? '';
+        }
+        if (empty($user->avatar)) {
+            $updates['avatar'] = $googleUser->getAvatar();
         }
 
         if (! empty($updates)) {
@@ -92,9 +86,6 @@ class GoogleAuthService
         }
     }
 
-    /**
-     * Création d'un nouvel utilisateur (Premier Login Google)
-     */
     private function createNewUser($googleUser, string $googleId): User
     {
         return User::create([
@@ -105,7 +96,7 @@ class GoogleAuthService
             'avatar' => $googleUser->getAvatar(),
             'auth_provider' => 'google',
             'email_verified' => true,
-            'registration_completed' => false, // Oblige à passer par une étape de finition si besoin
+            'registration_completed' => false, // Important pour le workflow Fintech
             'role' => 'user',
         ]);
     }
