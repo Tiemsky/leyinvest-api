@@ -60,7 +60,7 @@ class GoogleAuthController extends Controller
             $tokens = $this->refreshTokenService->createTokens($user, 'google_auth');
 
             // 4. Préparation de la redirection avec le token en paramètre URL
-            $redirectUrl = rtrim($finalFrontendUrl, '/').'/auth/callback?token='.$tokens['access_token'];
+            $redirectUrl = rtrim($finalFrontendUrl, '/').'/api/v1/auth/callback?token='.$tokens['access_token'];
 
             if (! $user->registration_completed) {
                 $redirectUrl .= '&new_user=true';
