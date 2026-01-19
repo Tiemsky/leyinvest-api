@@ -28,24 +28,25 @@ class GoogleAuthController extends Controller
     /**
      * Login via Google OAuth - Génère l'URL d'authentification
      */
-    public function login(): JsonResponse
+    public function login(Request $request)
     {
-        /**
-         * Génère l'URL pour envoyer l'utilisateur vers Google
-         */
         try {
-            // Utilise Socialite en interne
-            $authUrl = $this->googleAuthService->getAuthUrl();
+            // On récupère l'origine du front (ex: http://localhost:8080 ou https://staging.app...)
+            $frontendUrl = $request->query('frontend_url', config('app.frontend_url'));
+
+            // On stocke cette URL dans le 'state' pour la retrouver au callback
+            $authUrl = Socialite::driver('google')
+                ->with(['state' => 'frontend_url='.$frontendUrl])
+                ->stateless()
+                ->redirect()
+                ->getTargetUrl();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Url genere avec success',
                 'url' => $authUrl,
             ]);
         } catch (\Exception $e) {
-            Log::error('Google Auth URL error: '.$e->getMessage());
-
-            return response()->json(['success' => false, 'message' => 'Erreur de connexion Google'], 500);
+            return response()->json(['success' => false, 'message' => 'Erreur URL Google'], 500);
         }
     }
 
@@ -55,20 +56,23 @@ class GoogleAuthController extends Controller
     public function callback(Request $request)
     {
         try {
+            // Extraction de l'URL de redirection depuis le state de Google
+            $state = $request->input('state');
+            parse_str($state, $params);
+            $finalFrontendUrl = $params['frontend_url'] ?? config('app.frontend_url');
+
             $googleUser = $this->googleAuthService->getGoogleUser();
             $user = $this->googleAuthService->getOrCreateUser($googleUser);
 
-            // On utilise ton service de RefreshToken (SHA-256)
             $tokens = $this->refreshTokenService->createTokens($user, 'google_auth');
 
-            // Redirection vers React avec SEULEMENT l'access_token
-            $redirectUrl = config('app.frontend_url').'/auth/callback?token='.$tokens['access_token'];
+            // Redirection vers l'URL dynamique récupérée (Local ou Staging)
+            $redirectUrl = rtrim($finalFrontendUrl, '/').'/auth/callback?token='.$tokens['access_token'];
 
             if (! $user->registration_completed) {
                 $redirectUrl .= '&new_user=true';
             }
 
-            // Envoi du refresh_token via Cookie HttpOnly
             return redirect()->away($redirectUrl)->withCookie(
                 $this->cookieService->createRefreshTokenCookie($tokens['refresh_token'])
             );
