@@ -348,7 +348,8 @@ class AuthService
         DB::beginTransaction();
         try {
             $user->update(['password' => Hash::make($password)]);
-            $user->tokens()->delete(); // Révoquer tous les tokens
+
+            // Révoque tout pour forcer une reconnexion sur tous les appareils
             $this->refreshTokenService->revokeAllUserTokens($user);
 
             Log::info("Password reset successfully for {$user->email}");
@@ -357,7 +358,6 @@ class AuthService
             return $user->fresh();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Failed to reset password for {$email}: ".$e->getMessage());
             throw $e;
         }
     }
@@ -485,10 +485,10 @@ class AuthService
      */
     public function logout(User $user, ?string $refreshToken = null): void
     {
-        // 1. Supprimer le token d'accès actuel (Sanctum)
+        // 1. Supprimer le token d'accès actuel utilisé pour la requête
         $user->currentAccessToken()?->delete();
 
-        // 2. Révoquer le refresh token spécifique (si fourni, ex: via cookie ou body)
+        // 2. Révoquer le refresh token spécifique si présent
         if ($refreshToken) {
             $this->refreshTokenService->revokeRefreshToken($refreshToken);
         }
@@ -497,14 +497,13 @@ class AuthService
     }
 
     /**
-     * Déconnexion de TOUTES les sessions (Sécurité).
+     * Déconnexion de TOUTES les sessions.
      */
     public function logoutAll(User $user): void
     {
-        // Révoquer tous les tokens Sanctum
-        $user->tokens()->delete();
-        // Révoquer tous les Refresh Tokens dans Redis/DB
-        $this->refreshTokenService->revokeRefreshToken($user->id);
+        // Utilise la nouvelle méthode pour nettoyer proprement la BDD
+        $this->refreshTokenService->revokeAllUserTokens($user);
+
         Log::info("User {$user->email} logged out from all devices.");
     }
 

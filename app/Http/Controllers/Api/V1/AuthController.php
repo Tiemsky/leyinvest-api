@@ -154,18 +154,19 @@ class AuthController extends Controller
             'message' => 'Un nouveau code de vérification a été envoyé à votre email.',
         ], 200);
     }
+
     /**
      * Demander une réinitialisation de mot de passe
      */
-    // public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
-    // {
-    //     $this->authService->forgotPassword($request->input('email'));
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $this->authService->forgotPassword($request->input('email'));
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Un code de réinitialisation a été envoyé à votre email.',
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'message' => 'Un code de réinitialisation a été envoyé à votre email.',
+        ]);
+    }
 
     /**
      * Vérifier le code OTP pour la réinitialisation du mot de passe

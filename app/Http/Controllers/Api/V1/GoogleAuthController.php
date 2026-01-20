@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Services\CookieService;
 use App\Services\GoogleAuthService;
 use App\Services\RefreshTokenService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Laravel\Socialite\Facades\Socialite;
 
 class GoogleAuthController extends Controller
 {
@@ -19,15 +19,15 @@ class GoogleAuthController extends Controller
     ) {}
 
     /**
-     * Étape 1: Redirection vers Google
+     * Étape 1: Redirection vers Google (Appelé par le Front)
      */
     public function login(Request $request)
     {
         try {
-            // On capture l'URL du front qui appelle (ex: http://localhost:5173)
+            // On récupère l'origine (ex: http://localhost:5173 ou https://staging.app...)
             $frontendUrl = $request->query('frontend_url', config('app.frontend_url'));
 
-            // On génère l'URL avec le state
+            // On délègue au service avec l'URL front stockée dans le 'state'
             $authUrl = $this->googleAuthService->getAuthUrl("frontend_url={$frontendUrl}");
 
             return response()->json([
@@ -42,31 +42,32 @@ class GoogleAuthController extends Controller
     }
 
     /**
-     * Étape 2: Retour de Google (Callback)
+     * Étape 2: Retour de Google (Callback sur le Backend)
      */
     public function callback(Request $request)
     {
         try {
-            // 1. On récupère l'URL du front d'origine depuis le 'state'
+            // 1. Extraction de l'URL front depuis le state Google
             $state = $request->input('state');
             parse_str($state, $params);
             $finalFrontendUrl = $params['frontend_url'] ?? config('app.frontend_url');
 
-            // 2. Récupération et synchronisation de l'utilisateur
+            // 2. Traitement utilisateur
             $googleUser = $this->googleAuthService->getGoogleUser();
             $user = $this->googleAuthService->getOrCreateUser($googleUser);
 
-            // 3. Génération des tokens sécurisés (SHA-256)
+            // 3. Génération des tokens LeyInvest
             $tokens = $this->refreshTokenService->createTokens($user, 'google_auth');
 
-            // 4. Préparation de la redirection avec le token en paramètre URL
-            $redirectUrl = rtrim($finalFrontendUrl, '/').'/api/v1/auth/callback?token='.$tokens['access_token'];
+            // 4. Construction de l'URL de redirection VERS LE FRONT
+            // On s'assure que le chemin correspond à ta route React
+            $redirectUrl = rtrim($finalFrontendUrl, '/').'/auth/callback?token='.$tokens['access_token'];
 
             if (! $user->registration_completed) {
                 $redirectUrl .= '&new_user=true';
             }
 
-            // 5. Redirection finale avec le Refresh Token en Cookie HttpOnly
+            // 5. Redirection externe (away) avec le cookie de session
             return redirect()->away($redirectUrl)->withCookie(
                 $this->cookieService->createRefreshTokenCookie($tokens['refresh_token'])
             );
@@ -79,55 +80,44 @@ class GoogleAuthController extends Controller
     }
 
     /**
-     * Authentification via ID Token (Utilisé par le Mobile)
+     * Étape Alternative: Login via ID Token (Mobile)
      */
     public function tokenLogin(Request $request): JsonResponse
     {
         try {
             $request->validate(['token' => 'required|string']);
-            $idToken = $request->input('token');
 
-            // 1. Vérification du token via la bibliothèque Google
             $client = new \Google_Client(['client_id' => config('services.google.client_id')]);
-            $payload = $client->verifyIdToken($idToken);
+            $payload = $client->verifyIdToken($request->token);
 
             if (! $payload) {
-                return response()->json(['success' => false, 'message' => 'Token Google invalide'], 401);
+                return response()->json(['success' => false, 'message' => 'Token invalide'], 401);
             }
 
-            // 2. Transformer le payload en objet similaire à ce que Socialite renvoie
-            // pour réutiliser ton service GoogleAuthService
+            // Adaptation pour réutiliser GoogleAuthService
             $googleUserData = (object) [
-                'email' => $payload['email'],
-                'id' => $payload['sub'],
+                'getEmail' => fn () => $payload['email'],
+                'getId' => fn () => $payload['sub'],
+                'getAvatar' => fn () => $payload['picture'] ?? null,
                 'user' => [
                     'family_name' => $payload['family_name'] ?? '',
                     'given_name' => $payload['given_name'] ?? '',
                 ],
-                'getAvatar' => fn () => $payload['picture'] ?? null,
-                'getEmail' => fn () => $payload['email'],
-                'getId' => fn () => $payload['sub'],
             ];
 
-            // 3. Utiliser ton service existant (Transaction, Lock, etc.)
             $user = $this->googleAuthService->getOrCreateUser($googleUserData);
-
-            // 4. Créer les tokens de ton système
             $tokens = $this->refreshTokenService->createTokens($user, 'google_mobile_auth');
 
             return response()->json([
                 'success' => true,
                 'access_token' => $tokens['access_token'],
                 'user' => $user,
-                'requires_profile_completion' => ! $user->registration_completed,
-            ], 200)->withCookie(
-                $this->cookieService->createRefreshTokenCookie($tokens['refresh_token'])
-            );
+            ])->withCookie($this->cookieService->createRefreshTokenCookie($tokens['refresh_token']));
 
         } catch (\Exception $e) {
-            Log::error('Mobile Google Login Error: '.$e->getMessage());
+            Log::error('Mobile Login Error: '.$e->getMessage());
 
-            return response()->json(['success' => false, 'message' => 'Échec de l\'authentification'], 500);
+            return response()->json(['success' => false, 'message' => 'Erreur auth mobile'], 500);
         }
     }
 }

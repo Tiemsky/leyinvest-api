@@ -87,6 +87,29 @@ class RefreshTokenService
     }
 
     /**
+     * Révoquer UN refresh token spécifique (via sa valeur brute)
+     */
+    public function revokeRefreshToken(string $refreshToken): void
+    {
+        $tokenIdentifier = hash('sha256', $refreshToken);
+        DB::table('personal_access_tokens')
+            ->where('refresh_token', $tokenIdentifier)
+            ->delete();
+    }
+
+    /**
+     * NOUVEAU : Révoquer TOUS les tokens d'un utilisateur
+     * Utilisé lors du Reset Password ou LogoutAll
+     */
+    public function revokeAllUserTokens(User $user): void
+    {
+        DB::table('personal_access_tokens')
+            ->where('tokenable_id', $user->id)
+            ->where('tokenable_type', get_class($user))
+            ->delete();
+    }
+
+    /**
      * RECHERCHE ULTRA-RAPIDE (Plus de boucle foreach)
      */
     private function findTokenRecord(string $refreshToken)
@@ -101,11 +124,5 @@ class RefreshTokenService
     private function generateRefreshToken(): string
     {
         return Str::random(64);
-    }
-
-    public function revokeRefreshToken(string $refreshToken): void
-    {
-        $tokenIdentifier = hash('sha256', $refreshToken);
-        DB::table('personal_access_tokens')->where('refresh_token', $tokenIdentifier)->delete();
     }
 }
