@@ -50,6 +50,8 @@ class RefreshTokenService
             'refresh_token' => $refreshToken,
             'token_type' => 'Bearer',
             'expires_in' => $this->accessTokenExpiration * 60,
+            'refresh_expires_in' => $this->refreshTokenExpiration * 60,
+
         ];
     }
 
