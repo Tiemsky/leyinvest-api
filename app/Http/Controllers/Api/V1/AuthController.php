@@ -116,26 +116,40 @@ class AuthController extends Controller
     {
         $token = $request->cookie('refresh_token') ?? $request->input('refresh_token');
 
+        Log::info('Refresh token attempt', [
+            'has_cookie' => $request->cookie('refresh_token') ? 'yes' : 'no',
+            'ip' => $request->ip(),
+        ]);
+
         if (! $token) {
+            Log::warning('No refresh token provided');
+
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $result = $this->authService->refreshToken($token);
+        try {
+            $result = $this->authService->refreshToken($token);
 
-        // Même logique de nettoyage que pour le Login !
-        if ($request->hasHeader('Origin')) {
-            $response = response()->json([
-                'success' => true,
-                'message' => 'Token rafraîchi avec succès',
-                'data' => collect($result)->except(['refresh_token', 'refresh_expires_in'])->toArray(),
+            if ($request->hasHeader('Origin')) {
+                $response = response()->json([
+                    'success' => true,
+                    'message' => 'Token rafraîchi avec succès',
+                    'data' => collect($result)->except(['refresh_token', 'refresh_expires_in'])->toArray(),
+                ]);
+
+                return $response->withCookie(
+                    $this->cookieService->createRefreshTokenCookie($result['refresh_token'])
+                );
+            }
+
+            return response()->json(['success' => true, 'data' => $result]);
+        } catch (\Exception $e) {
+            Log::error('Refresh token failed', [
+                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
-
-            return $response->withCookie(
-                $this->cookieService->createRefreshTokenCookie($result['refresh_token'])
-            );
+            throw $e;
         }
-
-        return response()->json(['success' => true, 'data' => $result]);
     }
 
     /**

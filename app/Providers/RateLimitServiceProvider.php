@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
-// Implementation de securitee pour eviter les attaques brutes forces, et email spamming, DDOS,
+// Implementation de sécurité pour éviter les attaques brutes forces, et email spamming, DDOS,
 class RateLimitServiceProvider extends ServiceProvider
 {
     public function register(): void

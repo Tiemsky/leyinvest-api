@@ -1,5 +1,9 @@
 <?php
 
+// ============================================================================
+// bootstrap/app.php - Configuration Laravel 12 Customisée pour l'API
+// ============================================================================
+
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -17,37 +21,49 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-
     ->withMiddleware(function (Middleware $middleware): void {
+
+        // PRIORITÉ DES MIDDLEWARES (ordre critique !)
         $middleware->priority([
-            \Illuminate\Http\Middleware\HandleCors::class,
             \App\Http\Middleware\SecureHeaders::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
+            \Illuminate\Http\Middleware\ValidatePostSize::class,
+            \Illuminate\Http\Middleware\TrimStrings::class,
+            \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
+        //  MIDDLEWARE API - SANS EnsureFrontendRequestsAreStateful
+        // (Ce middleware force l'utilisation de sessions Laravel, on ne veut PAS ça !)
         $middleware->api(prepend: [
             \App\Http\Middleware\ForceJsonResponse::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
+        // ✅ CSRF: Désactiver pour toutes les routes API
         $middleware->validateCsrfTokens(except: [
             'api/*',
             'sanctum/csrf-cookie',
         ]);
 
-        $middleware->throttleApi('global');
+        // THROTTLE: Rate limiting global (ajusté)
+        $middleware->throttleApi('api'); // Utiliser le limiter 'api' défini dans RouteServiceProvider
 
+        // Alias de middlewares personnalisés
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'check.token.expiration' => \App\Http\Middleware\CheckTokenExpiration::class,
         ]);
     })
 
+     // ============================================================================
+    // GESTION DES EXCEPTIONS - Format JSON pour API
+    // ============================================================================
+
     ->withExceptions(function (Exceptions $exceptions): void {
 
         /**
-         * 🛠️ Helper pour uniformiser la réponse d'erreur API
+         * Helper pour uniformiser la réponse d'erreur API
          */
         $apiResponse = function (string $message, int $code, array $extra = []) {
             return response()->json(array_merge([
