@@ -544,7 +544,7 @@ class AuthService
         return [
             'user' => new AuthUserResource($user),
             'access_token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'], // Toujours présent pour le contrôleur
+            'refresh_token' => $tokens['refresh_token'],
             'token_type' => 'Bearer',
             'expires_in' => $tokens['expires_in'],
             'refresh_expires_in' => $tokens['refresh_expires_in'],

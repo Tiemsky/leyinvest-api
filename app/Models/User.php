@@ -167,6 +167,9 @@ class User extends Authenticatable
         return $this->activeSubscription()->exists();
     }
 
+    /**
+     * Vérifier si l'utilisateur est sur un plan spécifique
+     */
     public function onPlan($planSlug): bool
     {
         $subscription = $this->activeSubscription;
@@ -174,6 +177,9 @@ class User extends Authenticatable
         return $subscription && $subscription->plan->slug === $planSlug;
     }
 
+    /**
+     * Vérifier si l'utilisateur a un plan spécifique
+     */
     public function hasFeature(string $feature): bool
     {
         $subscription = $this->activeSubscription;
@@ -188,6 +194,9 @@ class User extends Authenticatable
         return $subscription->plan->hasFeature($feature);
     }
 
+    /**
+     * Récupérer la limite des plans pour l'utilisateur
+     */
     public function getFeatureLimit(string $featureKey, string $limitKey = 'limit'): ?int
     {
         $subscription = $this->activeSubscription;
