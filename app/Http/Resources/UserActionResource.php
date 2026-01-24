@@ -20,6 +20,8 @@ class UserActionResource extends JsonResource
                     'id' => (int) $this->action->id,
                     'symbole' => (string) $this->action->symbole,
                     'nom' => (string) $this->action->nom,
+                    'variation' => (float) $this->action->variation,
+                    'cours_cloture' => (float) $this->action->cours_cloture,
                 ];
             }),
             'user' => $this->whenLoaded('user', function () {
@@ -29,6 +31,7 @@ class UserActionResource extends JsonResource
                     'prenom' => (string) $this->user->prenom,
                     'email' => (string) $this->user->email,
                     'numero' => (string) $this->user->numero,
+                    'whatsapp' => (string) $this->user->whatsapp,
                 ];
             }),
             'created_at' => $this->created_at?->toISOString(),
