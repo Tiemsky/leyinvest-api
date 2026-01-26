@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasKey;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -47,6 +49,16 @@ class User extends Authenticatable
     public function getRouteKeyName(): string
     {
         return 'key';
+    }
+
+    /**
+     * Mutateur pour normaliser l'email avant de le sauvegarder, en minuscules et sans espaces.
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (string $value) => strtolower(trim($value)),
+        );
     }
 
     /**
@@ -128,12 +140,12 @@ class User extends Authenticatable
     }
 
     // Relations
-    public function subscriptions()
+    public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
     }
 
-    public function activeSubscription()
+    public function activeSubscription(): HasOne
     {
         return $this->hasOne(Subscription::class)
             ->where(function ($query) {

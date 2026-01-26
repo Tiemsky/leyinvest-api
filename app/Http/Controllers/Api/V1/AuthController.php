@@ -9,11 +9,13 @@ use App\Http\Requests\Auth\RegisterStepOneRequest;
 use App\Http\Requests\Auth\RegisterStepTwoRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Http\Requests\UserEmailExistRequest;
 use App\Http\Resources\AuthUserResource;
 use App\Services\AuthService;
 use App\Services\CookieService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @tags Authentification
@@ -155,12 +157,8 @@ class AuthController extends Controller
     /**
      * Renvoyer le code OTP
      */
-    public function resendOtp(Request $request): JsonResponse
+    public function resendOtp(UserEmailExistRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
-        ]);
-
         $this->authService->resendOtp($request->input('email'));
 
         return response()->json([

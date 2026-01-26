@@ -18,7 +18,7 @@ class RateLimitServiceProvider extends ServiceProvider
     public function boot(): void
     {
 
-        // 🛡️ Limiteur GLOBAL (DDoS)
+        // Limiteur GLOBAL (DDoS)
         RateLimiter::for('global', function (Request $request) {
             return Limit::perMinute(env('RATE_LIMIT_GLOBAL', 1000))
                 ->by($request->ip())
@@ -28,19 +28,19 @@ class RateLimitServiceProvider extends ServiceProvider
                 ], 429));
         });
 
-        // 🔑 Limiteur AUTH (Login/Register)
+        // Limiteur AUTH (Login/Register)
         RateLimiter::for('auth', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });
 
-        // 📱 Limiteur API (Usage standard)
+        // Limiteur API (Usage standard)
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
-        // 📧 Limiteur OTP (3 tentatives max par 5 minutes)
+        // Limiteur OTP (4 tentatives max par 5 minutes)
         RateLimiter::for('otp', function (Request $request) {
-            return Limit::perMinutes(5, 3)->by($request->input('email') ?: $request->ip());
+            return Limit::perMinutes(5, 4)->by($request->input('email') ?: $request->ip());
         });
 
         // Limite Inscription

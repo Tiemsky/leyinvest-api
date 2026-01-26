@@ -18,6 +18,7 @@ class UserActionResource extends JsonResource
             'action' => $this->whenLoaded('action', function () {
                 return [
                     'id' => (int) $this->action->id,
+                    'key' => (string) $this->action->key,
                     'symbole' => (string) $this->action->symbole,
                     'nom' => (string) $this->action->nom,
                     'variation' => (float) $this->action->variation,

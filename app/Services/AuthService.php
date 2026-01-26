@@ -29,58 +29,51 @@ class AuthService
      */
     public function registerStepOne(array $data): User
     {
-        $email = $data['email'];
+        $email = strtolower(trim($data['email']));
 
-        // Vérifie si un compte COMPLET existe déjà
-        $existingCompleteUser = User::where('email', $email)
-            ->where('registration_completed', true)
-            ->first();
+        return DB::transaction(function () use ($email, $data) {
+            // lockForUpdate empêche qu'un autre processus (ex: RegisterStepOne)
+            $user = User::where('email', $email)->lockForUpdate()->first();
+            // Check si l'utilisateur existe deja
+            if ($user) {
+                // CAS 1 : Compte déjà complet
+                if ($user->registration_completed) {
+                    $message = $user->google_id
+                        ? 'Ce compte est lié à Google. Veuillez vous connecter via Google.'
+                        : 'Cet email est déjà utilisé. Veuillez vous connecter.';
+                    throw ValidationException::withMessages(['email' => [$message]]);
+                }
 
-        if ($existingCompleteUser) {
-            throw ValidationException::withMessages([
-                'email' => ['Cet email est déjà utilisé. Veuillez vous connecter.'],
-            ]);
-        }
+                // CAS 2 : Inscription incomplète (on met à jour et renvoie OTP)
+                $user->update([
+                    'nom' => $data['nom'],
+                    'prenom' => $data['prenom'],
+                    'email_verified' => false, // On force la revérification si manuel puisque l'inscription n’était pas complete donc il revérifie son email
+                ]);
+                // Régénérer et envoyer un nouvel OTP
+                $otp = $user->generateOtpCode();
+                $user->notify(new SendOtpNotification($otp, 'verification'));
+                Log::info("OTP resent for incomplete registration to {$user->email}: {$otp}");
 
-        // Vérifie si une inscription INCOMPLÈTE existe
-        $incompleteUser = User::where('email', $email)
-            ->where('registration_completed', false)
-            ->first();
+                return $user->fresh();
+            } else {
+                // CAS 3 : Nouvel utilisateur
+                $user = User::create([
+                    'email' => $email,
+                    'nom' => $data['nom'],
+                    'prenom' => $data['prenom'],
+                    'email_verified' => false,
+                    'registration_completed' => false,
+                    'password' => \Illuminate\Support\Str::random(32),
+                ]);
 
-        if ($incompleteUser) {
-            // Mettre à jour les informations si elles ont changé
-            $incompleteUser->update([
-                'nom' => $data['nom'],
-                'prenom' => $data['prenom'],
-            ]);
+                $otp = $user->generateOtpCode();
+                $user->notify(new SendOtpNotification($otp, 'verification'));
+                Log::info("New OTP for registration sent to {$user->email}: {$otp}");
 
-            // Réinitialiser la vérification email si elle était déjà faite
-            if ($incompleteUser->email_verified) {
-                $incompleteUser->update(['email_verified' => false]);
+                return $user;
             }
-
-            // Régénérer et envoyer un nouvel OTP
-            $otp = $incompleteUser->generateOtpCode();
-            $incompleteUser->notify(new SendOtpNotification($otp, 'verification'));
-            Log::info("OTP resent for incomplete registration to {$incompleteUser->email}: {$otp}");
-
-            return $incompleteUser->fresh();
-        }
-
-        // Créer un nouvel utilisateur
-        $user = User::create([
-            'nom' => $data['nom'],
-            'prenom' => $data['prenom'],
-            'email' => $email,
-            'email_verified' => false,
-            'registration_completed' => false,
-        ]);
-
-        $otp = $user->generateOtpCode();
-        $user->notify(new SendOtpNotification($otp, 'verification'));
-        Log::info("New OTP for registration sent to {$user->email}: {$otp}");
-
-        return $user;
+        });
     }
 
     /**
@@ -176,7 +169,7 @@ class AuthService
      */
     public function login(array $credentials, string $deviceName = 'api'): array
     {
-        // Initial: Recupration du record en fonction des donnees fournis
+        // Initial: Récupération du record en fonction des donnees fournis
         $user = User::where('email', $credentials['email'])->first();
 
         // 1. Vérification de l'existence de l'utilisateur ou du mot de passe

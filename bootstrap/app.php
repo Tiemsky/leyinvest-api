@@ -28,7 +28,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecureHeaders::class,
             \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class,
             \Illuminate\Http\Middleware\ValidatePostSize::class,
-            \Illuminate\Http\Middleware\TrimStrings::class,
             \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -40,7 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ForceJsonResponse::class,
         ]);
 
-        // ✅ CSRF: Désactiver pour toutes les routes API
+        // CSRF: Désactiver pour toutes les routes API
         $middleware->validateCsrfTokens(except: [
             'api/*',
             'sanctum/csrf-cookie',
@@ -75,12 +74,12 @@ return Application::configure(basePath: dirname(__DIR__))
         };
 
         /**
-         * ✅ Forcer le rendu JSON pour l'API
+         * Forcer le rendu JSON pour l'API
          */
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => $request->is('api/*') || $request->expectsJson());
 
         /**
-         * 1️⃣ Erreur 422 - Validation (Optimisé pour Nuxt)
+         * Erreur 422 - Validation (Optimisé pour Nuxt)
          */
         $exceptions->render(function (ValidationException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
@@ -94,7 +93,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * 2️⃣ Erreur 401 - Non authentifié
+         * Erreur 401 - Non authentifié
          */
         $exceptions->render(function (AuthenticationException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
@@ -103,7 +102,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * 3️⃣ Erreur 404 - Ressource ou Route non trouvée
+         * Erreur 404 - Ressource ou Route non trouvée
          */
         $exceptions->render(function (NotFoundHttpException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
@@ -117,7 +116,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * 4️⃣ Erreur 403 - Permission refusée
+         * Erreur 403 - Permission refusée
          */
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
@@ -126,7 +125,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * 5️⃣ Erreur 429 - Trop de requêtes
+         * Erreur 429 - Trop de requêtes
          */
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {
@@ -137,7 +136,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * 6️⃣ Catch-all - Erreur 500 et autres
+         * Catch-all - Erreur 500 et autres
          */
         $exceptions->render(function (Throwable $e, Request $request) use ($apiResponse) {
             if ($request->is('api/*')) {

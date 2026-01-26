@@ -80,10 +80,10 @@ class UserDashboardResource extends JsonResource
 
         // On récupère les informations du marché boursier venant du bulletin officiel;
         return [
-            'taux_rendement_moyen' => $boc->taux_rendement_moyen,
-            'per_moyen' => $boc->per_moyen,
-            'taux_rentabilite_moyen' => $boc->taux_rentabilite_moyen,
-            'prime_risque_marche' => $boc->prime_risque_marche,
+            'taux_rendement_moyen' => (float) $boc->taux_rendement_moyen,
+            'per_moyen' => (float) $boc->per_moyen,
+            'taux_rentabilite_moyen' => (float) $boc->taux_rentabilite_moyen,
+            'prime_risque_marche' => (float) $boc->prime_risque_marche,
         ];
     }
 

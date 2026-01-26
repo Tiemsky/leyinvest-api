@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware(['auth:sanctum', 'check.token.expiration', 'throttle:api'])->group(function () {
 
     // ========== ACTIONS - BOC INDICATOR ==========
-    // Recuperations de tous les indicateurs qui proviennt du PDF BOC sur le site de la Bvrm
+    // Récupérations de tous les indicateurs qui proviennent du PDF BOC sur le site de la Bvrm
     Route::get('/indicators', [BocIndicatorController::class, 'index']);
 
     // ========== ACTIONS - ANALYZE - DASHBOARD & HISTORIQUE ==========

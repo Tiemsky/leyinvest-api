@@ -3,14 +3,18 @@
 namespace App\Services;
 
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as GoogleUser;
 
 class GoogleAuthService
 {
     /**
-     * Générer l'URL d'authentification Google
-     * On accepte un paramètre $state pour la redirection dynamique (ex: frontend_url=...)
+     * Génère l'URL de redirection vers Google.
+     * Le paramètre 'state' peut servir à passer des données au frontend après le callback.
      */
     public function getAuthUrl(?string $state = null): string
     {
@@ -24,80 +28,97 @@ class GoogleAuthService
     }
 
     /**
-     * Récupérer l'utilisateur Google depuis le callback Socialite
+     * Traite l'utilisateur récupéré via Socialite.
      */
-    public function getGoogleUser()
+    public function handleCallback(): User
     {
-        return Socialite::driver('google')->stateless()->user();
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+
+            return $this->getOrCreateUser($googleUser);
+        } catch (Exception $e) {
+            Log::error('Erreur Google Auth Callback: '.$e->getMessage());
+            throw new Exception("Impossible de s'authentifier avec Google.");
+        }
     }
 
     /**
-     * Créer ou mettre à jour un utilisateur via Google (Fintech Ready)
+     * Logique centrale : Créer ou Lier un compte Google.
      */
-    public function getOrCreateUser($googleUser): User
+    public function getOrCreateUser(GoogleUser $googleUser): User
     {
-        $email = $googleUser->getEmail();
+        $email = strtolower(trim($googleUser->getEmail()));
         $googleId = $googleUser->getId();
 
-        if (empty($email) || empty($googleId)) {
-            throw new \Exception('Données Google incomplètes.');
-        }
-
         return DB::transaction(function () use ($email, $googleId, $googleUser) {
-            // lockForUpdate empêche la création de doublons lors de clics simultanés
+            // lockForUpdate empêche qu'un autre processus (ex: RegisterStepOne)
+            // n'interfère pendant cette transaction.
             $user = User::where('email', $email)
                 ->orWhere('google_id', $googleId)
                 ->lockForUpdate()
                 ->first();
 
             if ($user) {
-                $this->updateExistingUser($user, $googleUser, $googleId);
-
-                return $user->fresh();
+                return $this->linkExistingAccount($user, $googleUser);
             }
 
-            return $this->createNewUser($googleUser, $googleId);
+            return $this->createNewGoogleAccount($googleUser);
         });
     }
 
-    private function updateExistingUser(User $user, $googleUser, string $googleId): void
+    /**
+     * SCÉNARIO : L'utilisateur existe déjà (via Email Manuel ou autre).
+     * On unifie les informations.
+     */
+    private function linkExistingAccount(User $user, GoogleUser $googleUser): User
     {
-        $updates = [];
-        if (empty($user->google_id)) {
-            $updates['google_id'] = $googleId;
-        }
-        if (! $user->email_verified) {
-            $updates['email_verified'] = true;
-        }
+        $updates = [
+            'google_id' => $googleUser->getId(),
+            'email_verified' => true, // La confiance est déléguée à Google
+        ];
 
-        // Mise à jour des infos de base si vides
+        // On ne remplit les colonnes vides que pour ne pas écraser
+        // les données manuelles potentiellement plus précises.
         if (empty($user->nom)) {
-            $updates['nom'] = $googleUser->user['family_name'] ?? '';
+            $updates['nom'] = $googleUser->offsetGet('family_name') ?? $user->nom;
         }
         if (empty($user->prenom)) {
-            $updates['prenom'] = $googleUser->user['given_name'] ?? '';
+            $updates['prenom'] = $googleUser->offsetGet('given_name') ?? $user->prenom;
         }
         if (empty($user->avatar)) {
             $updates['avatar'] = $googleUser->getAvatar();
         }
 
-        if (! empty($updates)) {
-            $user->update($updates);
-        }
+        // Si l'utilisateur avait commencé une inscription manuelle (Step 1),
+        // mais passe maintenant par Google, il garde registration_completed = false
+        // pour être forcé de faire le Step 2 (Pays, Numéro, etc.)
+        $user->update($updates);
+
+        Log::info("Compte lié à Google pour l'utilisateur ID: {$user->id}");
+
+        return $user;
     }
 
-    private function createNewUser($googleUser, string $googleId): User
+    /**
+     * SCÉNARIO : Nouvel utilisateur total.
+     */
+    private function createNewGoogleAccount(GoogleUser $googleUser): User
     {
-        return User::create([
-            'email' => $googleUser->getEmail(),
-            'google_id' => $googleId,
-            'nom' => $googleUser->user['family_name'] ?? '',
-            'prenom' => $googleUser->user['given_name'] ?? '',
+        $user = User::create([
+            'email' => strtolower($googleUser->getEmail()),
+            'google_id' => $googleUser->getId(),
+            'nom' => $googleUser->offsetGet('family_name') ?? '',
+            'prenom' => $googleUser->offsetGet('given_name') ?? '',
             'avatar' => $googleUser->getAvatar(),
             'auth_provider' => 'google',
             'email_verified' => true,
-            'registration_completed' => false, // Important pour le workflow Fintech
-            'role' => 'user',
+            'registration_completed' => false, // Obligatoire pour passer au Step 2
+            'password' => Str::random(32), // Sécurité pour NOT NULL
+            'key' => Str::uuid()->toString(), // Si vous utilisez une colonne 'key' unique
         ]);
+
+        Log::info("Nouveau compte créé via Google: {$user->email}");
+
+        return $user;
     }
 }

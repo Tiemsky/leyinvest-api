@@ -64,7 +64,7 @@ class ActionController extends Controller
     }
 
     /**
-     * Retourne la liste des actions groupées par secteur BRVM.
+     * (Analyze)  Retourne la liste des actions groupées par secteur BRVM.
      */
     public function analyze(): JsonResponse
     {
